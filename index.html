@@ -157,6 +157,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <h1>Phòng Lab <span>Đập Thẻ</span></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
+  <div class="seg" id="theme" style="min-width:220px" aria-label="Giao diện"><button data-t="light">Sáng</button><button data-t="dark">Tối</button><button data-t="auto">Theo máy</button></div>
 </header>
 
 <nav class="tabs" role="tablist">
@@ -354,6 +355,14 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <script>
 (function(){
 const $=s=>document.querySelector(s);
+/* ---------- Sáng / Tối ---------- */
+(function(){
+  let t='auto';try{t=localStorage.getItem('fcolab_theme')||'auto'}catch(e){}
+  const apply=v=>{if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);
+    document.querySelectorAll('#theme button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===v))};
+  apply(t);
+  document.querySelectorAll('#theme button').forEach(b=>b.onclick=()=>{t=b.dataset.t;try{localStorage.setItem('fcolab_theme',t)}catch(e){}apply(t)});
+})();
 const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+k,JSON.stringify(v))}catch(e){}}};
 const fmt=(x,d=1)=>Number.isFinite(x)?x.toLocaleString('vi-VN',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
 const pct=(x,d=1)=>Number.isFinite(x)?fmt(x*100,d)+'%':'–';
