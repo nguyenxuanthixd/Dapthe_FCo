@@ -122,6 +122,8 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .vrow .stepper>button[data-d]{width:34px}
 .vrow .stepper input{width:100%;min-width:0;font-size:1.15rem}
 .vrow .stepper .btn{display:none}
+.viewbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--bait);color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:600}
+.viewbar .btn{background:#fff;color:#1b1404;border-color:#fff}
 /* ---- Stepper ---- */
 .stepper{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .stepper>button[data-d]{width:42px;height:38px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 1.3rem var(--f-display);cursor:pointer}
@@ -188,6 +190,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 </style>
 
 <div class="wrap">
+<div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
     <h1>Phòng Lab <span>Đập Thẻ</span></h1>
@@ -505,9 +508,16 @@ const $=s=>document.querySelector(s);
 })();
 // Mỗi acc game có dữ liệu riêng cho các khóa này; acc 'main' dùng khóa gốc (tương thích dữ liệu cũ)
 const PER_ACC=new Set(['dayTexts','dayWins','dayLv','dayVach','dayVmain','cards','log','onTable','sigLog']);
-const CUR_ACC=(()=>{try{return JSON.parse(localStorage.getItem('fcolab_profile'))||'main'}catch(e){return 'main'}})();
+// Admin xem giao diện tài khoản khác: dữ liệu nạp vào bộ nhớ tạm, không ghi vào máy hay tài khoản admin
+const VIEW=(()=>{try{return JSON.parse(sessionStorage.getItem('fco_viewas'))}catch(e){return null}})();
+const MEM=VIEW?(VIEW.data||{}):null;
+const LS={get:k=>{if(MEM)return Object.prototype.hasOwnProperty.call(MEM,k)?MEM[k]:null;try{return localStorage.getItem(k)}catch(e){return null}},
+  set:(k,v)=>{if(MEM){MEM[k]=v;return}try{localStorage.setItem(k,v)}catch(e){}},
+  del:k=>{if(MEM){delete MEM[k];return}try{localStorage.removeItem(k)}catch(e){}}};
+const CUR_ACC=(()=>{try{return JSON.parse(LS.get('fcolab_profile'))||'main'}catch(e){return 'main'}})();
 const kk=k=>PER_ACC.has(k)&&CUR_ACC!=='main'?'p_'+CUR_ACC+'_'+k:k;
-const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+kk(k));return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+kk(k),JSON.stringify(v))}catch(e){}if(window.__fcoSync)window.__fcoSync()}};
+const store={get(k,d){try{const v=LS.get('fcolab_'+kk(k));return v?JSON.parse(v):d}catch(e){return d}},set(k,v){LS.set('fcolab_'+kk(k),JSON.stringify(v));if(!MEM&&window.__fcoSync)window.__fcoSync()}};
+if(VIEW){$('#viewbar').hidden=false;$('#viewbar-t').textContent=`Admin đang xem giao diện của ${VIEW.email||'tài khoản khác'} (chỉ xem, thao tác không được lưu).`;$('#viewbar-x').onclick=()=>{try{sessionStorage.removeItem('fco_viewas')}catch(e){}location.reload()}}
 const fmt=(x,d=1)=>Number.isFinite(x)?x.toLocaleString('vi-VN',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
 const pct=(x,d=1)=>Number.isFinite(x)?fmt(x*100,d)+'%':'–';
 
@@ -999,15 +1009,16 @@ $('#d-bk').onclick=()=>{dText=dText.replace(/(\s*@\d{1,2}:\d{2}\s*|\s*\([^)]*\)|
 
 /* ---------- Acc game ---------- */
 (function(){
-  let profs=[];try{profs=JSON.parse(localStorage.getItem('fcolab_profiles'))||[]}catch(e){}
+  let profs=[];try{profs=JSON.parse(LS.get('fcolab_profiles'))||[]}catch(e){}
   if(!profs.length)profs.push({id:'main',name:'Acc 1'});
-  const save=()=>{try{localStorage.setItem('fcolab_profiles',JSON.stringify(profs))}catch(e){}if(window.__fcoSync)window.__fcoSync()};
-  const go=id=>{try{localStorage.setItem('fcolab_profile',JSON.stringify(id))}catch(e){}
+  const save=()=>{LS.set('fcolab_profiles',JSON.stringify(profs));if(!MEM&&window.__fcoSync)window.__fcoSync()};
+  const go=id=>{LS.set('fcolab_profile',JSON.stringify(id));if(MEM){try{sessionStorage.setItem('fco_viewas',JSON.stringify(VIEW))}catch(e){}location.reload();return}
     const f=window.__fcoFlush?window.__fcoFlush():Promise.resolve();Promise.race([f,new Promise(r=>setTimeout(r,2500))]).then(()=>location.reload())};
   const msg=t=>{$('#prof-msg').textContent=t};
   const render=()=>{$('#prof-sel').innerHTML=profs.map(p=>`<option value="${p.id}"${p.id===CUR_ACC?' selected':''}>${escH(p.name)}</option>`).join('');};
   render();
-  if(!profs.find(p=>p.id===CUR_ACC)){try{localStorage.setItem('fcolab_profile',JSON.stringify(profs[0].id))}catch(e){}location.reload();return}
+  if(!profs.find(p=>p.id===CUR_ACC)){go(profs[0].id);return}
+  if(MEM)$('#prof-manage').hidden=true;
   $('#prof-sel').onchange=e=>go(e.target.value);
   $('#prof-manage').onclick=()=>{$('#prof-panel').hidden=!$('#prof-panel').hidden;const c=profs.find(p=>p.id===CUR_ACC);$('#prof-name').value=''};
   document.addEventListener('click',e=>{if(!e.target.closest('#prof'))$('#prof-panel').hidden=true});
@@ -1074,12 +1085,13 @@ const FIREBASE_CONFIG={
             const accs=pl.map(p=>{const pf=p.id==='main'?'fcolab_':'fcolab_p_'+p.id+'_';return{name:p.name,texts:J(data,pf+'dayTexts',{}),wins:J(data,pf+'dayWins',[])}});
             const texts={},wins=[];accs.forEach(a=>{Object.entries(a.texts).forEach(([lv,t])=>{texts[lv]=(texts[lv]?texts[lv]+'\n':'')+(t||'')});(a.wins||[]).forEach(w=>wins.push(Object.assign({acc:a.name},w)))});
             let n=0,s=0;Object.entries(texts).forEach(([lv,t])=>{const r=stat(t,+lv);n+=r.n;s+=r.s});
-            const tm=v=>v?(v.toDate?v.toDate():new Date(v)).getTime():0;return{id:d.id,email:x.email||d.id,name:x.name||'',prov:x.provider||'',at:x.updatedAt,created:x.createdAt,login:x.lastLoginAt,cnt:x.loginCount||0,tc:tm(x.createdAt),tl:tm(x.lastLoginAt),accs,texts,wins,n,s}});sortUsers();
+            const tm=v=>v?(v.toDate?v.toDate():new Date(v)).getTime():0;return{id:d.id,email:x.email||d.id,name:x.name||'',prov:x.provider||'',at:x.updatedAt,created:x.createdAt,login:x.lastLoginAt,cnt:x.loginCount||0,raw:data,tc:tm(x.createdAt),tl:tm(x.lastLoginAt),accs,texts,wins,n,s}});sortUsers();
           loaded=true;renderUsers();
         }).catch(e=>{$('#adm-msg').textContent=e.code==='permission-denied'?'Chưa có quyền admin. Kiểm tra luật Firestore đã có đoạn cho admin chưa, và đăng nhập bằng Google với email admin.':'Lỗi: '+(e.code||e)});
       }
       function show(u){
-        $('#adm-title').textContent=u.email;
+        $('#adm-title').innerHTML=`${escH(u.email)} <button class="btn small primary" id="adm-viewas" style="margin-left:8px">Xem giao diện tài khoản này</button>`;
+        $('#adm-viewas').onclick=()=>{try{sessionStorage.setItem('fco_viewas',JSON.stringify({email:u.email,data:u.raw||{}}));sessionStorage.setItem('fco_pulled',(firebase.auth().currentUser||{}).uid||'')}catch(e){$('#adm-msg').textContent='Dữ liệu tài khoản này quá lớn để mở xem.';return}location.reload()};
         const sumT=texts=>{const lvs=Object.keys(texts).filter(l=>(texts[l]||'').trim()).sort((a,b)=>a-b);
           return {lvs,rows:lvs.map(l=>{const r=stat(texts[l],+l),R=(r.s+3)/(r.E+3);return `<tr><td>+${l}→+${+l+1}</td><td>${r.n}</td><td>${r.s}</td><td>${r.n?pct(r.s/r.n):'–'}</td><td>${fmt(r.E,1)}</td><td>×${fmt(R,2)}</td></tr>`}).join('')}};
         $('#adm-days').innerHTML=(u.accs||[]).map(a=>{const S=sumT(a.texts);
