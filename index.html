@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Phòng Lab Đập Thẻ FCO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: header + tab bar, each tab a 2-column workbench (inputs left, results right), stacks on phone */
+:root{
+  --bg:#f3f4f7; --panel:#ffffff; --ink:#151a2b; --muted:#5d6478; --line:#dfe2ea;
+  --gold:#b8862a; --gold-soft:#f5ead2; --navy:#1d2b55; --bait:#7a5bd6; --bait-soft:#ece6fb;
+  --ok:#1f8a4c; --ok-soft:#dff3e7; --bad:#c2412d; --bad-soft:#fbe4df; --warn:#a86a00;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Be Vietnam Pro",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1220; --panel:#161b2d; --ink:#e8eaf2; --muted:#9aa1b8; --line:#2a3150;
+  --gold:#e0b45a; --gold-soft:#3a2f17; --navy:#9fb2ea; --bait:#a98cff; --bait-soft:#2c2450;
+  --ok:#4cc581; --ok-soft:#173826; --bad:#ff7a63; --bad-soft:#3d1c17; --warn:#f0b04a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1220; --panel:#161b2d; --ink:#e8eaf2; --muted:#9aa1b8; --line:#2a3150;
+  --gold:#e0b45a; --gold-soft:#3a2f17; --navy:#9fb2ea; --bait:#a98cff; --bait-soft:#2c2450;
+  --ok:#4cc581; --ok-soft:#173826; --bad:#ff7a63; --bad-soft:#3d1c17; --warn:#f0b04a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+h1{font-family:var(--f-display);font-weight:800;font-size:2.3rem;line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);margin:4px 0 0;max-width:62ch}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:18px;overflow-x:auto}
+.tab{font-family:var(--f-display);font-weight:700;font-size:1.1rem;letter-spacing:.04em;text-transform:uppercase;background:none;border:0;color:var(--muted);padding:8px 14px;border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-color:var(--gold)}
+.tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.panel h2{font-family:var(--f-display);font-weight:700;font-size:1.25rem;text-transform:uppercase;letter-spacing:.03em;margin:0 0 12px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label,.lbl{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+input[type=number]{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+textarea{font-family:var(--f-mono);font-size:12px;min-height:90px;resize:vertical}
+.hint{font-size:.78rem;color:var(--muted);margin:0}
+.seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--bg);color:var(--muted);padding:8px 6px;font:600 .85rem var(--f-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--navy);color:var(--panel)}
+.seg button.bait[aria-pressed="true"]{background:var(--bait);color:#fff}
+.btn{font:600 .9rem var(--f-body);border-radius:7px;padding:9px 14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#1b1404}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.small{padding:5px 9px;font-size:.78rem}
+.btn:disabled{opacity:.5;cursor:wait}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow .btn{flex:1}
+.cmp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.cmp{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:9px;padding:14px;border-top:4px solid var(--navy)}
+.card.bait{border-top-color:var(--bait)}
+.card h3{margin:0 0 10px;font-family:var(--f-display);font-size:1.1rem;text-transform:uppercase;letter-spacing:.03em}
+.big{font-family:var(--f-display);font-weight:800;font-size:2.6rem;line-height:1}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;margin-top:10px;font-size:.88rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.verdict{margin-top:14px;padding:12px 14px;border-radius:8px;background:var(--gold-soft);border-left:4px solid var(--gold)}
+.verdict.ok{background:var(--ok-soft);border-color:var(--ok)}
+.verdict.bad{background:var(--bad-soft);border-color:var(--bad)}
+.verdict b{display:block;margin-bottom:2px}
+.chart{margin-top:16px}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td input{width:80px;padding:4px 6px;text-align:right}
+.pill{display:inline-block;font:600 .72rem var(--f-body);padding:2px 8px;border-radius:999px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.main{background:var(--gold-soft);color:var(--gold)} .pill.bait{background:var(--bait-soft);color:var(--bait)}
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:var(--bait-soft);border:1px solid var(--bait);color:var(--ink);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:.88rem}
+.log{max-height:340px;overflow-y:auto}
+.log td:last-child{text-align:right}
+.x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1rem}
+.note{font-size:.84rem;color:var(--muted);max-width:70ch}
+.lvl{font-family:var(--f-display);font-weight:700;font-size:1.05rem}
+/* ---- Stepper ---- */
+.stepper{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.stepper>button[data-d]{width:42px;height:38px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 1.3rem var(--f-display);cursor:pointer}
+.stepper input{width:96px;text-align:center;font:800 1.35rem var(--f-display);font-variant-numeric:tabular-nums;padding:4px}
+/* ---- Upgrade stage ---- */
+.upgrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.upgrid{grid-template-columns:1fr}}
+.topctl{display:flex;flex-wrap:wrap;gap:10px}.topctl .seg{flex:1;min-width:200px}
+.stage{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:center;padding:18px 8px;border-radius:10px;background:radial-gradient(ellipse at 30% 40%,var(--gold-soft),transparent 70%),var(--bg)}
+.pcard{--c1:#8e949f;--c2:#4d535e;--cf:#fff;position:relative;width:170px;aspect-ratio:3/4.3;border-radius:16px 16px 34px 34px;background:linear-gradient(160deg,var(--c1),var(--c2));color:var(--cf);box-shadow:0 10px 28px rgba(0,0,0,.28),inset 0 0 0 2px rgba(255,255,255,.25);overflow:hidden;flex:none}
+.pcard.t2{--c1:#d59a62;--c2:#7a4521}.pcard.t3{--c1:#e7ebf2;--c2:#8b95a7;--cf:#1b2233}.pcard.t4{--c1:#ffe08a;--c2:#b07a12;--cf:#2a1c02}
+.pcard::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-120%)}
+.pcard.win::after{animation:shine .9s ease}
+.pc-top{position:absolute;left:14px;top:12px;display:flex;flex-direction:column;align-items:center;line-height:1}
+.pc-ovr{font-family:var(--f-display);font-weight:800;font-size:2.7rem}
+.pc-pos{font-family:var(--f-display);font-weight:700;font-size:1.05rem;letter-spacing:.05em;margin-top:2px}
+.pc-sil{position:absolute;right:8px;top:22px;width:62%;fill:currentColor;opacity:.22}
+.pc-name{position:absolute;left:8px;right:8px;bottom:44px;text-align:center;font-family:var(--f-display);font-weight:700;font-size:1.15rem;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid currentColor;padding-top:6px;opacity:.95}
+.pc-lv{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-family:var(--f-display);font-weight:800;font-size:1.25rem;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:1px 14px;letter-spacing:.03em}
+.pc-tag{position:absolute;right:10px;top:10px;font:700 .62rem var(--f-body);letter-spacing:.08em;background:rgba(0,0,0,.5);color:#fff;border-radius:4px;padding:2px 6px}
+.pc-tag.moi{background:var(--bait)}
+.res{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(10,12,24,.72);color:#fff;text-align:center}
+.res b{font-family:var(--f-display);font-weight:800;font-size:1.9rem;letter-spacing:.04em}
+.res.ok b{color:#7cf0a8}.res.bad b{color:#ff9b88}
+.res span{font-family:var(--f-display);font-size:1.3rem}
+.pcard.rolling{animation:shake .7s ease}
+@keyframes shake{0%,100%{transform:none}20%{transform:rotate(-3deg) scale(1.03)}40%{transform:rotate(3deg) scale(1.05)}60%{transform:rotate(-2deg) scale(1.05)}80%{transform:rotate(1deg)}}
+@keyframes shine{to{transform:translateX(120%)}}
+.fwrap{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fslots{display:grid;grid-template-columns:repeat(5,52px);gap:6px}
+.fslot{height:70px;border-radius:8px 8px 14px 14px;border:2px dashed var(--line);background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.fslot.on{border-style:solid;border-color:var(--gold);background:var(--gold-soft)}
+.fslot input{width:46px;padding:2px;text-align:center;font:700 1rem var(--f-display);background:transparent;border:0}
+.fslot small{font-size:.6rem;color:var(--muted);font-family:var(--f-mono)}
+.fquick{display:flex;gap:6px}.fquick input{width:70px}
+.gaugehead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.gauge{height:16px;background:var(--line);border-radius:8px;overflow:hidden}
+.gauge>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),#f6d98c);transition:width .35s ease}
+.chk{display:flex;align-items:center;gap:6px;font-size:.84rem;color:var(--muted);margin-top:8px}.chk input{width:auto}
+.rates3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.rates3 div{background:var(--bg);border-radius:8px;padding:8px 10px}
+.rates3 dt{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rates3 dd{margin:0;font:800 1.5rem var(--f-display)}
+.btn.huge{width:100%;padding:14px;font:800 1.4rem var(--f-display);letter-spacing:.06em;text-transform:uppercase}
+.signal{border-radius:10px;padding:14px;background:var(--bg);border:2px solid var(--line)}
+.signal b{display:block;font:800 1.6rem var(--f-display);text-transform:uppercase;letter-spacing:.03em}
+.signal.go{border-color:var(--gold);background:var(--gold-soft)}
+.streakbig{font:800 3.4rem var(--f-display);line-height:1;color:var(--bait)}
+.chain{display:flex;flex-wrap:wrap;gap:5px}
+.bead{width:17px;height:17px;border-radius:50%;border:2px solid var(--bait)}
+.bead.ok{background:var(--bait)}
+.bead.chinh{border-radius:4px;border-color:var(--gold)}.bead.chinh.ok{background:var(--gold)}
+.bead.cut{margin-left:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div>
+    <h1>Phòng Lab <span>Đập Thẻ</span></h1>
+    <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" data-tab="day" aria-selected="true">Tính dây</button>
+  <button class="tab" role="tab" data-tab="up" aria-selected="false">Đập thẻ</button>
+  <button class="tab" role="tab" data-tab="rate" aria-selected="false">Bảng tỷ lệ</button>
+</nav>
+
+<!-- ============ DÂY ============ -->
+<section id="tab-day">
+<div class="grid">
+  <div class="panel stack">
+    <h2>Nhập dây</h2>
+    <div class="row2">
+      <div class="field"><label for="d-lv">Đang mồi ở</label><select id="d-lv"></select></div>
+      <div class="field"><label for="d-win">Tính trên</label>
+        <select id="d-win"><option value="20">20 lần gần nhất</option><option value="30">30 lần gần nhất</option><option value="50">50 lần gần nhất</option><option value="100">100 lần gần nhất</option><option value="0">Toàn bộ</option></select></div>
+    </div>
+    <div class="field"><span class="lbl">Số vạch mồi</span>
+      <div class="stepper" id="d-vach"><button data-d="-0.1" aria-label="Bớt 0,1 vạch mồi">−</button><input id="d-vach-o" type="number" min="0" max="5" step="0.1" placeholder="Không ghi" aria-label="Số vạch mồi"><button data-d="0.1" aria-label="Thêm 0,1 vạch mồi">+</button><button class="btn small" data-off="1">Không ghi</button></div>
+      <p class="hint">Khi bấm số mồi, app tự chèn nhãn v1–v5 vào dây mỗi lần anh đổi số vạch. Gõ tay cũng được, vạch lẻ 0,1–0,9, ví dụ <span class="mono">v2 312 v3.7 21 c4.5=6</span> (c = số vạch thẻ chính lúc vô). Bấm −/+ mỗi lần 0,1 vạch hoặc gõ số vào ô.</p>
+    </div>
+    <div class="field"><span class="lbl">Số vạch thẻ chính dự định đập</span>
+      <div class="stepper" id="d-vmain"><button data-d="-0.1" aria-label="Bớt 0,1 vạch chính">−</button><input id="d-vmain-o" type="number" min="0.1" max="5" step="0.1" aria-label="Số vạch thẻ chính"><button data-d="0.1" aria-label="Thêm 0,1 vạch chính">+</button></div>
+    </div>
+    <div class="field"><label for="d-thr">Chỉ báo "Có thể vô" khi thẻ chính dự kiến từ (%)</label>
+      <input id="d-thr" type="number" min="1" max="95" step="1">
+      <p class="hint">Ngoài dây phải đẹp (gấp 1,4 lần mức chung, đủ 5 mẫu), tỷ lệ thẻ chính cũng phải đạt ngưỡng này.</p>
+    </div>
+    <div class="field"><span class="lbl">Bấm khi đang mồi</span>
+      <div class="btnrow" id="d-keys"></div>
+      <div class="btnrow" style="margin-top:6px"><button class="btn small" id="d-nl">Xuống dòng (dây mới)</button><button class="btn small" id="d-bk">Xóa số cuối</button></div>
+      <div class="btnrow" style="margin-top:6px"><button class="btn small" id="d-dl">Xóa dòng cuối</button><button class="btn small bad" id="d-clr">Xóa hết dây</button></div>
+      <div class="btnrow" id="d-clr-ask" style="margin-top:6px" hidden><span class="hint" style="align-self:center">Xóa toàn bộ dây?</span><button class="btn small bad" id="d-clr-yes">Xóa</button><button class="btn small" id="d-clr-no">Hủy</button></div>
+      <div class="btnrow" id="d-undo-row" style="margin-top:6px" hidden><span class="hint" style="align-self:center" id="d-undo-msg">Đã xóa.</span><button class="btn small" id="d-undo">Khôi phục</button></div>
+      <div class="signal go" id="d-winform" style="margin-top:10px" hidden>
+        <span class="lbl">Kèo chính thành công, lưu dây</span>
+        <div class="mono" id="d-winprev" style="margin:6px 0;word-break:break-all"></div>
+        <div class="field"><label for="d-winname">Tên cầu thủ</label><input id="d-winname" list="d-names" maxlength="30" placeholder="Ví dụ Charlton"><datalist id="d-names"></datalist></div>
+        <div class="btnrow" style="margin-top:8px"><button class="btn primary" id="d-winsave">Lưu dây</button><button class="btn" id="d-winnoname">Lưu không tên</button><button class="btn" id="d-wincancel">Hủy</button></div>
+        <p class="hint" style="margin-top:6px">Lưu xong app ghi vào dây kèm tên cầu thủ, xuống dòng để bắt đầu dây mới, và cất dây này vào danh sách "Dây đã vô".</p>
+      </div>
+    </div>
+    <div class="field"><label for="d-text">Dây (dòng trên cùng là cũ nhất)</label>
+      <textarea id="d-text" rows="9" spellcheck="false"></textarea>
+      <p class="hint">Mỗi chữ số là cấp mồi tụt về khi thua. Số bằng cấp đích (ví dụ 6, có hoặc không có dấu =) là vô. Mỗi dòng là một phiên mồi. Mỗi mức đập có dây riêng, đổi mức là chuyển sang dây của mức đó. Chữ trong ngoặc như (Charlton) được bỏ qua.</p>
+    </div>
+    <p class="hint" id="d-parse"></p>
+    <details id="d-wins-box" open>
+      <summary class="lbl" style="cursor:pointer">Dây đã vô (<span id="d-wins-n">0</span>)</summary>
+      <div class="tblwrap log" style="margin-top:8px"><table><thead><tr><th>Lúc</th><th>Cầu thủ</th><th>Mức</th><th>Dây</th><th>Vạch</th><th></th></tr></thead><tbody id="d-wins"></tbody></table></div>
+      <div class="btnrow" style="margin-top:8px"><button class="btn small" id="d-wins-copy">Sao chép danh sách</button></div>
+      <p class="hint" id="d-wins-msg"></p>
+    </details>
+  </div>
+
+  <div class="panel stack">
+    <h2>Dây tiếp theo</h2>
+    <div class="signal" id="d-signal"></div>
+    <div class="card" style="border-top-color:var(--gold)">
+      <h3>Tỷ lệ thẻ chính nếu vô bây giờ</h3>
+      <div class="big" id="d-pm">–</div>
+      <dl class="kv" id="d-pmkv"></dl>
+      <p class="hint" style="margin-top:8px">Công thức: tỷ lệ trần (bảng) × vạch chính/5 × thực tế so với bảng × dây hiện tại so với chung × hệ số vạch mồi. Mỗi lần đập trong dây được so với kỳ vọng của bảng theo đúng số vạch lúc đập (vạch mồi v…, vạch chính c…; không ghi thì coi là 5 vạch). Tối đa 95%.</p>
+    </div>
+    <div class="cmp">
+      <div class="card"><h3>Tỷ lệ vô lần tới</h3><div class="big" id="d-next">–</div><dl class="kv" id="d-nextkv"></dl></div>
+      <div class="card bait"><h3>Lần tới sẽ về</h3><dl class="kv" id="d-dist" style="margin-top:0"></dl></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Theo kết quả lần trước</div>
+      <div class="tblwrap"><table><thead><tr><th>Lần trước</th><th>Số lần</th><th>Vô</th><th>Tỷ lệ vô</th><th>So TB</th></tr></thead><tbody id="d-t1"></tbody></table></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Theo 2 lần trước (đủ 3 mẫu trở lên)</div>
+      <div class="tblwrap"><table><thead><tr><th>Dây</th><th>Số lần</th><th>Vô</th><th>Tỷ lệ vô</th><th>So TB</th></tr></thead><tbody id="d-t2"></tbody></table></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Theo 3 con cuối (đủ 3 mẫu trở lên)</div>
+      <div class="tblwrap"><table><thead><tr><th>Dãy</th><th>Số lần</th><th>Vô</th><th>Tỷ lệ vô</th><th>So TB</th></tr></thead><tbody id="d-t3"></tbody></table></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Theo con đầu dây (tỷ lệ vô của các lần đập sau đó trong cùng dây)</div>
+      <div class="tblwrap"><table><thead><tr><th>Đầu dây</th><th>Số lần</th><th>Vô</th><th>Tỷ lệ vô</th><th>So TB</th></tr></thead><tbody id="d-tf"></tbody></table></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Theo số vạch mồi (về đâu khi thua, và vô ở lần đập kế tiếp)</div>
+      <div class="tblwrap"><table><thead id="d-vh"></thead><tbody id="d-tv"></tbody></table></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Dây dài có lên dễ hơn không? (số lần thua từ đầu dây hoặc từ lần vô trước)</div>
+      <p class="hint" id="d-lencur"></p>
+      <div id="d-lenchart" class="chart" style="margin-top:6px"></div>
+      <div class="tblwrap"><table><thead><tr><th>Độ dài</th><th>Số lần</th><th>Vô</th><th>Thô</th><th>Hiệu chỉnh</th><th>So TB</th></tr></thead><tbody id="d-tl"></tbody></table></div>
+      <div class="verdict" id="d-lenv"></div>
+    </div>
+    <p class="note">Tỷ lệ đã được kéo về trung bình khi mẫu ít, để 1/1 không thành 100%. App ưu tiên dãy 3 con cuối, không đủ 4 mẫu thì lùi về 2 con, rồi 1 con. Báo "Có thể vô" khi dãy đang dùng có ít nhất 5 mẫu và tỷ lệ cao hơn trung bình 1,4 lần. Nếu game dùng RNG độc lập thì các chênh lệch này sẽ tự mất khi anh nhập nhiều dây hơn.</p>
+  </div>
+</div>
+</section>
+
+<!-- ============ UPGRADE ============ -->
+<section id="tab-up" hidden>
+<div class="upgrid">
+  <div class="panel stack">
+    <div class="topctl">
+      <div class="seg" id="u-table"><button data-v="chinh" aria-pressed="true">Thẻ chính trên bàn</button><button data-v="moi" class="bait" aria-pressed="false">Thẻ mồi trên bàn</button></div>
+      <div class="seg" id="u-mode"><button data-v="real" aria-pressed="true">Ghi KQ game</button><button data-v="sim" aria-pressed="false">Đập thử RNG</button></div>
+      <div class="seg" id="u-src"><button data-v="day" aria-pressed="true">Tỷ lệ theo dây</button><button data-v="table" aria-pressed="false">Tỷ lệ theo bảng</button></div>
+    </div>
+    <p class="hint" id="u-srcnote"></p>
+    <div class="stage">
+      <div class="pcard t3" id="u-card">
+        <div class="pc-top"><div class="pc-ovr" id="u-ovr">–</div><div class="pc-pos" id="u-pos">–</div></div>
+        <svg class="pc-sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="32" r="18"/><path d="M12 100c0-24 17-38 38-38s38 14 38 38z"/></svg>
+        <div class="pc-tag" id="u-tag">CHÍNH</div>
+        <div class="pc-name" id="u-name"></div>
+        <div class="pc-lv" id="u-lv">+5</div>
+        <div class="res" id="u-res" hidden><b id="u-res-t"></b><span id="u-res-s"></span></div>
+      </div>
+      <div class="fwrap">
+        <div class="lbl">Phôi đưa vào (OVR, tối đa 5)</div>
+        <div class="fslots" id="u-fslots"></div>
+        <div class="fquick"><input id="u-fq" type="number" placeholder="OVR" aria-label="OVR điền nhanh"><button class="btn small" id="u-fqb">Điền cả 5</button><button class="btn small" id="u-fclr">Xóa phôi</button></div>
+        <p class="hint">Số nhỏ dưới mỗi ô là % thanh phôi đó góp. Phôi và thanh lưu riêng cho từng thẻ. Thẻ mồi set 1 lần, đập xong vẫn giữ nguyên cấp và phôi.</p>
+      </div>
+    </div>
+    <div>
+      <div class="gaugehead"><span class="lbl">Thanh nâng cấp</span><span id="u-gtxt" class="mono">0%</span></div>
+      <div class="gauge"><i id="u-gbar"></i></div>
+      <label class="chk"><input type="checkbox" id="u-gman"> Nhập % thanh đúng như game hiển thị</label>
+      <input id="u-gval" type="number" min="1" max="100" value="100" hidden aria-label="% thanh theo game">
+    </div>
+    <dl class="rates3">
+      <div><dt>Tỷ lệ trần</dt><dd id="u-r1">–</dd></div>
+      <div><dt>Tỷ lệ thực</dt><dd id="u-r2">–</dd></div>
+      <div><dt>Thua tụt</dt><dd id="u-r3">–</dd></div>
+    </dl>
+    <div id="u-act-sim" hidden><button class="btn primary huge" id="u-roll">Nâng cấp</button></div>
+    <div id="u-act-real" class="btnrow"><button class="btn ok huge" id="u-ok" style="font-size:1.15rem">Game: Thành công</button><button class="btn bad huge" id="u-fail" style="font-size:1.15rem">Game: Thất bại</button></div>
+    <div id="u-pick" class="signal" hidden><span class="lbl">Game tụt thẻ về cấp nào?</span><div class="btnrow" id="u-pick-lv" style="margin-top:8px"></div></div>
+    <details>
+      <summary class="lbl" style="cursor:pointer">Sửa thông tin thẻ đang trên bàn</summary>
+      <div class="stack" style="margin-top:10px">
+        <div class="field"><label for="u-e-name">Tên cầu thủ</label><input id="u-e-name" maxlength="24"></div>
+        <div class="row2">
+          <div class="field"><label for="u-e-pos">Vị trí</label><input id="u-e-pos" maxlength="4"></div>
+          <div class="field"><label for="u-e-ovr">OVR gốc (+1)</label><input id="u-e-ovr" type="number" min="40" max="160"></div>
+        </div>
+        <div class="field"><label for="u-e-lv">Cấp hiện tại</label><select id="u-e-lv"></select></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel stack">
+    <h2>Dây</h2>
+    <div class="signal" id="u-signal"></div>
+    <div class="row2">
+      <div><div class="lbl">Mồi thua liền</div><div class="streakbig" id="u-streak">0</div></div>
+      <div class="field"><label for="u-k">Luật dây (K)</label><input id="u-k" type="number" min="1" max="10" value="2"><p class="hint">Đủ K mồi thua liền thì báo đập thẻ chính.</p></div>
+    </div>
+    <dl class="kv" id="u-dkv"></dl>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">40 lần gần nhất (mới nhất bên phải)</div>
+      <div class="chain" id="u-chain"></div>
+      <div class="legend" style="margin-top:8px"><span><i style="border:2px solid var(--bait);border-radius:50%"></i>Mồi thua</span><span><i style="background:var(--bait);border-radius:50%"></i>Mồi thắng</span><span><i style="border:2px solid var(--gold)"></i>Chính thua</span><span><i style="background:var(--gold)"></i>Chính thắng</span></div>
+    </div>
+    <button class="btn small" id="u-undo">Hoàn tác lần ghi cuối</button>
+    <p class="note">App chỉ đếm dây theo luật K của anh và đo xem thực tế thẻ chính sau dây có thắng nhiều hơn không. Nếu game dùng RNG độc lập, tỷ lệ thẻ chính vẫn bằng "tỷ lệ thực" dù dây dài bao nhiêu.</p>
+  </div>
+</div>
+</section>
+
+<!-- ============ RATES ============ -->
+<section id="tab-rate" hidden>
+<div class="panel" style="max-width:640px">
+  <h2>Bảng tỷ lệ trần</h2>
+  <p class="note">Số mặc định là mức cộng đồng hay dùng, chưa xác nhận với bản game hiện tại. Khi thua, thẻ tụt ngẫu nhiên trong khoảng "ít nhất ~ nhiều nhất", tối thiểu −2 cấp, có thể về tới +1. Ví dụ +5 thua về +3/+2/+1, +6 thua về +4/+3/+2/+1. Anh sửa theo thông số thật; cả Mô phỏng và Tracker đều dùng bảng này. Lưu tự động trên trình duyệt này.</p>
+  <div class="tblwrap"><table><thead><tr><th>Lần đập</th><th>Tỷ lệ trần (%)</th><th>Tụt ít nhất</th><th>Tụt nhiều nhất</th></tr></thead><tbody id="rt-body"></tbody></table></div>
+  <div class="btnrow" style="margin-top:12px"><button class="btn small" id="rt-reset">Khôi phục mặc định</button></div>
+</div>
+<div class="panel" style="max-width:640px;margin-top:18px">
+  <h2>OVR theo cấp và công thức phôi</h2>
+  <p class="note">OVR cộng thêm so với +1 (ước tính, sửa theo game). Mỗi phôi góp: <span class="mono">min(100, Gốc × Hệ số^(OVR phôi − OVR thẻ))</span> %. Ví dụ Gốc 20, phôi bằng OVR thẻ thì 5 phôi đầy 100%. Nếu thấy lệch với game, tích "Nhập % thanh đúng như game hiển thị" ở tab Đập thẻ.</p>
+  <div class="row2" style="margin-bottom:12px">
+    <div class="field"><label for="cf-base">Gốc (% / phôi cùng OVR)</label><input id="cf-base" type="number" step="0.5" min="1"></div>
+    <div class="field"><label for="cf-mult">Hệ số mỗi 1 OVR chênh</label><input id="cf-mult" type="number" step="0.01" min="1"></div>
+  </div>
+  <div class="tblwrap"><table><thead><tr><th>Cấp</th><th>OVR cộng thêm</th></tr></thead><tbody id="cf-body"></tbody></table></div>
+  <div class="btnrow" style="margin-top:12px"><button class="btn small" id="cf-reset">Khôi phục mặc định</button></div>
+</div>
+</section>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+k,JSON.stringify(v))}catch(e){}}};
+const fmt=(x,d=1)=>Number.isFinite(x)?x.toLocaleString('vi-VN',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
+const pct=(x,d=1)=>Number.isFinite(x)?fmt(x*100,d)+'%':'–';
+
+/* ---------- Rates ---------- */
+// [tỷ lệ trần %, tụt ít nhất, tụt nhiều nhất] — index 0 = +1→+2
+// thua ở +L: tụt tối thiểu 2 cấp, tối đa về +1 (vd +5 → +3/+2/+1, +6 → +4/+3/+2/+1)
+const DEF_RATES=[[100,0,0],[81,2,2],[64,2,2],[50,2,3],[26,2,4],[15,2,5],[7,2,6],[4,2,7],[2,2,8]];
+let rates=store.get('rates',null);
+if(!Array.isArray(rates)||rates.length!==9)rates=DEF_RATES.map(r=>r.slice());
+rates=rates.map((r,i)=>r.length>=3?r:[r[0],r[1],r[1]]);
+// luật: thua là tụt tối thiểu 2 cấp (trừ +1→+2 không thua)
+if(!store.get('drop_v3',false)){rates=rates.map((r,i)=>[r[0],DEF_RATES[i][1],DEF_RATES[i][2]]);store.set('rates',rates);store.set('drop_v3',true)}
+function renderRates(){
+  $('#rt-body').innerHTML=rates.map((r,i)=>`<tr><td class="lvl">+${i+1} → +${i+2}</td><td><input type="number" id="rt-p${i}" data-i="${i}" data-c="0" min="0" max="100" step="0.1" value="${r[0]}"></td><td><input type="number" id="rt-a${i}" data-i="${i}" data-c="1" min="0" max="9" step="1" value="${r[1]}"></td><td><input type="number" id="rt-b${i}" data-i="${i}" data-c="2" min="0" max="9" step="1" value="${r[2]}"></td></tr>`).join('');
+}
+$('#rt-body').addEventListener('input',e=>{const t=e.target;if(!t.dataset.i)return;const v=parseFloat(t.value);if(!Number.isFinite(v))return;rates[+t.dataset.i][+t.dataset.c]=v;store.set('rates',rates);renderStage();});
+$('#rt-reset').onclick=()=>{rates=DEF_RATES.map(r=>r.slice());store.set('rates',rates);renderRates();renderStage();};
+const pAt=(lv,g)=>Math.max(0,Math.min(1,(rates[lv-1]?rates[lv-1][0]:0)/100*g/100));
+// possible levels after a fail from lv, lowest first (floor +1)
+function failLevels(lv){
+  const r=rates[lv-1];if(!r)return[lv];
+  const a=Math.max(0,Math.min(r[1],r[2])),b=Math.max(r[1],r[2]);
+  const out=[];for(let d=b;d>=a;d--){const t=Math.max(1,lv-d);if(!out.includes(t))out.push(t)}
+  return out.sort((x,y)=>x-y);
+}
+function dropText(lv){const r=rates[lv-1];if(!r)return'–';const a=Math.min(r[1],r[2]),b=Math.max(r[1],r[2]);return a===b?(b?'−'+b:'0'):`−${a}~${b}`}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b));
+  ['day','up','rate'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab);
+  store.set('tab',b.dataset.tab);
+});
+const lastTab=store.get('tab2','day');store.set('tab2','day'); const tb=document.querySelector(`.tab[data-tab="${lastTab}"]`); if(tb)tb.click();
+
+/* ---------- Selects ---------- */
+const opt=(a,b,sel)=>{let h='';for(let i=a;i<=b;i++)h+=`<option value="${i}"${i===sel?' selected':''}>+${i}</option>`;return h};
+
+/* ---------- Log store ---------- */
+let log=store.get('log',[]);if(!Array.isArray(log))log=[];const isSample=false;
+function save(){store.set('log',log)}
+function startReal(){}
+function renderTracker(){renderChain()}
+
+/* ---------- Upgrade stage ---------- */
+const DEF_CFG={bonus:[0,1,2,4,6,8,11,15,19,24],base:20,mult:1.15};
+let cfg=store.get('cfg',JSON.parse(JSON.stringify(DEF_CFG)));
+let cards=store.get('cards',{chinh:{name:'Tiền đạo chính',pos:'ST',ovr:112,lv:5},moi:{name:'Thẻ mồi',pos:'CB',ovr:98,lv:5}});
+let onTable=store.get('onTable','chinh'),mode=store.get('mode','real');
+{const of=store.get('fod',null),og=store.get('gman',false),ov=store.get('gval',100);
+ ['chinh','moi'].forEach(k=>{const c=cards[k];if(!Array.isArray(c.fod))c.fod=k==='chinh'&&of?of:(k==='chinh'?[114,114,114,114,114]:[96,96,96,96,96]);if(c.gman===undefined)c.gman=k==='chinh'?og:false;if(c.gval===undefined)c.gval=k==='chinh'?ov:100;});}
+const T=()=>cards[onTable];
+let uK=store.get('uK',2),busy=false,src=store.get('src','day');
+const tierOf=lv=>lv<=1?'t1':lv<=4?'t2':lv<=7?'t3':'t4';
+const curOvr=c=>c.ovr+(cfg.bonus[c.lv-1]||0);
+function contrib(f,main){if(!Number.isFinite(f)||f<=0)return 0;return Math.min(100,cfg.base*Math.pow(cfg.mult,f-main))}
+function gaugeNow(){
+  return gaugeFor(T());
+}
+function gaugeFor(c){
+  if(c.gman)return Math.max(1,Math.min(100,c.gval||100));
+  const m=curOvr(c);return Math.min(100,c.fod.reduce((s,f)=>s+contrib(f,m),0));
+}
+function saveUp(){store.set('cards',cards);store.set('onTable',onTable);store.set('mode',mode);store.set('uK',uK);store.set('src',src);store.set('cfg',cfg)}
+$('#u-e-lv').innerHTML=opt(1,10,5);
+$('#u-fslots').innerHTML=[0,1,2,3,4].map(i=>`<div class="fslot" id="u-fs${i}"><input id="u-f${i}" type="number" data-i="${i}" aria-label="OVR phôi ${i+1}"><small id="u-fc${i}"></small></div>`).join('');
+function renderStage(){
+  const c=cards[onTable],el=$('#u-card');
+  el.className='pcard '+tierOf(c.lv);
+  $('#u-ovr').textContent=curOvr(c);$('#u-pos').textContent=c.pos||'–';$('#u-name').textContent=c.name||'Chưa đặt tên';
+  $('#u-lv').textContent='+'+c.lv;
+  const tg=$('#u-tag');tg.textContent=onTable==='moi'?'MỒI':'CHÍNH';tg.className='pc-tag'+(onTable==='moi'?' moi':'');
+  document.querySelectorAll('#u-table button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===onTable));
+  document.querySelectorAll('#u-mode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===mode));
+  const m=curOvr(c);
+  T().fod.forEach((f,i)=>{const inp=$('#u-f'+i);if(document.activeElement!==inp)inp.value=Number.isFinite(f)&&f>0?f:'';const cc=contrib(f,m);$('#u-fs'+i).classList.toggle('on',cc>0);$('#u-fc'+i).textContent=cc>0?fmt(cc,1)+'%':''});
+  const g=gaugeNow();
+  $('#u-gbar').style.width=g+'%';$('#u-gtxt').textContent=fmt(g,1)+'%';
+  $('#u-gman').checked=!!T().gman;$('#u-gval').hidden=!T().gman;$('#u-gval').value=T().gval;
+  const maxed=c.lv>=10;
+  document.querySelectorAll('#u-src button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===src));
+  const dm=useDay(c);
+  $('#u-r1').textContent=maxed?'–':fmt(rates[c.lv-1][0],1)+'%';
+  $('#u-r2').textContent=maxed?'–':pct(dm?dm.pS:pAt(c.lv,g));
+  $('#u-srcnote').textContent=src!=='day'?'Đập thử dùng tỷ lệ trần × % thanh.':dm?`Đập thử dùng dây mức +${dLv}→+${dLv+1} (${dm.D.n} lần gần nhất), tính theo dây đang chạy. Mỗi lần đập ở mức này tự ghi vào tab Tính dây.`:(c.lv!==dLv?`Thẻ đang ở +${c.lv}, khác mức dây +${dLv} bên tab Tính dây, nên tạm dùng tỷ lệ theo bảng.`:'Dây chưa đủ 10 lần đập, tạm dùng tỷ lệ theo bảng.');
+  $('#u-r3').textContent=maxed?'–':dropText(c.lv);
+  if(maxed||mode!=='real')$('#u-pick').hidden=true;
+  $('#u-act-sim').hidden=mode!=='sim';$('#u-act-real').hidden=mode!=='real';
+  $('#u-roll').textContent=maxed?'Đã tối đa +10':`Nâng cấp +${c.lv} → +${c.lv+1}`;
+  ['#u-roll','#u-ok','#u-fail'].forEach(s=>$(s).disabled=maxed||busy||g<=0);
+  $('#u-e-name').value=c.name;$('#u-e-pos').value=c.pos;$('#u-e-ovr').value=c.ovr;$('#u-e-lv').value=c.lv;
+  $('#u-k').value=uK;
+}
+function showRes(ok,from,to){
+  const r=$('#u-res');r.className='res '+(ok?'ok':'bad');r.hidden=false;
+  $('#u-res-t').textContent=ok?'THÀNH CÔNG':'THẤT BẠI';$('#u-res-s').textContent=onTable==='moi'&&!ok?`Mồi về +${to}, giữ +${from}`:`+${from} → +${to}`;
+  const card=$('#u-card');if(ok){card.classList.remove('win');void card.offsetWidth;card.classList.add('win')}
+  clearTimeout(showRes.t);showRes.t=setTimeout(()=>{r.hidden=true},1400);
+}
+function useDay(c){if(src!=='day'||c.lv!==dLv)return null;return dayModel()}
+function dayModel(){
+  const D=buildDay();if(D.n<10)return null;
+  const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
+  const pS=Math.min(0.95,pAt(dLv,gaugeNow())*pickRate(D).L);
+  const drops=D.keys.slice(1).map(k=>({k:+k,w:((A.c[k]||0)+K_SHRINK*(D.tot[k]||0)/D.n)/(A.n+K_SHRINK)}));
+  const sw=drops.reduce((s,d)=>s+d.w,0)||1;drops.forEach(d=>d.w=d.w/sw*(1-pS));
+  return{pS,drops,D};
+}
+function rollOutcome(c){
+  const dm=useDay(c),u=Math.random();
+  if(dm){if(u<dm.pS)return{ok:true};let acc=dm.pS;for(const d of dm.drops){acc+=d.w;if(u<acc)return{ok:false,to:d.k}}return{ok:false,to:dm.drops[dm.drops.length-1].k}}
+  if(u<pAt(c.lv,gaugeNow()))return{ok:true};
+  const opts=failLevels(c.lv);return{ok:false,to:opts[Math.floor(Math.random()*opts.length)]};
+}
+function record(ok,toLv){
+  const c=cards[onTable];if(c.lv>=10)return;
+  const g=gaugeNow(),from=c.lv;
+  if(!ok&&toLv===undefined){const opts=failLevels(from);toLv=opts[Math.floor(Math.random()*opts.length)]}
+  const dropTo=ok?null:toLv;
+  const to=onTable==='moi'?from:(ok?Math.min(10,from+1):dropTo);
+  let dayAdd='';
+  let winId=null;
+  if(from>=2){dayAdd=ok?'='+(from+1):String(dropTo);
+    if(ok&&onTable==='chinh'){const t=from===dLv?dText:(dayTexts[from]||'');const cv=Math.round(g/2)/10;if(cv!==5)dayAdd=(t&&!/\s$/.test(t)?' ':'')+'c'+cv+dayAdd;const nm=(c.name||'').trim();const line=t.split('\n').pop()+dayAdd+(nm?' ('+nm+')':'');winId=archiveWin(from,nm,line,Math.round(g/2)/10,null);dayAdd+=(nm?' ('+nm+')':'')+'\n'}
+    if(!ok&&onTable==='moi'){const vv=Math.max(0.1,Math.min(5,Math.round(g/2)/10));const t=from===dLv?dText:(dayTexts[from]||'');if(lineVachOf(t)!==vv)dayAdd=(t&&!/\s$/.test(t)?' ':'')+'v'+vv+' '+dayAdd}
+    if(from===dLv){dText+=dayAdd;$('#d-text').value=dText;saveDay();renderDay()}
+    else{dayTexts[from]=(dayTexts[from]||'')+dayAdd;store.set('dayTexts',dayTexts);fillLv()}}
+  log.push({lv:from,to,dropTo,kind:onTable,ok,g:Math.round(g*10)/10,ovr:curOvr(c),src:mode,dayAdd,winId});
+  c.lv=to;$('#u-pick').hidden=true;
+  save();saveUp();showRes(ok,from,ok?from+1:dropTo);renderStage();renderTracker();
+}
+$('#u-ok').onclick=()=>record(true);
+$('#u-fail').onclick=()=>{
+  const c=cards[onTable];if(c.lv>=10)return;
+  const opts=failLevels(c.lv);
+  if(opts.length===1){record(false,opts[0]);return}
+  $('#u-pick-lv').innerHTML=opts.map(l=>`<button class="btn bad" data-to="${l}">+${l}</button>`).join('')+`<button class="btn" data-to="x">Hủy</button>`;
+  $('#u-pick').hidden=false;
+};
+$('#u-pick-lv').addEventListener('click',e=>{const b=e.target.closest('[data-to]');if(!b)return;if(b.dataset.to==='x'){$('#u-pick').hidden=true;return}record(false,+b.dataset.to)});
+$('#u-roll').onclick=()=>{
+  if(busy)return;const c=cards[onTable];if(c.lv>=10)return;
+  const out=rollOutcome(c);busy=true;renderStage();
+  const card=$('#u-card');card.classList.remove('rolling');void card.offsetWidth;card.classList.add('rolling');
+  setTimeout(()=>{card.classList.remove('rolling');busy=false;record(out.ok,out.to)},700);
+};
+document.querySelectorAll('#u-table button').forEach(b=>b.onclick=()=>{onTable=b.dataset.v;saveUp();renderStage();});
+document.querySelectorAll('#u-mode button').forEach(b=>b.onclick=()=>{mode=b.dataset.v;saveUp();renderStage();});
+document.querySelectorAll('#u-src button').forEach(b=>b.onclick=()=>{src=b.dataset.v;saveUp();renderStage();});
+$('#u-fslots').addEventListener('input',e=>{const i=e.target.dataset.i;if(i===undefined)return;T().fod[+i]=parseFloat(e.target.value);saveUp();renderStage()});
+$('#u-fqb').onclick=()=>{const v=parseFloat($('#u-fq').value);if(!Number.isFinite(v))return;T().fod=[v,v,v,v,v];saveUp();renderStage()};
+$('#u-fclr').onclick=()=>{T().fod=[NaN,NaN,NaN,NaN,NaN];saveUp();renderStage()};
+$('#u-gman').onchange=e=>{T().gman=e.target.checked;saveUp();renderStage()};
+$('#u-gval').oninput=e=>{T().gval=parseFloat(e.target.value)||100;saveUp();renderStage()};
+$('#u-e-name').oninput=e=>{cards[onTable].name=e.target.value;saveUp();renderStage()};
+$('#u-e-pos').oninput=e=>{cards[onTable].pos=e.target.value.toUpperCase();saveUp();renderStage()};
+$('#u-e-ovr').oninput=e=>{const v=parseFloat(e.target.value);if(Number.isFinite(v)){cards[onTable].ovr=v;saveUp();renderStage()}};
+$('#u-e-lv').onchange=e=>{cards[onTable].lv=+e.target.value;saveUp();renderStage()};
+$('#u-k').oninput=e=>{uK=Math.max(1,Math.round(+e.target.value||1));saveUp();renderChain()};
+$('#u-undo').onclick=()=>{
+  if(isSample||!log.length)return;const last=log.pop();
+  if(cards[last.kind])cards[last.kind].lv=last.lv;
+  if(last.winId){dWins=dWins.filter(w=>w.id!==last.winId);store.set('dayWins',dWins);renderWins()}
+  if(last.dayAdd){if(last.lv===dLv){if(dText.endsWith(last.dayAdd)){dText=dText.slice(0,-last.dayAdd.length);$('#d-text').value=dText;saveDay();renderDay()}}
+    else{const t=dayTexts[last.lv]||'';if(t.endsWith(last.dayAdd)){dayTexts[last.lv]=t.slice(0,-last.dayAdd.length);store.set('dayTexts',dayTexts);fillLv()}}}
+  save();saveUp();renderStage();renderTracker();
+};
+
+function renderChain(){
+  const recent=log.slice(-40);
+  $('#u-chain').innerHTML=recent.length?recent.map((r,i)=>`<span class="bead ${r.kind==='chinh'?'chinh':''} ${r.ok?'ok':''}" title="+${r.lv} ${r.kind==='moi'?'mồi':'chính'} ${r.ok?'thắng':'thua'}"></span>`).join(''):'<span class="hint">Chưa có lần đập nào.</span>';
+  // streak of bait fails at the tail
+  let streak=0,pChain=1;
+  for(let i=log.length-1;i>=0;i--){const r=log[i];if(r.kind!=='moi'||r.ok)break;streak++;pChain*=1-pAt(r.lv,r.g)}
+  $('#u-streak').textContent=streak;
+  const main=cards.chinh,g=onTable==='chinh'?gaugeNow():null;
+  const pMain=main.lv>=10?NaN:pAt(main.lv,gaugeFor(main));
+  const s=$('#u-signal');
+  if(isSample){s.className='signal';s.innerHTML=`<b>Đang xem dữ liệu mẫu</b>Ghi lần đập đầu tiên để bắt đầu đếm dây thật.`}
+  else if(streak>=uK){s.className='signal go';s.innerHTML=`<b>Đủ dây, lên thẻ chính</b>Đã ${streak} mồi thua liền (luật K = ${uK}). Chuyển sang "Thẻ chính trên bàn" và đập.`}
+  else{s.className='signal';s.innerHTML=`<b>Cần thêm ${uK-streak} mồi thua</b>Tiếp tục đập thẻ mồi. Mồi thắng thì dây đếm lại từ 0.`}
+  // empirical: main after streak>=uK vs not
+  let a={n:0,w:0},b={n:0,w:0},st=0;
+  log.forEach(r=>{if(r.kind==='moi'){st=r.ok?0:st+1;return}const G=st>=uK?a:b;G.n++;G.w+=r.ok?1:0;st=0});
+  $('#u-dkv').innerHTML=`<dt>Xác suất ngẫu nhiên ra chuỗi thua này</dt><dd>${streak?pct(pChain,1)+(pChain>0?` (1/${fmt(1/pChain,0)})`:''):'–'}</dd>
+  <dt>Thẻ chính lần tới (theo bảng)</dt><dd>${pct(pMain)}</dd>
+  <dt>Log: chính sau dây ≥${uK}</dt><dd>${a.n?`${a.w}/${a.n} = ${pct(a.w/a.n)}`:'–'}</dd>
+  <dt>Log: chính không dây</dt><dd>${b.n?`${b.w}/${b.n} = ${pct(b.w/b.n)}`:'–'}</dd>`;
+}
+
+/* config editor */
+function renderCfg(){
+  $('#cf-base').value=cfg.base;$('#cf-mult').value=cfg.mult;
+  $('#cf-body').innerHTML=cfg.bonus.map((v,i)=>`<tr><td class="lvl">+${i+1}</td><td><input type="number" id="cf-b${i}" data-i="${i}" step="1" min="0" value="${v}"></td></tr>`).join('');
+}
+$('#cf-body').addEventListener('input',e=>{const i=e.target.dataset.i;const v=parseFloat(e.target.value);if(i===undefined||!Number.isFinite(v))return;cfg.bonus[+i]=v;saveUp();renderStage()});
+$('#cf-base').oninput=e=>{const v=parseFloat(e.target.value);if(v>0){cfg.base=v;saveUp();renderStage()}};
+$('#cf-mult').oninput=e=>{const v=parseFloat(e.target.value);if(v>=1){cfg.mult=v;saveUp();renderStage()}};
+$('#cf-reset').onclick=()=>{cfg=JSON.parse(JSON.stringify(DEF_CFG));saveUp();renderCfg();renderStage()};
+
+/* ---------- Tính dây ---------- */
+const DEF_DAY='232332311=6 (Charlton)\n216\n111 211 221 1=6\n2=6=6\n322 321=6\n322';
+let dLv=store.get('dayLv',5),dWin=store.get('dayWin',50);
+let dayTexts=store.get('dayTexts',null);
+if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};dayTexts[dLv]=store.get('dayText',DEF_DAY)}
+let dText=dayTexts[dLv]||'';
+const countAtt=t=>((t||'').replace(/\([^)]*\)/g,'').replace(/[vc]\d(?:[.,]\d)?/gi,'').match(/[0-9]/g)||[]).length;
+function fillLv(){$('#d-lv').innerHTML=[2,3,4,5,6,7,8,9].map(l=>{const n=countAtt(dayTexts[l]);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
+fillLv();
+$('#d-win').value=String(dWin);$('#d-text').value=dText;
+const lab=k=>k==='S'?'Vô':k==='^'?'Đầu dây':'Về +'+k;
+function parseDay(text,lv){
+  const tgt=lv+1,sess=[];let bad=0;
+  text.split(/\r?\n/).forEach(line=>{
+    const clean=line.replace(/\([^)]*\)/g,'');const s=[];s.v=[];let cv=null;
+    let cOne=null;
+    for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|(\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}const d=+m[3];s.v.push(cOne!=null?cOne:cv);cOne=null;
+      if(d===tgt)s.push('S');else if(d>=1&&d<=lv-2)s.push(String(d));else bad++}
+    sess.push(s);
+  });
+  return{sess,bad};
+}
+function buildDay(){
+  const {sess,bad}=parseDay(dText,dLv);
+  const att=[];
+  sess.forEach(s=>{let L=0;s.forEach((r,i)=>{att.push({L,r,v:s.v[i],pv:i>0?s.v[i-1]:null,p1:i>0?s[i-1]:'^',p2:i>1?s[i-2]+s[i-1]:(i===1?'^'+s[0]:'^'),p3:i>2?s.slice(i-3,i).join(''):'^'+s.slice(0,i).join(''),f:i>0?s[0]:'^'});L=r==='S'?0:L+1})});
+  const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
+  att.forEach(a=>{a.e=tran*Math.min(5,a.v!=null?a.v:5)/5});
+  const win=dWin>0?att.slice(-dWin):att;
+  const E=win.reduce((s,a)=>s+a.e,0);
+  const n=win.length,sN=win.filter(a=>a.r==='S').length,p0=n?sN/n:0;
+  const keys=['S'];for(let d=dLv-2;d>=1;d--)keys.push(String(d));
+  const tot={};keys.forEach(k=>tot[k]=0);win.forEach(a=>tot[a.r]=(tot[a.r]||0)+1);
+  const g1={},g2={},g3={},gF={},gL={};
+  win.forEach(a=>{
+    const A=g1[a.p1]||(g1[a.p1]={n:0,s:0,E:0,c:{}});A.n++;A.E+=a.e;A.s+=a.r==='S'?1:0;A.c[a.r]=(A.c[a.r]||0)+1;
+    const B=g2[a.p2]||(g2[a.p2]={n:0,s:0,E:0});B.n++;B.E+=a.e;B.s+=a.r==='S'?1:0;
+    const C=g3[a.p3]||(g3[a.p3]={n:0,s:0,E:0});C.n++;C.E+=a.e;C.s+=a.r==='S'?1:0;
+    const F=gF[a.f]||(gF[a.f]={n:0,s:0});F.n++;F.s+=a.r==='S'?1:0;
+    const lk=Math.min(a.L,LCAP),G=gL[lk]||(gL[lk]={n:0,s:0});G.n++;G.s+=a.r==='S'?1:0;
+  });
+  // current state = tail of last line
+  const last=sess.length?sess[sess.length-1]:[];
+  const c1=last.length?last[last.length-1]:'^',c2=last.length>1?last[last.length-2]+last[last.length-1]:(last.length===1?'^'+last[0]:'^');
+  let cL=0;last.forEach(r=>cL=r==='S'?0:cL+1);
+  const c3=last.length>2?last.slice(-3).join(''):'^'+last.join(''),cF=last.length?last[0]:'^';
+  return{tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
+}
+// longest pattern with >=4 samples: 3 con cuối → 2 con cuối → 1 con cuối
+function pickRate(D){
+  const z={n:0,s:0,E:0},A=D.g1[D.c1]||z,B=D.g2[D.c2]||z,C=D.g3[D.c3]||z;
+  const R0=(D.sN+1)/(D.E+1);                       // thực tế chung so với bảng
+  const lp=G=>(G.s+R0)/(G.E+1);                     // dãy này so với bảng, kéo về R0 khi ít mẫu
+  const out=(G,by)=>{const L=lp(G);return{L,R0,n:G.n,by,rate:Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*L)}};
+  if(C.n>=4&&D.c3.length===3)return out(C,'3 con cuối "'+D.c3+'"');
+  if(B.n>=4)return out(B,'2 con cuối "'+D.c2.replace('^','đầu ')+'"');
+  return out(A,'con cuối');
+}
+const K_SHRINK=4,LCAP=8;
+function erfc(x){const t=1/(1+.5*Math.abs(x));const y=t*Math.exp(-x*x-1.26551223+t*(1.00002368+t*(.37409196+t*(.09678418+t*(-.18628806+t*(.27886807+t*(-1.13520398+t*(1.48851587+t*(-.82215223+t*.17087277)))))))));return x>=0?y:2-y}
+const shrink=(s,n,p0)=>(s+K_SHRINK*p0)/(n+K_SHRINK);
+function renderDay(){
+  const D=buildDay();
+  $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex-basis:100%">Kèo chính thành công → nhập cầu thủ</button>`;
+  $('#d-parse').textContent=`Đọc được ${D.all} lần đập trên ${D.lines} dòng; đang tính ${D.n} lần gần nhất.`+(D.bad?` Bỏ qua ${D.bad} số không hợp lệ ở mức này.`:'');
+  const sig=$('#d-signal');
+  if(D.n<10){sig.className='signal';sig.innerHTML=`<b>Cần thêm dây</b>Mới có ${D.n} lần đập trong khung tính. Nhập thêm ít nhất 10–20 lần để có tỷ lệ.`;
+    ['#d-next'].forEach(s=>$(s).textContent='–');$('#d-nextkv').innerHTML='';$('#d-dist').innerHTML='';$('#d-t1').innerHTML='';$('#d-t2').innerHTML='';$('#d-pm').textContent='–';$('#d-pmkv').innerHTML='';$('#d-t3').innerHTML='';$('#d-tf').innerHTML='';$('#d-tv').innerHTML='';$('#d-tl').innerHTML='';$('#d-lenchart').innerHTML='';$('#d-lencur').textContent='';$('#d-lenv').className='verdict';$('#d-lenv').innerHTML='';return}
+  const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
+  const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
+  const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
+  const C3=D.g3[D.c3]||{n:0,s:0},FF=D.gF[D.cF]||{n:0,s:0};
+  $('#d-next').textContent=pct(rate);
+  const curTxt=D.last.length?D.last.map(x=>x==='S'?dLv+1:x).join(''):'(dây mới)';
+  $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
+  // next-result distribution given prev1, shrunk to overall distribution
+  $('#d-dist').innerHTML=D.keys.map(k=>{const q=((A.c[k]||0)+K_SHRINK*(D.tot[k]||0)/D.n)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');
+  const lift=PK.L/PK.R0;
+  {const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
+   let nv={n:0,s:0,E:0};if(dVach)D.win.forEach(x=>{if(x.pv===dVach){nv.n++;nv.E+=x.e;nv.s+=x.r==='S'?1:0}});
+   const liftV=dVach&&nv.n>=3?((nv.s+PK.R0)/(nv.E+1))/PK.R0:1;
+   const base=tran*dVmain/5,pm=Math.min(0.95,base*PK.L*liftV);
+   $('#d-pm').textContent=pct(pm);
+   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1}</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>× Thực tế so với bảng (toàn dây)</dt><dd>×${fmt(PK.R0,2)}</dd><dt>× Dây hiện tại so với chung (${PK.by})</dt><dd>×${fmt(lift,2)}</dd><dt>× Hệ số mồi ${dVach?vtxt(dVach)+' vạch':'(chưa chọn)'}</dt><dd>${dVach?(nv.n>=3?`×${fmt(liftV,2)} (${nv.s}/${nv.n})`:`×1 (mới ${nv.n} mẫu)`):'×1'}</dd>`;
+   D.pm=pm;}
+  const thr=dThr/100,pmOk=D.pm>=thr;
+  if(nUsed>=5&&lift>=1.4&&!pmOk){sig.className='signal';sig.innerHTML=`<b>Dây đang đẹp nhưng % còn thấp</b>Dây hiện tại gấp ${fmt(lift,1)} lần mức chung (${nUsed} mẫu), nhưng thẻ chính ${vtxt(dVmain)} vạch chỉ dự kiến ${pct(D.pm)}, dưới ngưỡng ${fmt(dThr,0)}% anh đặt. Mồi tiếp hoặc tăng vạch chính.`}
+  else if(nUsed>=5&&lift>=1.4){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây hiện tại cho tỷ lệ ${pct(rate)}, gấp ${fmt(lift,1)} lần trung bình (${nUsed} mẫu). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}. Chuyển thẻ chính và đập.`}
+  else if(nUsed>=5&&lift<=0.7){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây này tỷ lệ chỉ ${pct(rate)}, thấp hơn trung bình ${pct(D.p0)}.`}
+  else{sig.className='signal';sig.innerHTML=`<b>Chưa rõ, mồi tiếp</b>Dây hiện tại ${pct(rate)}, gần trung bình ${pct(D.p0)}${nUsed<5?`, mới ${nUsed} mẫu`:''}. Đợi dây có tỷ lệ cao hơn.`}
+  const row=(k,G,isCur)=>{const r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0;return `<tr${isCur?' style="background:var(--gold-soft)"':''}><td>${k}${isCur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`};
+  $('#d-t1').innerHTML=['^','S',...D.keys.slice(1)].filter(k=>D.g1[k]).map(k=>row(lab(k),D.g1[k],k===D.c1)).join('');
+  $('#d-t2').innerHTML=Object.entries(D.g2).filter(([k,G])=>G.n>=3&&k.length===2&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c2)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có cặp nào đủ 3 mẫu.</td></tr>`;
+  $('#d-t3').innerHTML=Object.entries(D.g3).filter(([k,G])=>G.n>=3&&k.length===3&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c3)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có dãy 3 con nào đủ 3 mẫu.</td></tr>`;
+  $('#d-tf').innerHTML=Object.entries(D.gF).filter(([k])=>k!=='^').sort((a,b)=>b[1].n-a[1].n).map(([k,G])=>row('Bắt đầu '+lab(k).replace('Về ',''),G,k===D.cF)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>`;
+  renderLen(D);renderVach(D,D.win);
+}
+let dVach=store.get('dayVach',0);
+let dVmain=store.get('dayVmain',5);
+let dThr=store.get('dayThr',15);
+$('#d-thr').value=dThr;$('#d-thr').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0&&v<=95){dThr=v;store.set('dayThr',dThr);renderDay()}});
+const vtxt=v=>String(v).replace('.',',');
+const r1d=v=>Math.round(v*10)/10;
+function renderVmainSeg(){const i=$('#d-vmain-o');if(document.activeElement!==i)i.value=dVmain}
+$('#d-vmain').addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(!b)return;dVmain=r1d(Math.max(0.1,Math.min(5,dVmain+ +b.dataset.d)));store.set('dayVmain',dVmain);renderVmainSeg();renderDay()});
+$('#d-vmain-o').addEventListener('input',e=>{const v=parseFloat(String(e.target.value).replace(',','.'));if(v>0&&v<=5){dVmain=r1d(v);store.set('dayVmain',dVmain);renderDay()}});
+function lineVachOf(t){const ln=(t||'').split('\n').pop();let v=null;for(const m of ln.matchAll(/v(\d(?:[.,]\d)?)/gi))v=parseFloat(m[1].replace(',','.'));return v}
+function lineVach(){return lineVachOf(dText)}
+function renderVachSeg(){const i=$('#d-vach-o');if(document.activeElement!==i)i.value=dVach?dVach:''}
+$('#d-vach').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.off)dVach=0;else dVach=r1d(Math.max(0,Math.min(5,(dVach||0)+ +b.dataset.d)));store.set('dayVach',dVach);renderVachSeg();renderDay()});
+$('#d-vach-o').addEventListener('input',e=>{const raw=String(e.target.value).trim();const v=parseFloat(raw.replace(',','.'));dVach=raw===''?0:(v>=0&&v<=5?r1d(v):dVach);store.set('dayVach',dVach);renderDay()});
+function renderVach(D,win){
+  const by={};win.forEach(a=>{if(a.v==null)return;const G=by[a.v]||(by[a.v]={n:0,f:0,c:{}});G.n++;if(a.r!=='S'){G.f++;G.c[a.r]=(G.c[a.r]||0)+1}});
+  const nx={};win.forEach(a=>{if(a.pv==null)return;const G=nx[a.pv]||(nx[a.pv]={n:0,s:0});G.n++;G.s+=a.r==='S'?1:0});
+  const vs=[...new Set([...Object.keys(by),...Object.keys(nx)].map(Number))].sort((a,b)=>a-b);
+  const drops=D.keys.slice(1);
+  $('#d-vh').innerHTML='<tr><th>Vạch</th><th>Lần mồi</th>'+drops.map(k=>`<th>Về +${k}</th>`).join('')+'<th>Vô lần kế</th><th>So TB</th></tr>';
+  $('#d-tv').innerHTML=vs.map(v=>{const G=by[v]||{n:0,f:0,c:{}},N=nx[v]||{n:0,s:0},r=shrink(N.s,N.n,D.p0),l=D.p0?r/D.p0:0,cur=v===dVach;
+    return `<tr${cur?' style="background:var(--gold-soft)"':''}><td>${vtxt(v)} vạch${cur?' ◀':''}</td><td>${G.n}</td>`+drops.map(k=>`<td>${G.f?pct((G.c[k]||0)/G.f,0):'–'}</td>`).join('')+`<td>${N.n?`${N.s}/${N.n} → ${pct(r)}`:'–'}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">${N.n?'×'+fmt(l,1):'–'}</td></tr>`}).join('')||`<tr><td colspan="${drops.length+4}" style="text-align:left;color:var(--muted)">Chưa có dây nào ghi số vạch. Chọn số vạch rồi bấm số mồi.</td></tr>`;
+}
+let dWins=store.get('dayWins',[]);if(!Array.isArray(dWins))dWins=[];
+const escH=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function archiveWin(lv,name,line,vm,vb){const w={id:Date.now()+Math.random(),t:Date.now(),lv,name,line:line.trim(),vm,vb};dWins.push(w);store.set('dayWins',dWins);renderWins();return w.id}
+function renderWins(){
+  $('#d-wins-n').textContent=dWins.length;
+  const names=[...new Set(dWins.map(w=>w.name).filter(Boolean))];$('#d-names').innerHTML=names.map(n=>`<option value="${escH(n)}">`).join('');
+  $('#d-wins').innerHTML=dWins.slice().reverse().map(w=>{const d=new Date(w.t);const ts=`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `<tr><td>${ts}</td><td style="font-family:var(--f-body)">${w.name?escH(w.name):'<span class="hint">–</span>'}</td><td>+${w.lv}→+${w.lv+1}</td><td style="white-space:normal;word-break:break-all;text-align:left">${escH(w.line.replace(/\s*\([^)]*\)\s*$/,''))}</td><td>${w.vm?vtxt(w.vm):'–'}</td><td><button class="x" data-wdel="${w.id}" aria-label="Xóa">×</button></td></tr>`}).join('')||`<tr><td colspan="6" style="text-align:left;color:var(--muted)">Chưa có dây nào. Bấm "Kèo chính thành công" khi thẻ chính lên.</td></tr>`;
+}
+function openWinForm(){
+  const ln=dText.split('\n').pop();
+  $('#d-winprev').textContent=(ln||'(dây trống)')+(dVmain!==5?' c'+dVmain:'')+'='+(dLv+1);
+  $('#d-winform').hidden=false;$('#d-winname').value='';setTimeout(()=>{try{$('#d-winname').focus()}catch(e){}},30);
+}
+function saveWin(withName){
+  const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
+  const ln=dText.split('\n').pop();const ctag=dVmain!==5?(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain:'';const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
+  dText=dText.slice(0,dText.length-ln.length)+line+'\n';
+  $('#d-text').value=dText;saveDay();archiveWin(dLv,nm,line,dVmain,dVach||null);
+  $('#d-winform').hidden=true;renderDay();
+}
+$('#d-winsave').onclick=()=>saveWin(true);
+$('#d-winnoname').onclick=()=>saveWin(false);
+$('#d-wincancel').onclick=()=>{$('#d-winform').hidden=true};
+$('#d-winname').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveWin(true)}});
+$('#d-wins').addEventListener('click',e=>{const b=e.target.closest('[data-wdel]');if(!b)return;dWins=dWins.filter(w=>String(w.id)!==b.dataset.wdel);store.set('dayWins',dWins);renderWins()});
+$('#d-wins-copy').onclick=()=>{const txt=dWins.map(w=>`${new Date(w.t).toLocaleString('vi-VN')}\t+${w.lv}→+${w.lv+1}\t${w.name||''}\t${w.line}`).join('\n');navigator.clipboard.writeText(txt).then(()=>$('#d-wins-msg').textContent='Đã sao chép.').catch(()=>$('#d-wins-msg').textContent='Không sao chép được trên trình duyệt này.')};
+function renderLen(D){
+  const ks=Object.keys(D.gL).map(Number).sort((a,b)=>a-b);
+  const lb=k=>k>=LCAP?LCAP+'+':String(k);
+  const curK=Math.min(D.cL,LCAP);
+  $('#d-tl').innerHTML=ks.map(k=>{const G=D.gL[k],r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0,cur=k===curK;return `<tr${cur?' style="background:var(--gold-soft)"':''}><td>${lb(k)} lần thua${cur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(G.s/G.n)}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`}).join('');
+  // Cochran–Armitage trend: does win rate rise with length?
+  let N=0,S=0,T=0,a=0,b=0;ks.forEach(k=>{const G=D.gL[k];N+=G.n;S+=G.s});const p=S/N;
+  ks.forEach(k=>{const G=D.gL[k];T+=k*(G.s-G.n*p);a+=G.n*k*k;b+=G.n*k});
+  const V=p*(1-p)*(a-b*b/N),z=V>0?T/Math.sqrt(V):0,pv=V>0?erfc(Math.abs(z)/Math.SQRT2):1;
+  // short vs long split
+  const sh={n:0,s:0},lo={n:0,s:0};ks.forEach(k=>{const G=D.gL[k],X=k<=3?sh:lo;X.n+=G.n;X.s+=G.s});
+  const v=$('#d-lenv');
+  const dir=z>0?'tăng':'giảm';
+  if(N<15){v.className='verdict';v.innerHTML=`<b>Chưa đủ dữ liệu</b>Cần ít nhất 15 lần đập để xét dây dài có lên dễ hơn không.`}
+  else if(pv<0.05&&z>0){v.className='verdict ok';v.innerHTML=`<b>Dây càng dài tỷ lệ càng tăng (p = ${fmt(pv,3)})</b>Dây ngắn 0–3 lần thua: ${sh.s}/${sh.n} = ${pct(sh.n?sh.s/sh.n:NaN)}. Dây dài 4+ lần thua: ${lo.s}/${lo.n} = ${pct(lo.n?lo.s/lo.n:NaN)}. Có cơ sở thống kê, nên đợi dây dài rồi vô.`}
+  else{v.className='verdict';v.innerHTML=`<b>Chưa thấy dây dài lên dễ hơn (p = ${fmt(pv,2)})</b>Dây ngắn 0–3 lần thua: ${sh.s}/${sh.n} = ${pct(sh.n?sh.s/sh.n:NaN)}. Dây dài 4+ lần thua: ${lo.s}/${lo.n} = ${pct(lo.n?lo.s/lo.n:NaN)}. Xu hướng hiện đang ${dir} nhẹ nhưng chưa đủ chắc. Cần p &lt; 0,05 mới kết luận được.`}
+  // chart
+  const W=520,H=170,pl=36,pr=8,pt=10,pb=26,n=ks.length||1,cw=(W-pl-pr)/n;
+  const ymax=Math.max(0.5,...ks.map(k=>shrink(D.gL[k].s,D.gL[k].n,D.p0)))*1.1;
+  const y=v=>pt+(H-pt-pb)*(1-v/ymax);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tỷ lệ vô theo độ dài dây">`;
+  [0,0.25,0.5].filter(t=>t<=ymax).forEach(t=>{s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${pl-5}" y="${y(t)+4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${t*100}%</text>`});
+  ks.forEach((k,i)=>{const G=D.gL[k],r=shrink(G.s,G.n,D.p0);s+=`<rect x="${pl+i*cw+cw*0.18}" y="${y(r)}" width="${cw*0.64}" height="${H-pb-y(r)}" rx="3" fill="${k===curK?'var(--gold)':'var(--bait)'}" opacity="${G.n<3?0.45:1}"/><text x="${pl+i*cw+cw/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${lb(k)}</text>`});
+  s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(D.p0)}" y2="${y(D.p0)}" stroke="var(--ink)" stroke-dasharray="4 4" opacity=".6"/><text x="${W-pr}" y="${y(D.p0)-4}" text-anchor="end" font-size="10" fill="var(--ink)">TB ${pct(D.p0)}</text></svg>`;
+  $('#d-lenchart').innerHTML=s;
+  $('#d-lencur').textContent=`Dây đang chạy: ${D.cL} lần thua liên tiếp → tỷ lệ ở độ dài này ${D.gL[curK]?pct(shrink(D.gL[curK].s,D.gL[curK].n,D.p0)):'chưa có mẫu'}.`;
+}
+function saveDay(){dayTexts[dLv]=dText;store.set('dayTexts',dayTexts);store.set('dayLv',dLv);store.set('dayWin',dWin);const o=$('#d-lv').selectedOptions[0];if(o){const n=countAtt(dText);o.textContent=`+${dLv} → +${dLv+1}${n?` (${n} lần)`:''}`}}
+const _rd=renderDay;renderDay=function(){_rd();try{renderStage()}catch(e){}};
+$('#d-text').addEventListener('input',e=>{dText=e.target.value;saveDay();renderDay()});
+$('#d-lv').onchange=e=>{dayTexts[dLv]=dText;dLv=+e.target.value;dText=dayTexts[dLv]||'';$('#d-text').value=dText;dBackup=null;$('#d-undo-row').hidden=true;$('#d-clr-ask').hidden=true;saveDay();renderDay()};
+$('#d-win').onchange=e=>{dWin=+e.target.value;saveDay();renderDay()};
+$('#d-keys').addEventListener('click',e=>{if(e.target.closest('[data-main]')){openWinForm();return}const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;if(dVach&&lineVach()!==dVach)dText+=(dText&&!/[\s\n]$/.test(dText)?' ':'')+'v'+dVach+' ';dText+=(+k===dLv+1)?'='+k:k;$('#d-text').value=dText;saveDay();renderDay()});
+$('#d-nl').onclick=()=>{if(!dText.endsWith('\n'))dText+='\n';$('#d-text').value=dText;saveDay();renderDay()};
+let dBackup=null;
+function setDay(t,msg){dBackup=dText;dText=t;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-msg').textContent=msg;$('#d-undo-row').hidden=false;$('#d-clr-ask').hidden=true}
+$('#d-dl').onclick=()=>{const lines=dText.replace(/\n+$/,'').split('\n');if(!lines[0])return;lines.pop();setDay(lines.join('\n')+(lines.length?'\n':''),'Đã xóa dòng cuối.')};
+$('#d-clr').onclick=()=>{if(!dText.trim())return;$('#d-clr-ask').hidden=false;$('#d-undo-row').hidden=true};
+$('#d-clr-no').onclick=()=>{$('#d-clr-ask').hidden=true};
+$('#d-clr-yes').onclick=()=>setDay('','Đã xóa hết dây.');
+$('#d-undo').onclick=()=>{if(dBackup===null)return;dText=dBackup;dBackup=null;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-row').hidden=true};
+$('#d-bk').onclick=()=>{dText=dText.replace(/(\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=?\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
+
+renderWins();renderVachSeg();renderVmainSeg();renderRates();renderCfg();renderStage();renderChain();renderDay();
+})();
+</script>
+
+</body>
+</html>
