@@ -300,7 +300,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     </div>
     <div class="field"><span class="lbl">Tỷ lệ bảng ở vạch chính (app tự tính)</span>
       <div class="mono" style="font-size:1.3rem;font-weight:700" id="d-thrv">–</div>
-      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App chỉ có 2 loại tín hiệu: "Vô được" (dây bình thường, tỷ lệ đúng như số hiện ra; khi chuyển từ Dừng sang Vô được, ô tín hiệu nháy và điện thoại rung để nhắc) và "Dừng" (dây quá dài, dây bất thường hoặc dây xấu đã chứng minh). Dây tối đa tự tính theo số vạch mồi: chỉ khoảng 10% dây dài tới mức đó.</p>
+      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App có 3 tín hiệu: "Mồi trước" (dây hiện tại chưa tới số lần thua tối thiểu, mức mà một nửa số dây đã lên trước đó), "Vô được" (tỷ lệ đúng như số hiện ra; khi chuyển sang Vô được, ô tín hiệu nháy và điện thoại rung để nhắc) và "Dừng" (dây quá dài, dây bất thường hoặc dây xấu đã chứng minh). Dây tối đa tự tính theo số vạch mồi: chỉ khoảng 10% dây dài tới mức đó.</p>
     </div>
         <p class="hint">Khi bấm số mồi, app tự chèn nhãn v1–v5 vào dây mỗi lần anh đổi số vạch. Gõ tay cũng được, vạch lẻ 0,1–0,9, ví dụ <span class="mono">v2 312 v3.7 21 c4.5=6</span> (c = số vạch thẻ chính lúc vô). Bấm −/+ mỗi lần 0,1 vạch hoặc gõ số vào ô.</p>
       </div>
@@ -839,13 +839,13 @@ function renderDay(){
   const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
   const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
   const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
-  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;}
+  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;}
   // giới hạn mồi tự động: dây chưa đáng tin thì mồi chỉ tốn phôi, cho tối đa 3 lần; dây đáng tin thì cho đợi tới dây tối đa
   D.capB=D.Lmax; // chỉ dừng khi dây quá dài mà chưa lên
   const C3=D.g3[D.c3]||{n:0,s:0},FF=D.gF[D.cF]||{n:0,s:0};
   $('#d-next').textContent=pct(rate);
   const curTxt=D.last.length?D.last.map(x=>x==='S'?dLv+1:x).join(''):'(dây mới)';
-  $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>Độ tin cậy</dt><dd>${PK.conf}${PK.reliable?` (p = ${fmt(PK.pv,2)}, ${PK.n} mẫu)`:''}</dd><dt>Dây hiện tại</dt><dd>${D.cL} / tối đa ${D.Lmax} lần thua</dd><dt>Mồi trong kèo này</dt><dd>${D.bK} lần</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
+  $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>Độ tin cậy</dt><dd>${PK.conf}${PK.reliable?` (p = ${fmt(PK.pv,2)}, ${PK.n} mẫu)`:''}</dd><dt>Dây hiện tại</dt><dd>${D.cL} lần thua (vô từ ${D.Lmin}, dừng sau ${D.Lmax})</dd><dt>Mồi trong kèo này</dt><dd>${D.bK} lần</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
   // next-result distribution given prev1, shrunk to overall distribution
   {const pS0=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0),nd=D.keys.length-1;
    $('#d-dist').innerHTML=D.keys.map(k=>{const prior=k==='S'?pS0:(1-pS0)/nd;const base=D.n?(D.tot[k]||0)/D.n:prior;const q=D.n<10?prior:((A.c[k]||0)+K_SHRINK*base)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');}
@@ -867,7 +867,8 @@ function renderDay(){
   if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Dây này bất thường, nên nghỉ, lần sau quay lại mồi tiếp. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`}
   else if(D.anomaly){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Dây bất thường, dừng</b>Mồi đang lên gấp ×${fmt(PK.R0,2)} so với bảng (${D.sN}/${D.n} lần lên). Thường là chuỗi may hoặc ghi sai số vạch. Kiểm tra lại số vạch đã ghi rồi mới vô. Thẻ chính ${vtxt(dVmain)} vạch vẫn chỉ ${pct(D.pm)}.`}
   else if(badPat){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây xấu, dừng</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)}, đã chứng minh qua ${PK.n} mẫu (p = ${fmt(PK.pv,3)}). Thẻ chính lúc này chỉ ${pct(D.pm)}. Mồi tiếp rồi xem lại.`}
-  else{sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <b style="display:inline;font-size:inherit">${pct(D.pm)}</b>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}. Dây bình thường, không có lý do dừng. Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo, vô lúc nào cũng như nhau, anh quyết theo tỷ lệ này.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
+  else if(D.cL<D.Lmin){sig.className='signal';sig.innerHTML=`<b>Mồi trước</b>Dây hiện tại mới ${D.cL} lần thua, chưa tới nhịp vô. Mồi tới ít nhất <strong>${D.Lmin} lần thua</strong> (một nửa số dây đã lên trước mức này) rồi app nhắc vô, còn ${D.Lmin-D.cL} lần. Tỷ lệ thẻ chính không đổi (≈ ${pct(D.pm)}); đây là nhịp để không vô ngay sau kèo vừa lên.`}
+  else{sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <strong>${pct(D.pm)}</strong>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}. Dây bình thường, không có lý do dừng. Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo, vô lúc nào cũng như nhau, anh quyết theo tỷ lệ này.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
   if(sig.className==='signal go')sig.style.borderColor='';
   {const nowGo=sig.className==='signal go';if(window.__prevGo===false&&nowGo){try{navigator.vibrate&&navigator.vibrate([150,80,150])}catch(e){}const mi=document.querySelector('#d-mini');setTimeout(()=>{mi.classList.remove('pulse');void mi.offsetWidth;mi.classList.add('pulse')},0)}window.__prevGo=nowGo;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
