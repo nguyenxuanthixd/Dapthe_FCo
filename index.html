@@ -744,14 +744,15 @@ $('#cf-reset').onclick=()=>{cfg=JSON.parse(JSON.stringify(DEF_CFG));saveUp();ren
 
 /* ---------- Tính dây ---------- */
 const DEF_DAY='232332311=6 (Charlton)\n216\n111 211 221 1=6\n2=6=6\n322 321=6\n322';
-let dLv=store.get('dayLv',5),dWin=store.get('dayWin',50);
+const MIN_LV=4; // chỉ tính từ +4→+5 trở lên
+let dLv=Math.max(MIN_LV,store.get('dayLv',5)),dWin=store.get('dayWin',50);
 let dayTexts=store.get('dayTexts',null);
 if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main'){const lg=store.get('dayText',null);if(lg)dayTexts[dLv]=lg}}
 if(!store.get('timeDedup2',false)){Object.keys(dayTexts).forEach(l=>{let last=null;dayTexts[l]=(dayTexts[l]||'').split('\n').map(ln=>{const m=ln.match(/@(\d{1,2}):(\d{2})/);if(!m)return ln;const mins=+m[1]*60+ +m[2];if(last!=null&&mins>=last&&mins-last<120)return ln.replace(/@\d{1,2}:\d{2}\s*/,'');last=mins;return ln}).join('\n')});store.set('dayTexts',dayTexts);store.set('timeDedup2',true)}
 if(!store.get('timeLine1',false)){Object.keys(dayTexts).forEach(l=>{dayTexts[l]=(dayTexts[l]||'').split('\n').map(ln=>{const m=ln.match(/^\s*(@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2})\s+(\S.*)$/);return m?m[1]+'\n'+m[2]:ln}).join('\n')});store.set('dayTexts',dayTexts);store.set('timeLine1',true)}
 let dText=dayTexts[dLv]||'';
 const countAtt=(t,l)=>parseDay(t||'',l).sess.reduce((n,s)=>n+s.length,0);
-function fillLv(){$('#d-lv').innerHTML=Array.from({length:MAX_LV-2},(_,i)=>i+2).map(l=>{const n=countAtt(dayTexts[l],l);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
+function fillLv(){$('#d-lv').innerHTML=Array.from({length:MAX_LV-MIN_LV},(_,i)=>i+MIN_LV).map(l=>{const n=countAtt(dayTexts[l],l);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
 fillLv();
 $('#d-win').value=String(dWin);$('#d-text').value=dText;
 const lab=k=>k==='S'?'Vô':k==='^'?'Đầu dây':'Về +'+k;
