@@ -369,9 +369,9 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="grid">
   <div class="panel stack">
     <h2>Tài khoản</h2>
-    <div class="btnrow"><button class="btn small" id="adm-reload">Tải lại danh sách</button></div>
+    <div class="btnrow"><select id="adm-sort" aria-label="Sắp xếp" style="flex:1"><option value="new">Mới tạo trước</option><option value="login">Mới đăng nhập trước</option><option value="data">Nhiều dây trước</option></select><button class="btn small" id="adm-reload">Tải lại</button></div>
     <p class="hint" id="adm-msg"></p>
-    <div class="tblwrap log"><table><thead><tr><th>Tài khoản</th><th>Lần đập</th><th>Lên</th><th>Cập nhật</th></tr></thead><tbody id="adm-users"></tbody></table></div>
+    <div class="tblwrap log"><table><thead><tr><th>Tài khoản</th><th>Tạo lúc</th><th>Đăng nhập</th><th>Lần đập</th><th>Lên</th></tr></thead><tbody id="adm-users"></tbody></table></div>
     <p class="hint">Bấm vào một tài khoản để xem dây. Chỉ xem, không sửa được dữ liệu của người khác.</p>
   </div>
   <div class="panel stack">
@@ -860,21 +860,28 @@ const FIREBASE_CONFIG={
     let user=null,timer=null;
     const ref=()=>db.collection('users').doc(user.uid);
     const status=t=>{$('#acct-status').textContent=t};
-    const push=()=>ref().set({data:snapLocal(),email:user.email||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>status('Đã lưu lên tài khoản.')).catch(e=>status('Chưa lưu được: '+em(e)));
+    const push=()=>ref().set({data:snapLocal(),email:user.email||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{mergeFields:['data','email','updatedAt']}).then(()=>status('Đã lưu lên tài khoản.')).catch(e=>status('Chưa lưu được: '+em(e)));
     function setupAdmin(db){
       $('#tab-admin-btn').hidden=false;
       let users=[],loaded=false;
       const J=(o,k,d)=>{try{return o&&o[k]!=null?JSON.parse(o[k]):d}catch(e){return d}};
       const stat=(text,lv)=>{const tr=(rates[lv-1]?rates[lv-1][0]:0)/100;let n=0,s=0,E=0;parseDay(text||'',lv).sess.forEach(ss=>ss.forEach((r,i)=>{n++;if(r==='S')s++;E+=tr*Math.min(5,ss.v[i]!=null?ss.v[i]:5)/5}));return{n,s,E}};
       const fmtT=t=>{if(!t)return'–';const d=t.toDate?t.toDate():new Date(t);return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
+      function sortUsers(){const k=$('#adm-sort').value;users.sort((a,b)=>k==='new'?b.tc-a.tc:k==='login'?b.tl-a.tl:b.n-a.n)}
+      function renderUsers(){
+        const now=Date.now(),day=864e5;
+        const newC=users.filter(u=>u.tc&&now-u.tc<7*day).length,act=users.filter(u=>u.tl&&now-u.tl<day).length;
+        $('#adm-msg').textContent=`${users.length} tài khoản · ${newC} tạo trong 7 ngày · ${act} đăng nhập trong 24 giờ.`;
+        const pv=p=>p==='google.com'?'Google':p==='password'?'Email':(p||'–');
+        $('#adm-users').innerHTML=users.map((u,i)=>`<tr data-u="${i}" style="cursor:pointer"><td style="font-family:var(--f-body);text-align:left;white-space:normal">${escH(u.email)}${u.tc&&now-u.tc<7*day?' <span class="pill ok">Mới</span>':''}<div class="hint">${pv(u.prov)}${u.cnt?` · ${u.cnt} lần vào`:''}</div></td><td>${fmtT(u.created)}</td><td>${fmtT(u.login)}</td><td>${u.n}</td><td>${u.s}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có tài khoản nào.</td></tr>';
+      }
       function load(){
         $('#adm-msg').textContent='Đang tải…';
         db.collection('users').get().then(q=>{
           users=q.docs.map(d=>{const x=d.data(),data=x.data||{},texts=J(data,'fcolab_dayTexts',{}),wins=J(data,'fcolab_dayWins',[]);
             let n=0,s=0;Object.entries(texts).forEach(([lv,t])=>{const r=stat(t,+lv);n+=r.n;s+=r.s});
-            return{id:d.id,email:x.email||d.id,at:x.updatedAt,texts,wins,n,s}}).sort((a,b)=>b.n-a.n);
-          loaded=true;$('#adm-msg').textContent=`${users.length} tài khoản.`;
-          $('#adm-users').innerHTML=users.map((u,i)=>`<tr data-u="${i}" style="cursor:pointer"><td style="font-family:var(--f-body);text-align:left">${escH(u.email)}</td><td>${u.n}</td><td>${u.s}</td><td>${fmtT(u.at)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:left;color:var(--muted)">Chưa có tài khoản nào lưu dữ liệu.</td></tr>';
+            const tm=v=>v?(v.toDate?v.toDate():new Date(v)).getTime():0;return{id:d.id,email:x.email||d.id,name:x.name||'',prov:x.provider||'',at:x.updatedAt,created:x.createdAt,login:x.lastLoginAt,cnt:x.loginCount||0,tc:tm(x.createdAt),tl:tm(x.lastLoginAt),texts,wins,n,s}});sortUsers();
+          loaded=true;renderUsers();
         }).catch(e=>{$('#adm-msg').textContent=e.code==='permission-denied'?'Chưa có quyền admin. Kiểm tra luật Firestore đã có đoạn cho admin chưa, và đăng nhập bằng Google với email admin.':'Lỗi: '+(e.code||e)});
       }
       function show(u){
@@ -886,6 +893,7 @@ const FIREBASE_CONFIG={
       }
       $('#adm-users').addEventListener('click',e=>{const r=e.target.closest('[data-u]');if(r)show(users[+r.dataset.u])});
       $('#adm-reload').onclick=load;
+      $('#adm-sort').onchange=()=>{sortUsers();renderUsers()};
       window.__fcoAdminLoad=()=>{if(!loaded)load()};
     }
     window.__fcoSync=()=>{if(!user)return;status('Đang lưu…');clearTimeout(timer);timer=setTimeout(push,1200)};
@@ -895,6 +903,9 @@ const FIREBASE_CONFIG={
       if(!u)return;
       $('#acct-who').textContent=u.email||u.displayName||u.uid;msg('');status('Đang đồng bộ…');
       if(ADMIN_EMAILS.includes((u.email||'').toLowerCase()))setupAdmin(db);
+      if(sessionStorage.getItem('fco_seen')!==u.uid){sessionStorage.setItem('fco_seen',u.uid);
+        const FV=firebase.firestore.FieldValue,ct=u.metadata&&u.metadata.creationTime?new Date(u.metadata.creationTime):null;
+        try{await ref().set({email:u.email||'',name:u.displayName||'',provider:((u.providerData||[])[0]||{}).providerId||'',createdAt:ct,lastLoginAt:FV.serverTimestamp(),loginCount:FV.increment(1)},{merge:true})}catch(e){}}
       try{
         const snap=await ref().get(),cloud=snap.exists&&snap.data().data;
         if(cloud){
