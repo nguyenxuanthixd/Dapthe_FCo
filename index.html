@@ -174,7 +174,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
         <div class="btnrow"><button class="btn small primary" id="prof-add">Thêm acc mới</button><button class="btn small" id="prof-ren">Đổi tên acc đang chọn</button></div>
         <button class="btn small bad" id="prof-del">Xóa acc đang chọn</button>
         <div class="btnrow" id="prof-delask" hidden><span class="hint" style="align-self:center">Xóa hết dây của acc này?</span><button class="btn small bad" id="prof-del-yes">Xóa</button><button class="btn small" id="prof-del-no">Hủy</button></div>
-        <p class="hint" id="prof-msg">Mỗi acc có dây, dây đã vô và thẻ bên Đập thẻ riêng. Bảng tỷ lệ và giao diện dùng chung.</p>
+        <p class="hint" id="prof-msg">Mỗi acc có dây, dây đã vô và thẻ bên Đập thẻ riêng. Bảng tỷ lệ và giao diện dùng chung. Acc nào cũng xóa được; còn một acc thì xóa sẽ làm trống dây.</p>
       </div>
     </div>
   <div class="seg" id="theme" style="min-width:220px" aria-label="Giao diện"><button data-t="light">Sáng</button><button data-t="dark">Tối</button><button data-t="auto">Theo máy</button></div>
@@ -640,7 +640,7 @@ $('#cf-reset').onclick=()=>{cfg=JSON.parse(JSON.stringify(DEF_CFG));saveUp();ren
 const DEF_DAY='232332311=6 (Charlton)\n216\n111 211 221 1=6\n2=6=6\n322 321=6\n322';
 let dLv=store.get('dayLv',5),dWin=store.get('dayWin',50);
 let dayTexts=store.get('dayTexts',null);
-if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main')dayTexts[dLv]=store.get('dayText',DEF_DAY)}
+if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main'){const lg=store.get('dayText',null);if(lg)dayTexts[dLv]=lg}}
 let dText=dayTexts[dLv]||'';
 const countAtt=t=>((t||'').replace(/\([^)]*\)/g,'').replace(/[vc]\d(?:[.,]\d)?/gi,'').match(/[0-9]/g)||[]).length;
 function fillLv(){$('#d-lv').innerHTML=[2,3,4,5,6,7,8,9].map(l=>{const n=countAtt(dayTexts[l]);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
@@ -851,22 +851,25 @@ $('#d-bk').onclick=()=>{dText=dText.replace(/(\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|
 /* ---------- Acc game ---------- */
 (function(){
   let profs=[];try{profs=JSON.parse(localStorage.getItem('fcolab_profiles'))||[]}catch(e){}
-  if(!profs.find(p=>p.id==='main'))profs.unshift({id:'main',name:'Acc 1'});
+  if(!profs.length)profs.push({id:'main',name:'Acc 1'});
   const save=()=>{try{localStorage.setItem('fcolab_profiles',JSON.stringify(profs))}catch(e){}if(window.__fcoSync)window.__fcoSync()};
   const go=id=>{try{localStorage.setItem('fcolab_profile',JSON.stringify(id))}catch(e){}
     const f=window.__fcoFlush?window.__fcoFlush():Promise.resolve();Promise.race([f,new Promise(r=>setTimeout(r,2500))]).then(()=>location.reload())};
   const msg=t=>{$('#prof-msg').textContent=t};
-  const render=()=>{$('#prof-sel').innerHTML=profs.map(p=>`<option value="${p.id}"${p.id===CUR_ACC?' selected':''}>${escH(p.name)}</option>`).join('');$('#prof-del').disabled=CUR_ACC==='main'};
+  const render=()=>{$('#prof-sel').innerHTML=profs.map(p=>`<option value="${p.id}"${p.id===CUR_ACC?' selected':''}>${escH(p.name)}</option>`).join('');};
   render();
+  if(!profs.find(p=>p.id===CUR_ACC)){try{localStorage.setItem('fcolab_profile',JSON.stringify(profs[0].id))}catch(e){}location.reload();return}
   $('#prof-sel').onchange=e=>go(e.target.value);
   $('#prof-manage').onclick=()=>{$('#prof-panel').hidden=!$('#prof-panel').hidden;const c=profs.find(p=>p.id===CUR_ACC);$('#prof-name').value=''};
   document.addEventListener('click',e=>{if(!e.target.closest('#prof'))$('#prof-panel').hidden=true});
   $('#prof-add').onclick=()=>{const n=$('#prof-name').value.trim()||('Acc '+(profs.length+1));const id='a'+Date.now().toString(36);profs.push({id,name:n});save();msg('Đã thêm, đang chuyển sang acc mới…');go(id)};
   $('#prof-ren').onclick=()=>{const n=$('#prof-name').value.trim();if(!n){msg('Gõ tên mới vào ô Tên acc trước.');return}const c=profs.find(p=>p.id===CUR_ACC);if(c){c.name=n;save();render();msg('Đã đổi tên.')}};
-  $('#prof-del').onclick=()=>{if(CUR_ACC==='main')return;$('#prof-delask').hidden=false};
+  $('#prof-del').onclick=()=>{$('#prof-delask').querySelector('span').textContent=profs.length>1?'Xóa acc này và toàn bộ dây của nó?':'Đây là acc duy nhất: xóa sẽ làm trống dây, acc vẫn giữ lại. Tiếp tục?';$('#prof-delask').hidden=false};
   $('#prof-del-no').onclick=()=>{$('#prof-delask').hidden=true};
-  $('#prof-del-yes').onclick=()=>{const pre='fcolab_p_'+CUR_ACC+'_';try{Object.keys(localStorage).filter(k=>k.startsWith(pre)).forEach(k=>localStorage.removeItem(k))}catch(e){}
-    profs=profs.filter(p=>p.id!==CUR_ACC);save();go('main')};
+  $('#prof-del-yes').onclick=()=>{
+    try{if(CUR_ACC==='main'){[...PER_ACC,'dayText'].forEach(k=>localStorage.removeItem('fcolab_'+k))}
+        else{const pre='fcolab_p_'+CUR_ACC+'_';Object.keys(localStorage).filter(k=>k.startsWith(pre)).forEach(k=>localStorage.removeItem(k))}}catch(e){}
+    if(profs.length>1){profs=profs.filter(p=>p.id!==CUR_ACC);save();go(profs[0].id)}else{save();go(CUR_ACC)}};
 })();
 
 /* ---------- Tài khoản (Firebase) ---------- */
@@ -918,7 +921,7 @@ const FIREBASE_CONFIG={
       function load(){
         $('#adm-msg').textContent='Đang tải…';
         db.collection('users').get().then(q=>{
-          users=q.docs.map(d=>{const x=d.data(),data=x.data||{};let pl=J(data,'fcolab_profiles',[]);if(!pl.find(p=>p.id==='main'))pl.unshift({id:'main',name:'Acc 1'});
+          users=q.docs.map(d=>{const x=d.data(),data=x.data||{};let pl=J(data,'fcolab_profiles',[]);if(!pl.length)pl=[{id:'main',name:'Acc 1'}];
             const accs=pl.map(p=>{const pf=p.id==='main'?'fcolab_':'fcolab_p_'+p.id+'_';return{name:p.name,texts:J(data,pf+'dayTexts',{}),wins:J(data,pf+'dayWins',[])}});
             const texts={},wins=[];accs.forEach(a=>{Object.entries(a.texts).forEach(([lv,t])=>{texts[lv]=(texts[lv]?texts[lv]+'\n':'')+(t||'')});(a.wins||[]).forEach(w=>wins.push(Object.assign({acc:a.name},w)))});
             let n=0,s=0;Object.entries(texts).forEach(([lv,t])=>{const r=stat(t,+lv);n+=r.n;s+=r.s});
