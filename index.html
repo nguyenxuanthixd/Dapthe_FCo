@@ -183,9 +183,9 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <div class="field"><span class="lbl">Số vạch thẻ chính dự định đập</span>
       <div class="stepper" id="d-vmain"><button data-d="-0.1" aria-label="Bớt 0,1 vạch chính">−</button><input id="d-vmain-o" type="number" min="0.1" max="5" step="0.1" aria-label="Số vạch thẻ chính"><button data-d="0.1" aria-label="Thêm 0,1 vạch chính">+</button></div>
     </div>
-    <div class="field"><label for="d-thr">Chỉ báo "Có thể vô" khi thẻ chính dự kiến từ (%)</label>
-      <input id="d-thr" type="number" min="1" max="95" step="1">
-      <p class="hint">Ngoài dây phải đẹp (gấp 1,4 lần mức chung, đủ 5 mẫu), tỷ lệ thẻ chính cũng phải đạt ngưỡng này.</p>
+    <div class="field"><label for="d-thr">Ngưỡng báo "Có thể vô" (%)</label>
+      <div class="row2" style="align-items:center"><input id="d-thr" type="number" min="1" max="95" step="0.1"><label class="chk" style="margin:0"><input type="checkbox" id="d-thrauto"> Tự tính</label></div>
+      <p class="hint" id="d-thrhint"></p>
     </div>
     <div class="field"><span class="lbl">Bấm khi đang mồi</span>
       <div class="btnrow" id="d-keys"></div>
@@ -655,8 +655,11 @@ function renderDay(){
    $('#d-pm').textContent=pct(pm);
    $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1}</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>× Thực tế so với bảng (toàn dây)</dt><dd>×${fmt(PK.R0,2)}</dd><dt>× Dây hiện tại so với chung (${PK.by})</dt><dd>×${fmt(lift,2)}</dd><dt>× Hệ số mồi ${dVach?vtxt(dVach)+' vạch':'(chưa chọn)'}</dt><dd>${dVach?(nv.n>=3?`×${fmt(liftV,2)} (${nv.s}/${nv.n})`:`×1 (mới ${nv.n} mẫu)`):'×1'}</dd>`;
    D.pm=pm;}
-  const thr=dThr/100,pmOk=D.pm>=thr;
-  if(nUsed>=5&&lift>=1.4&&!pmOk){sig.className='signal';sig.innerHTML=`<b>Dây đang đẹp nhưng % còn thấp</b>Dây hiện tại gấp ${fmt(lift,1)} lần mức chung (${nUsed} mẫu), nhưng thẻ chính ${vtxt(dVmain)} vạch chỉ dự kiến ${pct(D.pm)}, dưới ngưỡng ${fmt(dThr,0)}% anh đặt. Mồi tiếp hoặc tăng vạch chính.`}
+  const thrP=dThrAuto?Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10:dThr;
+  const ti=$('#d-thr');ti.disabled=dThrAuto;if(dThrAuto||document.activeElement!==ti)ti.value=thrP;
+  $('#d-thrhint').textContent=dThrAuto?`Tự tính = tỷ lệ bảng ở ${vtxt(dVmain)} vạch chính (${fmt(thrP,1)}%). App chỉ báo vô khi dây đẩy thẻ chính cao hơn mức bình thường của bảng. Bỏ tích để tự đặt.`:'Đang dùng ngưỡng anh tự đặt.';
+  const thr=thrP/100,pmOk=D.pm>=thr;
+  if(nUsed>=5&&lift>=1.4&&!pmOk){sig.className='signal';sig.innerHTML=`<b>Dây đang đẹp nhưng % còn thấp</b>Dây hiện tại gấp ${fmt(lift,1)} lần mức chung (${nUsed} mẫu), nhưng thẻ chính ${vtxt(dVmain)} vạch chỉ dự kiến ${pct(D.pm)}, dưới ngưỡng ${fmt(thrP,1)}%. Mồi tiếp hoặc tăng vạch chính.`}
   else if(nUsed>=5&&lift>=1.4){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây hiện tại cho tỷ lệ ${pct(rate)}, gấp ${fmt(lift,1)} lần trung bình (${nUsed} mẫu). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}. Chuyển thẻ chính và đập.`}
   else if(nUsed>=5&&lift<=0.7){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây này tỷ lệ chỉ ${pct(rate)}, thấp hơn trung bình ${pct(D.p0)}.`}
   else{sig.className='signal';sig.innerHTML=`<b>Chưa rõ, mồi tiếp</b>Dây hiện tại ${pct(rate)}, gần trung bình ${pct(D.p0)}${nUsed<5?`, mới ${nUsed} mẫu`:''}. Đợi dây có tỷ lệ cao hơn.`}
@@ -669,8 +672,8 @@ function renderDay(){
 }
 let dVach=store.get('dayVach',0);
 let dVmain=store.get('dayVmain',5);
-let dThr=store.get('dayThr',15);
-$('#d-thr').value=dThr;$('#d-thr').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0&&v<=95){dThr=v;store.set('dayThr',dThr);renderDay()}});
+let dThr=store.get('dayThr',15),dThrAuto=store.get('dayThrAuto',true);
+$('#d-thr').value=dThr;$('#d-thrauto').checked=dThrAuto;$('#d-thrauto').onchange=e=>{dThrAuto=e.target.checked;store.set('dayThrAuto',dThrAuto);renderDay()};$('#d-thr').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0&&v<=95){dThr=v;store.set('dayThr',dThr);renderDay()}});
 const vtxt=v=>String(v).replace('.',',');
 const r1d=v=>Math.round(v*10)/10;
 function renderVmainSeg(){const i=$('#d-vmain-o');if(document.activeElement!==i)i.value=dVmain}
