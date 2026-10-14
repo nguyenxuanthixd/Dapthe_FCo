@@ -180,6 +180,8 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .signal{border-radius:10px;padding:14px;background:var(--bg);border:2px solid var(--line)}
 .signal b{display:block;font:800 1.6rem var(--f-display);text-transform:uppercase;letter-spacing:.03em}
 .signal.go{border-color:var(--gold);background:var(--gold-soft)}
+@keyframes fcoPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 6px var(--gold)}}
+.signal.pulse{animation:fcoPulse .7s ease 3}
 .streakbig{font:800 3.4rem var(--f-display);line-height:1;color:var(--bait)}
 .chain{display:flex;flex-wrap:wrap;gap:5px}
 .bead{width:17px;height:17px;border-radius:50%;border:2px solid var(--bait)}
@@ -294,11 +296,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <p class="hint">Đầu mỗi phiên mồi app ghi ngày giờ một lần (ví dụ dòng @14/10 15:20), các dây sau trong phiên dùng chung mốc đó; chỉ khi ngắt quãng từ 2 tiếng trở lên mới tính là phiên mới với giờ mới. "Khung hiện tại" chỉ dùng các dây bắt đầu trong cùng khung giờ với bây giờ để tính.</p>
     </div>
     <div class="field"><span class="lbl">Đọc dây</span>
-      <p class="hint">Mỗi ngày tính dây lại từ đầu. App đọc dây khi hôm nay đã xong ít nhất 3 dây (từ +6→+7 trở lên chỉ cần 2 dây); dây các ngày trước dùng làm dữ liệu tham chiếu, tính bằng nửa dây hôm nay. Chỉ báo vô khi dãy cuối đã xuất hiện ít nhất 5 lần, cao hơn mức chung từ ×1,15 và thẻ chính hơn bảng từ 3 điểm % trở lên.</p>
+      <p class="hint">Mỗi ngày tính dây lại từ đầu, dây các ngày trước làm tham chiếu (tính bằng nửa dây hôm nay). Tỷ lệ thẻ chính lấy đúng bảng Garena × vạch/5. Dây chỉ được cộng/trừ tỷ lệ khi đã chứng minh: dãy cuối xuất hiện ít nhất 30 lần và khác mức chung rõ ràng (p &lt; 0,05).</p>
     </div>
-    <div class="field"><span class="lbl">Ngưỡng báo vô (app tự tính)</span>
+    <div class="field"><span class="lbl">Tỷ lệ bảng ở vạch chính (app tự tính)</span>
       <div class="mono" style="font-size:1.3rem;font-weight:700" id="d-thrv">–</div>
-      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App chỉ báo "Có thể vô" khi dây có ít nhất 15 mẫu, khác mức chung rõ ràng (p &lt; 0,1) và đẩy thẻ chính vượt ngưỡng này. Dây tối đa cũng tự tính theo số vạch mồi: dây dài quá mức đó mà chưa lên thì app báo dừng.</p>
+      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App chỉ có 2 loại tín hiệu: "Vô được" (dây bình thường, tỷ lệ đúng như số hiện ra; khi chuyển từ Dừng sang Vô được, ô tín hiệu nháy và điện thoại rung để nhắc) và "Dừng" (dây quá dài, dây bất thường hoặc dây xấu đã chứng minh). Dây tối đa tự tính theo số vạch mồi: chỉ khoảng 10% dây dài tới mức đó.</p>
     </div>
         <p class="hint">Khi bấm số mồi, app tự chèn nhãn v1–v5 vào dây mỗi lần anh đổi số vạch. Gõ tay cũng được, vạch lẻ 0,1–0,9, ví dụ <span class="mono">v2 312 v3.7 21 c4.5=6</span> (c = số vạch thẻ chính lúc vô). Bấm −/+ mỗi lần 0,1 vạch hoặc gõ số vào ô.</p>
       </div>
@@ -808,7 +810,7 @@ function buildDay(){
 }
 // longest pattern with >=4 samples: 3 con cuối → 2 con cuối → 1 con cuối
 function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Math.max(1e-9,m*(1-Math.min(0.95,m/G.n)));const z=(G.s-m)/Math.sqrt(v);return{z,pv:erfc(Math.abs(z)/Math.SQRT2)}}
-const MIN_N=15,MAX_P=0.1,LONG_DAY=6;
+const MIN_N=15,MAX_P=0.1,LONG_DAY=6,PROVE_N=30,PROVE_P=0.05;
 const HIST_W=0.5; // dây ngày trước tính bằng nửa dây hôm nay
 function todayStr(){const d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
 function pickRate(D){
@@ -820,9 +822,9 @@ function pickRate(D){
   const rateOf=L=>Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*L);
   const fast=dMode==='fast'&&D.doneN>=D.needD;
   for(const [G,by] of cands){const t=sigTest(G,R0);
-    if(fast?G.n>=5:(G.n>=MIN_N&&t.pv<MAX_P)){const L=(G.s+3*R0)/(G.E+3);return{L,R0,n:G.n,by,pv:t.pv,reliable:true,fast,conf:fast?(G.n>=MIN_N&&t.pv<MAX_P?'Trung bình':'Thấp'):(G.n>=30&&t.pv<0.05?'Cao':'Trung bình'),rate:rateOf(L)}}}
+    if(G.n>=PROVE_N&&t.pv<PROVE_P){const L=(G.s+3*R0)/(G.E+3);return{L,R0,n:G.n,by,pv:t.pv,reliable:true,fast:false,conf:'Đã chứng minh',rate:rateOf(L)}}}
   const best=cands.reduce((a,b)=>b[0].n>a[0].n?b:a);const t=sigTest(best[0],R0);
-  return{L:R0,R0,n:best[0].n,by:'bảng (chưa có dây đủ tin cậy)',pv:t.pv,reliable:false,conf:'Thấp',rate:rateOf(R0),near:best[1]};
+  return{L:R0,R0,n:best[0].n,by:'bảng Garena (dây chưa chứng minh được gì)',pv:t.pv,reliable:false,conf:'Chưa chứng minh',rate:rateOf(R0),near:best[1]};
 }
 const K_SHRINK=4,LCAP=8;
 function erfc(x){const t=1/(1+.5*Math.abs(x));const y=t*Math.exp(-x*x-1.26551223+t*(1.00002368+t*(.37409196+t*(.09678418+t*(-.18628806+t*(.27886807+t*(-1.13520398+t*(1.48851587+t*(-.82215223+t*.17087277)))))))));return x>=0?y:2-y}
@@ -847,46 +849,39 @@ function renderDay(){
   // next-result distribution given prev1, shrunk to overall distribution
   {const pS0=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0),nd=D.keys.length-1;
    $('#d-dist').innerHTML=D.keys.map(k=>{const prior=k==='S'?pS0:(1-pS0)/nd;const base=D.n?(D.tot[k]||0)/D.n:prior;const q=D.n<10?prior:((A.c[k]||0)+K_SHRINK*base)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');}
-  // Hiệu chỉnh theo kết quả các lần app từng báo vô: báo vô mà kèo chính tạch nhiều hơn dự đoán thì giảm phần ảnh hưởng của dây
-  const SF=(()=>{const L=(store.get('sigLog',[])||[]).filter(r=>r.go&&r.lv===dLv);const n=L.length,w=L.filter(r=>r.ok).length,pr=L.reduce((a,r)=>a+(r.pm||0),0);
-    const f=Math.max(0.3,Math.min(1.3,(w+1)/(pr+1)));return{n,w,pr,f:n?f:1}})();
-  // Kèo chính vô khi app KHÔNG báo: nếu lên nhiều hơn dự đoán thì app đang quá khắt khe -> nới ngưỡng một chút
-  const SN=(()=>{const L=(store.get('sigLog',[])||[]).filter(r=>!r.go&&r.lv===dLv);const n=L.length,w=L.filter(r=>r.ok).length,pr=L.reduce((a,r)=>a+(r.pm||0),0);
-    const f=(w+1)/(pr+1);return{n,w,pr,f,loosen:n>=5&&f>1.3}})();
-  const liftRaw=PK.L/PK.R0,lift=1+(liftRaw-1)*SF.f;
+  // Chế độ chính xác: thẻ chính = bảng Garena × vạch/5. Dây chỉ được điều chỉnh khi đã chứng minh (≥30 mẫu, p < 0,05).
+  const lift=PK.reliable?PK.L/PK.R0:1;
   {const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
-   let nv={n:0,s:0,E:0};if(dVach)D.win.forEach(x=>{if(x.pv===dVach){nv.n++;nv.E+=x.e;nv.s+=x.r==='S'?1:0}});
-   const tv=sigTest(nv,PK.R0),vOk=dVach&&(PK.fast?nv.n>=5:(nv.n>=MIN_N&&tv.pv<MAX_P));const liftV=vOk?((nv.s+3*PK.R0)/(nv.E+3))/PK.R0:1;
-   // Phần "thực tế so với bảng" học chủ yếu từ lần mồi (ít vạch). Áp sang thẻ chính (nhiều vạch) phải giới hạn, tránh thổi phồng.
    const anomaly=D.n>=10&&PK.R0>1.4;
-   const R0m=anomaly?1:Math.max(0.7,Math.min(1.2,PK.R0)),liftM=Math.max(0.7,Math.min(1.3,lift));
-   const base=tran*dVmain/5,pm=Math.min(0.95,base*R0m*liftM*liftV,base*1.4);
-   D.anomaly=anomaly;
+   const liftM=PK.reliable?Math.max(0.8,Math.min(1.2,lift)):1;
+   const base=tran*dVmain/5,pm=Math.min(0.95,base*liftM);
+   D.anomaly=anomaly;D.base=base;
    $('#d-pm').textContent=pct(pm);
-   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1}</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>× Thực tế so với bảng (toàn dây)</dt><dd>×${fmt(R0m,2)}${Math.abs(R0m-PK.R0)>0.005?` <span class="hint">(dây ×${fmt(PK.R0,2)}${anomaly?', bất thường nên không áp':', giới hạn khi áp cho thẻ chính'})</span>`:''}</dd><dt>× Dây hiện tại so với chung (${PK.by})</dt><dd>×${fmt(lift,2)}${SF.n&&Math.abs(lift-liftRaw)>0.005?` <span class="hint">(gốc ×${fmt(liftRaw,2)})</span>`:''}</dd><dt>× Hệ số mồi ${dVach?vtxt(dVach)+' vạch':'(chưa chọn)'}</dt><dd>${dVach?(vOk?`×${fmt(liftV,2)} (${nv.s}/${nv.n})`:`×1 (${nv.s}/${nv.n}, chưa đủ tin cậy)`):'×1'}</dd>`;
+   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1} (bảng Garena)</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>Điều chỉnh theo dây</dt><dd>${PK.reliable?`×${fmt(liftM,2)} (${PK.by}, ${PK.n} mẫu, p = ${fmt(PK.pv,3)})`:'Không có (chưa dãy nào đủ 30 mẫu và p &lt; 0,05)'}</dd><dt>Mồi thực tế so với bảng</dt><dd>×${fmt(PK.R0,2)} <span class="hint">(tham khảo, không áp cho thẻ chính)</span></dd>`;
    D.pm=pm;}
   const thrP=Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10,thr=thrP/100;
   $('#d-thrv').textContent=fmt(thrP,1)+'%';
   const pBait=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);
-  const extra=SF.f<1?(1-SF.f)*0.05:0;
-  // Mức tỷ lệ cao (trần từ 50%): không cần đợi đọc dây, vô theo bảng là hợp lý trừ khi dây đang xấu rõ ràng
-  const highLv=D.tran>=0.5,badDay=PK.reliable&&lift<0.9;
-  if(highLv&&!badDay&&!(D.cL>=D.Lmax)){sig.className='signal go';sig.innerHTML=`<b>Mức tỷ lệ cao, vô được</b>Mức +${dLv}→+${dLv+1} có tỷ lệ công bố ${fmt(D.tran*100,0)}% khi đầy thanh, không cần đợi đọc dây. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}${dVmain<5?`, đập đủ 5 vạch ≈ ${pct(Math.min(0.95,D.pm*5/dVmain))}`:''}. Mồi thêm ở mức này chủ yếu tốn phôi.`}
-  else if(D.anomaly&&!(D.cL>=D.Lmax)){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Dây lên nhiều bất thường, không báo vô</b>Thực tế đang gấp ×${fmt(PK.R0,2)} so với bảng (${D.sN}/${D.n} lần lên). Mức này hiếm khi giữ được lâu, thường là chuỗi may hoặc ghi sai số vạch. App không đem phần này áp cho thẻ chính: ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)} (bảng ${fmt(thrP,1)}%). Kiểm tra lại số vạch đã ghi.`}
-  else if(PK.reliable&&lift>=(PK.fast?(SN.loosen?1.08:1.15):1)+extra&&D.pm>=thr+(PK.fast?(SN.loosen?0.015:0.03):0)+extra){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây ${PK.by} có tỷ lệ cao hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, độ tin cậy ${PK.conf}${PK.fast?'':`, p = ${fmt(PK.pv,2)}`}). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}, trên mức bảng ${fmt(thrP,1)}%.`}
-  else if(PK.reliable&&lift<1){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, p = ${fmt(PK.pv,2)}). Thẻ chính lúc này chỉ ${pct(D.pm)}.`}
-  else if(false&&D.bK>=D.capB){sig.className='signal';sig.style.borderColor='var(--bad)';const pm5=Math.min(0.95,D.pm*5/dVmain);sig.innerHTML=PK.reliable?`<b>Hết lượt mồi, dừng mồi</b>Đã mồi ${D.bK} lần, chạm dây tối đa mà chưa ra dây đẹp. Mồi tiếp chỉ tốn phôi. Nên nghỉ, lần sau quay lại mồi tiếp trên dây này. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`:`<b>Đủ ${D.capB} lần mồi, dừng mồi</b>Đây không phải tín hiệu dây đẹp. Dây chưa đáng tin nên mồi thêm cũng không làm tỷ lệ tăng, chỉ tốn phôi (đã mồi ${D.bK} lần). Lúc nào vô thì thẻ chính ${vtxt(dVmain)} vạch cũng ≈ ${pct(D.pm)}${dVmain<5?`, đập 5 vạch ≈ ${pct(pm5)}`:''}. Muốn đập thì đập, không thì nghỉ.`}
-  else if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, nên dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Lần tới vẫn chỉ ${pct(pBait)}, nhưng anh đã tốn ${D.cL} lần phôi. Nên nghỉ, lần sau quay lại mồi tiếp trên dây này. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`}
-  else{sig.className='signal';sig.innerHTML=PK.reliable?`<b>Dây bình thường, chưa có lợi thế</b>Dây ${PK.by} ×${fmt(lift,2)} so với mức chung (${PK.n} mẫu), thẻ chính ${pct(D.pm)} so với bảng ${fmt(thrP,1)}%. Chưa đạt mức báo vô${PK.fast?' (cần ×1,15 và hơn bảng 3 điểm %)':''}. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Mồi tiếp trong giới hạn, đợi dây đẹp hơn.`:(dMode==='fast'&&D.doneN<D.needD)?(D.doneN?`<b>Đã xong ${D.doneN}/${D.needD} dây, tính theo bảng</b>Hôm nay mới xong ${D.doneN} dây; app đọc dây khi hôm nay đã xong ít nhất ${D.needD} dây (mỗi ngày tính dây lại từ đầu, dây ngày trước dùng làm tham chiếu).`:`<b>Chưa có dây nào lên, tính theo bảng</b>App đọc dây khi đã xong ít nhất ${dLv>=6?2:3} dây.`)+` Trong lúc chờ: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}, mồi ${dVach?vtxt(dVach):5} vạch ≈ ${pct(pBait)} mỗi lần.`:(dMode==='fast')?`<b>Chưa có dây lặp lại đủ 5 lần, vô theo bảng</b>Đã đủ ${D.doneN} dây nhưng dãy cuối hiện tại chưa xuất hiện đủ 5 lần để so. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`:D.n<MIN_N?`<b>Mới ${D.n} lần đập, tính theo bảng</b>Chưa đủ dữ liệu để đọc dây (cần thêm vài chục lần), nên tỷ lệ lấy theo bảng tỷ lệ và số vạch. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}, mồi ${dVach?vtxt(dVach):5} vạch ≈ ${pct(pBait)} mỗi lần. Cứ mồi và ghi, app tự đọc dây khi đủ mẫu.`:`<b>Chưa có dây đáng tin, vô theo bảng</b>Chưa dãy nào đủ ${MIN_N} mẫu và khác mức chung rõ ràng (gần nhất: ${PK.near||PK.by}, p = ${fmt(PK.pv,2)}). Vô lúc nào tỷ lệ cũng gần như nhau: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Muốn tăng tỷ lệ thì tăng vạch chính.`}
-  if(sig.className==='signal go'||!(D.bK>=D.capB||D.cL>=D.Lmax))sig.style.borderColor='';
+  const badPat=PK.reliable&&lift<0.9;
+  const pm5=Math.min(0.95,D.base*5/dVmain);
+  if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Dây này bất thường, nên nghỉ, lần sau quay lại mồi tiếp. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`}
+  else if(D.anomaly){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Dây bất thường, dừng</b>Mồi đang lên gấp ×${fmt(PK.R0,2)} so với bảng (${D.sN}/${D.n} lần lên). Thường là chuỗi may hoặc ghi sai số vạch. Kiểm tra lại số vạch đã ghi rồi mới vô. Thẻ chính ${vtxt(dVmain)} vạch vẫn chỉ ${pct(D.pm)}.`}
+  else if(badPat){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây xấu, dừng</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)}, đã chứng minh qua ${PK.n} mẫu (p = ${fmt(PK.pv,3)}). Thẻ chính lúc này chỉ ${pct(D.pm)}. Mồi tiếp rồi xem lại.`}
+  else{sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <b style="display:inline;font-size:inherit">${pct(D.pm)}</b>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}. Dây bình thường, không có lý do dừng. Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo, vô lúc nào cũng như nhau, anh quyết theo tỷ lệ này.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
+  if(sig.className==='signal go')sig.style.borderColor='';
+  {const nowGo=sig.className==='signal go';if(window.__prevGo===false&&nowGo){try{navigator.vibrate&&navigator.vibrate([150,80,150])}catch(e){}const mi=document.querySelector('#d-mini');setTimeout(()=>{mi.classList.remove('pulse');void mi.offsetWidth;mi.classList.add('pulse')},0)}window.__prevGo=nowGo;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
-  {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv),G=L.filter(r=>r.go);
-   const sumGo=G.length?`App đã báo vô <b>${G.length}</b> lần ở mức này: dự đoán lên ${fmt(SF.pr,1)} kèo, thực tế lên <b>${SF.w}</b>. Hệ số hiệu chỉnh dây <b>×${fmt(SF.f,2)}</b>${SF.f<0.95?' (tín hiệu đang kém hơn dự đoán, app tự giảm ảnh hưởng của dây và báo vô khắt khe hơn)':SF.f>1.05?' (tín hiệu đang tốt hơn dự đoán)':''}.`:`Chưa có kèo chính nào được ghi lúc app đang báo vô ở mức này. Mỗi lần bấm Kèo chính thành công hoặc tạch, app ghi lại để tự kiểm chứng.`;
-   const N=L.filter(r=>!r.go),NW=N.filter(r=>r.ok);
-   const sumNo=N.length?`<br>Vô khi app <b>không báo</b>: ${N.length} lần, dự đoán lên ${fmt(SN.pr,1)}, thực tế lên <b>${SN.w}</b>${SN.loosen?' → app đang khắt khe quá, đã nới ngưỡng báo vô một chút.':SN.n>=5&&SN.f<0.8?' → đúng là không nên vô những lúc này.':'.'}`:'';
-   $('#d-sigsum').innerHTML=sumGo+sumNo;
+  {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
+   const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
+   const T=tally(L);
+   let sum;
+   if(!T.n)sum=`Chưa có kèo chính nào ở mức này. Mỗi lần bấm Kèo chính thành công hoặc tạch, app ghi lại để so dự đoán với thực tế.`;
+   else{const lo=Math.max(0,Math.floor(T.pr-2*T.sd)),hi=Math.ceil(T.pr+2*T.sd);
+     sum=`Tổng <b>${T.n}</b> kèo chính ở mức +${dLv}→+${dLv+1}: theo bảng dự đoán lên ${fmt(T.pr,1)}, thực tế lên <b>${T.w}</b>. Khoảng bình thường do may rủi: ${lo}–${hi} kèo. `+(T.w<lo?'Đang thấp hơn khoảng bình thường, kiểm tra lại số vạch đã ghi.':T.w>hi?'Đang cao hơn khoảng bình thường.':'Khớp tỷ lệ, tạch/lên chỉ là may rủi.')+(T.n<20?' (Dưới 20 kèo, lệch vài kèo là chuyện thường.)':'');
+     const S=L.filter(r=>r.v2&&!r.go);if(S.length){const t=tally(S);sum+=`<br>Vô lúc app báo dừng: ${t.n} kèo, lên ${t.w}.`}}
+   $('#d-sigsum').innerHTML=sum;const NW=L.filter(r=>!r.go&&r.ok);
    $('#d-nowins').innerHTML=NW.slice(-6).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td style="text-align:left">${escH(r.line||'')}</td><td>${escH(r.tail||'–')}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có kèo nào lên khi app không báo.</td></tr>';
-   $('#d-siglog').innerHTML=L.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td>${r.go?'<span class="pill main">Báo vô</span>':'<span class="pill">Không báo</span>'}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td><td>${r.ok?'<span class="pill ok">Lên</span>':'<span class="pill bad">Tạch</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có kèo chính nào.</td></tr>';}
+   $('#d-siglog').innerHTML=L.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td>${r.v2?(r.go?'<span class="pill main">Đủ ĐK</span>':'<span class="pill bad">Báo dừng</span>'):(r.go?'<span class="pill main">Báo vô (cũ)</span>':'<span class="pill">Không báo (cũ)</span>')}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td><td>${r.ok?'<span class="pill ok">Lên</span>':'<span class="pill bad">Tạch</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có kèo chính nào.</td></tr>';}
   {const mi=$('#d-mini'),tb=sig.querySelector('b');mi.className=sig.className+' mini';mi.style.borderColor=sig.style.borderColor;mi.innerHTML=`<b>${tb?escH(tb.textContent):''}</b><span>Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)} · dây hiện tại ${D.cL} lần thua${dSlotMode==='cur'?` · khung ${slotLabel(slotOf(new Date().getHours()))}`:''}</span>`;}
   const row=(k,G,isCur)=>{const r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0;return `<tr${isCur?' style="background:var(--gold-soft)"':''}><td>${k}${isCur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`};
   $('#d-t1').innerHTML=['^','S',...D.keys.slice(1)].filter(k=>D.g1[k]).map(k=>row(lab(k),D.g1[k],k===D.c1)).join('');
@@ -943,7 +938,7 @@ function openFailForm(){
 }
 $('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;logMain(false);ensureTime();
   const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
-function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];const ln=dText.split('\n').pop();L.push({t:Date.now(),lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok,tail:ev.tail||'',line:ln.replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}\s*/,'').trim()});store.set('sigLog',L.slice(-200))}
+function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];const ln=dText.split('\n').pop();L.push({t:Date.now(),v2:1,lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok,tail:ev.tail||'',line:ln.replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}\s*/,'').trim()});store.set('sigLog',L.slice(-200))}
 function saveWin(withName){logMain(true);ensureTime();
   const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
   const ln=dText.split('\n').pop();const ctag=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain;const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
