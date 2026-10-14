@@ -103,6 +103,15 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .hdr-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .acct{position:relative}
 .acct-panel{position:absolute;right:0;top:calc(100% + 8px);width:min(320px,calc(100vw - 32px));z-index:30;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+/* ---- Dây layout + charts ---- */
+.daygrid>.chartpanel{grid-column:1/-1}
+@media (min-width:1500px){.wrap{max-width:1780px}.daygrid{grid-template-columns:340px minmax(0,1fr) minmax(380px,480px)}.daygrid>.chartpanel{grid-column:auto;position:sticky;top:12px}}
+.cdays{display:flex;flex-direction:column;gap:6px}
+.crow{display:flex;align-items:center;gap:6px}
+.crow .cn{font:600 .7rem var(--f-mono);color:var(--muted);width:2.4em;text-align:right;flex:none}
+.crow .cb{display:flex;flex-wrap:wrap;gap:3px}
+.chip{min-width:22px;height:22px;padding:0 4px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font:700 .72rem var(--f-mono);color:#fff;background:var(--bait)}
+.chip.d3{opacity:.4}.chip.d2{opacity:.7}.chip.s{background:var(--gold);color:#1b1404}.chip.m{box-shadow:0 0 0 2px var(--ink) inset}
 /* ---- Stepper ---- */
 .stepper{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .stepper>button[data-d]{width:42px;height:38px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 1.3rem var(--f-display);cursor:pointer}
@@ -214,7 +223,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 
 <!-- ============ DÂY ============ -->
 <section id="tab-day">
-<div class="grid">
+<div class="grid daygrid">
   <div class="panel stack">
     <h2>Nhập dây</h2>
     <div class="row2">
@@ -302,6 +311,20 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <div class="lbl" style="margin-bottom:6px">Theo số vạch mồi (về đâu khi thua, và vô ở lần đập kế tiếp)</div>
       <div class="tblwrap"><table><thead id="d-vh"></thead><tbody id="d-tv"></tbody></table></div>
     </div>
+    <p class="note">Các bảng bên dưới chỉ để theo dõi. Tín hiệu chỉ dùng dãy có ít nhất 15 mẫu và khác mức chung có ý nghĩa thống kê (p &lt; 0,1); chưa có thì tính theo bảng tỷ lệ. Nếu game ngẫu nhiên độc lập, các chênh lệch sẽ tự mất khi nhập nhiều dây hơn.</p>
+  </div>
+  <div class="panel stack chartpanel">
+    <h2>Biểu đồ</h2>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Các dây gần nhất (mới nhất ở dưới)</div>
+      <div id="c-days" class="cdays"></div>
+      <div class="legend" style="margin-top:8px"><span><i style="background:var(--gold)"></i>Lên</span><span><i style="background:var(--bait);opacity:.35"></i>Về +3</span><span><i style="background:var(--bait);opacity:.65"></i>Về +2</span><span><i style="background:var(--bait)"></i>Về +1</span><span><i style="border:2px solid var(--ink)"></i>Kèo chính</span></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Số lần lên cộng dồn: thực tế so với bảng</div>
+      <div id="c-trend" class="chart"></div>
+      <p class="hint" id="c-trendtxt"></p>
+    </div>
     <div>
       <div class="lbl" style="margin-bottom:6px">Dây dài có lên dễ hơn không? (số lần thua từ đầu dây hoặc từ lần vô trước)</div>
       <p class="hint" id="d-lencur"></p>
@@ -309,7 +332,6 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <div class="tblwrap"><table><thead><tr><th>Độ dài</th><th>Số lần</th><th>Vô</th><th>Thô</th><th>Hiệu chỉnh</th><th>So TB</th></tr></thead><tbody id="d-tl"></tbody></table></div>
       <div class="verdict" id="d-lenv"></div>
     </div>
-    <p class="note">Các bảng bên dưới chỉ để theo dõi. Tín hiệu chỉ dùng dãy có ít nhất 15 mẫu và khác mức chung có ý nghĩa thống kê (p &lt; 0,1); chưa có thì tính theo bảng tỷ lệ. Nếu game ngẫu nhiên độc lập, các chênh lệch sẽ tự mất khi nhập nhiều dây hơn.</p>
   </div>
 </div>
 </section>
@@ -693,7 +715,7 @@ function buildDay(){
   const c3=last.length>2?last.slice(-3).join(''):'^'+last.join(''),cF=last.length?last[0]:'^';
   const done=sess.filter(s=>s.includes('S')),doneN=done.length,avgLen=doneN?done.reduce((a,s)=>a+s.length,0)/doneN:0;
   const needD=avgLen>=LONG_DAY?2:3; // dây dài cần 2 dây, dây ngắn cần 3 dây
-  return{doneN,avgLen,needD,bK,tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
+  return{sess,doneN,avgLen,needD,bK,tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
 }
 // longest pattern with >=4 samples: 3 con cuối → 2 con cuối → 1 con cuối
 function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Math.max(1e-9,m*(1-Math.min(0.95,m/G.n)));const z=(G.s-m)/Math.sqrt(v);return{z,pv:erfc(Math.abs(z)/Math.SQRT2)}}
@@ -756,7 +778,7 @@ function renderDay(){
   $('#d-t2').innerHTML=Object.entries(D.g2).filter(([k,G])=>G.n>=3&&k.length===2&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c2)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có cặp nào đủ 3 mẫu.</td></tr>`;
   $('#d-t3').innerHTML=Object.entries(D.g3).filter(([k,G])=>G.n>=3&&k.length===3&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c3)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có dãy 3 con nào đủ 3 mẫu.</td></tr>`;
   $('#d-tf').innerHTML=Object.entries(D.gF).filter(([k])=>k!=='^').sort((a,b)=>b[1].n-a[1].n).map(([k,G])=>row('Bắt đầu '+lab(k).replace('Về ',''),G,k===D.cF)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>`;
-  renderLen(D);renderVach(D,D.win);
+  renderLen(D);renderVach(D,D.win);renderCharts(D);
 }
 let dVach=store.get('dayVach',0);
 let dVmain=store.get('dayVmain',5);
@@ -818,6 +840,25 @@ $('#d-wincancel').onclick=()=>{$('#d-winform').hidden=true};
 $('#d-winname').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveWin(true)}});
 $('#d-wins').addEventListener('click',e=>{const b=e.target.closest('[data-wdel]');if(!b)return;dWins=dWins.filter(w=>String(w.id)!==b.dataset.wdel);store.set('dayWins',dWins);renderWins()});
 $('#d-wins-copy').onclick=()=>{const txt=dWins.map(w=>`${new Date(w.t).toLocaleString('vi-VN')}\t+${w.lv}→+${w.lv+1}\t${w.name||''}\t${w.line}`).join('\n');navigator.clipboard.writeText(txt).then(()=>$('#d-wins-msg').textContent='Đã sao chép.').catch(()=>$('#d-wins-msg').textContent='Không sao chép được trên trình duyệt này.')};
+function renderCharts(D){
+  // chuỗi dây gần nhất
+  const rows=D.sess.map((s,i)=>({s,i})).filter(o=>o.s.length).slice(-10);
+  $('#c-days').innerHTML=rows.map(({s,i})=>`<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';return r==='S'?`<span class="chip s${m}">${dLv+1}</span>`:`<span class="chip d${r}${m}">${r}</span>`}).join('')}</span></div>`).join('')||'<p class="hint">Chưa có dây.</p>';
+  // cộng dồn thực tế so với bảng
+  const w=D.win;if(!w.length){$('#c-trend').innerHTML='';$('#c-trendtxt').textContent='';return}
+  let a=0,e=0;const A=[0],B=[0];w.forEach(x=>{a+=x.r==='S'?1:0;e+=x.e;A.push(a);B.push(e)});
+  const W=520,H=190,pl=30,pr=10,pt=10,pb=24,n=A.length-1,ym=Math.max(1,a,e)*1.15;
+  const X=i=>pl+(W-pl-pr)*i/Math.max(1,n),Y=v=>pt+(H-pt-pb)*(1-v/ym);
+  const path=arr=>arr.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Số lần lên cộng dồn">`;
+  const step=Math.max(1,Math.ceil(ym/4));for(let t=0;t<=ym;t+=step)s+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)"/><text x="${pl-5}" y="${Y(t)+4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${t}</text>`;
+  s+=`<text x="${pl}" y="${H-6}" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">0</text><text x="${W-pr}" y="${H-6}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${n} lần đập</text>`;
+  s+=`<path d="${path(B)}" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  s+=`<path d="${path(A)} L${X(n)} ${Y(0)} L${X(0)} ${Y(0)} Z" fill="var(--gold)" opacity=".12"/><path d="${path(A)}" fill="none" stroke="var(--gold)" stroke-width="2.5"/>`;
+  s+=`<circle cx="${X(n)}" cy="${Y(a)}" r="4" fill="var(--gold)"/><text x="${X(n)-6}" y="${Y(a)-8}" text-anchor="end" font-size="11" font-weight="700" fill="var(--ink)">Thực tế ${a}</text><text x="${X(n)-6}" y="${Y(e)+14}" text-anchor="end" font-size="10" fill="var(--muted)">Bảng ${fmt(e,1)}</text></svg>`;
+  $('#c-trend').innerHTML=s;
+  const d=a-e;$('#c-trendtxt').textContent=Math.abs(d)<1?`Đang khớp bảng: lên ${a} lần, bảng kỳ vọng ${fmt(e,1)}.`:d>0?`Đang hên hơn bảng ${fmt(d,1)} lần lên (${a} so với ${fmt(e,1)}).`:`Đang xui hơn bảng ${fmt(-d,1)} lần lên (${a} so với ${fmt(e,1)}).`;
+}
 function renderLen(D){
   const ks=Object.keys(D.gL).map(Number).sort((a,b)=>a-b);
   const lb=k=>k>=LCAP?LCAP+'+':String(k);
