@@ -112,6 +112,9 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .crow .cb{display:flex;flex-wrap:wrap;gap:3px}
 .chip{min-width:22px;height:22px;padding:0 4px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font:700 .72rem var(--f-mono);color:#fff;background:var(--bait)}
 .chip.d3{opacity:.4}.chip.d2{opacity:.7}.chip.s{background:var(--gold);color:#1b1404}.chip.m{box-shadow:0 0 0 2px var(--ink) inset}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip-btn{font:600 .78rem var(--f-body);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.chip-btn.on{background:var(--gold);border-color:var(--gold);color:#1b1404}
 /* ---- Stepper ---- */
 .stepper{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .stepper>button[data-d]{width:42px;height:38px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 1.3rem var(--f-display);cursor:pointer}
@@ -388,9 +391,10 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <details>
       <summary class="lbl" style="cursor:pointer">Sửa thông tin thẻ đang trên bàn</summary>
       <div class="stack" style="margin-top:10px">
-        <div class="field"><label for="u-e-name">Tên cầu thủ</label><input id="u-e-name" maxlength="24"></div>
+        <div class="field"><label for="u-e-name">Tên cầu thủ</label><input id="u-e-name" maxlength="24" list="u-names-dl" placeholder="Gõ hoặc chọn nhanh bên dưới"><datalist id="u-names-dl"></datalist>
+          <div class="chips" id="u-names"></div></div>
         <div class="row2">
-          <div class="field"><label for="u-e-pos">Vị trí</label><input id="u-e-pos" maxlength="4"></div>
+          <div class="field"><label for="u-e-pos">Vị trí</label><select id="u-e-pos"></select></div>
           <div class="field"><label for="u-e-ovr">OVR gốc (+1)</label><input id="u-e-ovr" type="number" min="40" max="160"></div>
         </div>
         <div class="field"><label for="u-e-lv">Cấp hiện tại</label><select id="u-e-lv"></select></div>
@@ -570,7 +574,8 @@ function renderStage(){
   $('#u-act-sim').hidden=mode!=='sim';$('#u-act-real').hidden=mode!=='real';
   $('#u-roll').textContent=maxed?'Đã tối đa +10':`Nâng cấp +${c.lv} → +${c.lv+1}`;
   ['#u-roll','#u-ok','#u-fail'].forEach(s=>$(s).disabled=maxed||busy||g<=0);
-  $('#u-e-name').value=c.name;$('#u-e-pos').value=c.pos;$('#u-e-ovr').value=c.ovr;$('#u-e-lv').value=c.lv;
+  if(document.activeElement!==$('#u-e-name'))$('#u-e-name').value=c.name;$('#u-e-pos').value=c.pos;if(typeof renderNames==='function')try{renderNames()}catch(e){}
+  $('#u-e-ovr').value=c.ovr;$('#u-e-lv').value=c.lv;
   {const b=cfg.bonus[c.lv-1]||0,st=c.stats||STAT_DEF[onTable];
    $('#u-stats').innerHTML=st.map((v,i)=>`<div><b>${Math.round(v+b)}</b><span>${STAT_L[i]}</span></div>`).join('');
    st.forEach((v,i)=>{const inp=$('#u-es'+i);if(inp&&document.activeElement!==inp)inp.value=v});}
@@ -639,7 +644,16 @@ $('#u-fclr').onclick=()=>{T().fod=[NaN,NaN,NaN,NaN,NaN];saveUp();renderStage()};
 $('#u-gman').onchange=e=>{T().gman=e.target.checked;saveUp();renderStage()};
 $('#u-gval').oninput=e=>{T().gval=parseFloat(e.target.value)||100;saveUp();renderStage()};
 $('#u-e-name').oninput=e=>{cards[onTable].name=e.target.value;saveUp();renderStage()};
-$('#u-e-pos').oninput=e=>{cards[onTable].pos=e.target.value.toUpperCase();saveUp();renderStage()};
+$('#u-e-name').addEventListener('change',e=>addName(e.target.value));
+$('#u-names').addEventListener('click',e=>{const b=e.target.closest('[data-nm]');if(!b)return;cards[onTable].name=b.dataset.nm;addName(b.dataset.nm);saveUp();renderStage()});
+function addName(n){n=(n||'').trim();if(!n)return;let hs=store.get('nameHist',[]);hs=[n,...hs.filter(x=>x!==n)].slice(0,12);store.set('nameHist',hs);renderNames()}
+function renderNames(){const hs=store.get('nameHist',[]);let wn=[];try{wn=(dWins||[]).map(w=>w.name).filter(Boolean)}catch(e){}
+  const all=[...new Set([...hs,...wn.reverse(),cards.chinh&&cards.chinh.name,cards.moi&&cards.moi.name].filter(Boolean))].slice(0,14);
+  const cur=cards[onTable].name;
+  $('#u-names').innerHTML=all.map(n=>`<button class="chip-btn${n===cur?' on':''}" data-nm="${escH(n)}">${escH(n)}</button>`).join('');
+  $('#u-names-dl').innerHTML=all.map(n=>`<option value="${escH(n)}">`).join('')}
+$('#u-e-pos').innerHTML=['GK','CB','LB','RB','LWB','RWB','CDM','CM','CAM','LM','RM','LW','RW','CF','ST'].map(x=>`<option>${x}</option>`).join('');
+$('#u-e-pos').onchange=e=>{cards[onTable].pos=e.target.value;saveUp();renderStage()};
 $('#u-e-ovr').oninput=e=>{const v=parseFloat(e.target.value);if(Number.isFinite(v)){cards[onTable].ovr=v;saveUp();renderStage()}};
 $('#u-e-lv').onchange=e=>{cards[onTable].lv=+e.target.value;saveUp();renderStage()};
 $('#u-k').oninput=e=>{uK=Math.max(1,Math.round(+e.target.value||1));saveUp();renderChain()};
