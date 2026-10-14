@@ -183,9 +183,9 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <div class="field"><span class="lbl">Số vạch thẻ chính dự định đập</span>
       <div class="stepper" id="d-vmain"><button data-d="-0.1" aria-label="Bớt 0,1 vạch chính">−</button><input id="d-vmain-o" type="number" min="0.1" max="5" step="0.1" aria-label="Số vạch thẻ chính"><button data-d="0.1" aria-label="Thêm 0,1 vạch chính">+</button></div>
     </div>
-    <div class="field"><label for="d-thr">Ngưỡng báo "Có thể vô" (%)</label>
-      <div class="row2" style="align-items:center"><input id="d-thr" type="number" min="1" max="95" step="0.1"><label class="chk" style="margin:0"><input type="checkbox" id="d-thrauto"> Tự tính</label></div>
-      <p class="hint" id="d-thrhint"></p>
+    <div class="field"><span class="lbl">Ngưỡng báo vô (app tự tính)</span>
+      <div class="mono" style="font-size:1.3rem;font-weight:700" id="d-thrv">–</div>
+      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App chỉ báo "Có thể vô" khi dây có ít nhất 15 mẫu, khác mức chung rõ ràng (p &lt; 0,1) và đẩy thẻ chính vượt ngưỡng này. Dây tối đa cũng tự tính theo số vạch mồi.</p>
     </div>
     <div class="field"><span class="lbl">Bấm khi đang mồi</span>
       <div class="btnrow" id="d-keys"></div>
@@ -259,7 +259,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <div class="tblwrap"><table><thead><tr><th>Độ dài</th><th>Số lần</th><th>Vô</th><th>Thô</th><th>Hiệu chỉnh</th><th>So TB</th></tr></thead><tbody id="d-tl"></tbody></table></div>
       <div class="verdict" id="d-lenv"></div>
     </div>
-    <p class="note">Tỷ lệ đã được kéo về trung bình khi mẫu ít, để 1/1 không thành 100%. App ưu tiên dãy 3 con cuối, không đủ 4 mẫu thì lùi về 2 con, rồi 1 con. Báo "Có thể vô" khi dãy đang dùng có ít nhất 5 mẫu và tỷ lệ cao hơn trung bình 1,4 lần. Nếu game dùng RNG độc lập thì các chênh lệch này sẽ tự mất khi anh nhập nhiều dây hơn.</p>
+    <p class="note">Các bảng bên dưới chỉ để theo dõi. Tín hiệu chỉ dùng dãy có ít nhất 15 mẫu và khác mức chung có ý nghĩa thống kê (p &lt; 0,1); chưa có thì tính theo bảng tỷ lệ. Nếu game ngẫu nhiên độc lập, các chênh lệch sẽ tự mất khi nhập nhiều dây hơn.</p>
   </div>
 </div>
 </section>
@@ -619,14 +619,19 @@ function buildDay(){
   return{tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
 }
 // longest pattern with >=4 samples: 3 con cuối → 2 con cuối → 1 con cuối
+function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Math.max(1e-9,m*(1-Math.min(0.95,m/G.n)));const z=(G.s-m)/Math.sqrt(v);return{z,pv:erfc(Math.abs(z)/Math.SQRT2)}}
+const MIN_N=15,MAX_P=0.1;
 function pickRate(D){
   const z={n:0,s:0,E:0},A=D.g1[D.c1]||z,B=D.g2[D.c2]||z,C=D.g3[D.c3]||z;
   const R0=(D.sN+1)/(D.E+1);                       // thực tế chung so với bảng
-  const lp=G=>(G.s+R0)/(G.E+1);                     // dãy này so với bảng, kéo về R0 khi ít mẫu
-  const out=(G,by)=>{const L=lp(G);return{L,R0,n:G.n,by,rate:Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*L)}};
-  if(C.n>=4&&D.c3.length===3)return out(C,'3 con cuối "'+D.c3+'"');
-  if(B.n>=4)return out(B,'2 con cuối "'+D.c2.replace('^','đầu ')+'"');
-  return out(A,'con cuối');
+  const cands=[];
+  if(D.c3.length===3)cands.push([C,'3 con cuối "'+D.c3+'"']);
+  cands.push([B,'2 con cuối "'+D.c2.replace('^','đầu ')+'"'],[A,'con cuối "'+lab(D.c1)+'"']);
+  const rateOf=L=>Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*L);
+  for(const [G,by] of cands){const t=sigTest(G,R0);
+    if(G.n>=MIN_N&&t.pv<MAX_P){const L=(G.s+R0)/(G.E+1);return{L,R0,n:G.n,by,pv:t.pv,reliable:true,conf:G.n>=30&&t.pv<0.05?'Cao':'Trung bình',rate:rateOf(L)}}}
+  const best=cands.reduce((a,b)=>b[0].n>a[0].n?b:a);const t=sigTest(best[0],R0);
+  return{L:R0,R0,n:best[0].n,by:'bảng (chưa có dây đủ tin cậy)',pv:t.pv,reliable:false,conf:'Thấp',rate:rateOf(R0),near:best[1]};
 }
 const K_SHRINK=4,LCAP=8;
 function erfc(x){const t=1/(1+.5*Math.abs(x));const y=t*Math.exp(-x*x-1.26551223+t*(1.00002368+t*(.37409196+t*(.09678418+t*(-.18628806+t*(.27886807+t*(-1.13520398+t*(1.48851587+t*(-.82215223+t*.17087277)))))))));return x>=0?y:2-y}
@@ -641,28 +646,29 @@ function renderDay(){
   const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
   const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
   const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
+  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;}
   const C3=D.g3[D.c3]||{n:0,s:0},FF=D.gF[D.cF]||{n:0,s:0};
   $('#d-next').textContent=pct(rate);
   const curTxt=D.last.length?D.last.map(x=>x==='S'?dLv+1:x).join(''):'(dây mới)';
-  $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
+  $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>Độ tin cậy</dt><dd>${PK.conf}${PK.reliable?` (p = ${fmt(PK.pv,2)}, ${PK.n} mẫu)`:''}</dd><dt>Dây hiện tại</dt><dd>${D.cL} / tối đa ${D.Lmax} lần thua</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
   // next-result distribution given prev1, shrunk to overall distribution
   $('#d-dist').innerHTML=D.keys.map(k=>{const q=((A.c[k]||0)+K_SHRINK*(D.tot[k]||0)/D.n)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');
   const lift=PK.L/PK.R0;
   {const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
    let nv={n:0,s:0,E:0};if(dVach)D.win.forEach(x=>{if(x.pv===dVach){nv.n++;nv.E+=x.e;nv.s+=x.r==='S'?1:0}});
-   const liftV=dVach&&nv.n>=3?((nv.s+PK.R0)/(nv.E+1))/PK.R0:1;
+   const tv=sigTest(nv,PK.R0),vOk=dVach&&nv.n>=MIN_N&&tv.pv<MAX_P;const liftV=vOk?((nv.s+PK.R0)/(nv.E+1))/PK.R0:1;
    const base=tran*dVmain/5,pm=Math.min(0.95,base*PK.L*liftV);
    $('#d-pm').textContent=pct(pm);
-   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1}</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>× Thực tế so với bảng (toàn dây)</dt><dd>×${fmt(PK.R0,2)}</dd><dt>× Dây hiện tại so với chung (${PK.by})</dt><dd>×${fmt(lift,2)}</dd><dt>× Hệ số mồi ${dVach?vtxt(dVach)+' vạch':'(chưa chọn)'}</dt><dd>${dVach?(nv.n>=3?`×${fmt(liftV,2)} (${nv.s}/${nv.n})`:`×1 (mới ${nv.n} mẫu)`):'×1'}</dd>`;
+   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1}</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>× Thực tế so với bảng (toàn dây)</dt><dd>×${fmt(PK.R0,2)}</dd><dt>× Dây hiện tại so với chung (${PK.by})</dt><dd>×${fmt(lift,2)}</dd><dt>× Hệ số mồi ${dVach?vtxt(dVach)+' vạch':'(chưa chọn)'}</dt><dd>${dVach?(vOk?`×${fmt(liftV,2)} (${nv.s}/${nv.n})`:`×1 (${nv.s}/${nv.n}, chưa đủ tin cậy)`):'×1'}</dd>`;
    D.pm=pm;}
-  const thrP=dThrAuto?Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10:dThr;
-  const ti=$('#d-thr');ti.disabled=dThrAuto;if(dThrAuto||document.activeElement!==ti)ti.value=thrP;
-  $('#d-thrhint').textContent=dThrAuto?`Tự tính = tỷ lệ bảng ở ${vtxt(dVmain)} vạch chính (${fmt(thrP,1)}%). App chỉ báo vô khi dây đẩy thẻ chính cao hơn mức bình thường của bảng. Bỏ tích để tự đặt.`:'Đang dùng ngưỡng anh tự đặt.';
-  const thr=thrP/100,pmOk=D.pm>=thr;
-  if(nUsed>=5&&lift>=1.4&&!pmOk){sig.className='signal';sig.innerHTML=`<b>Dây đang đẹp nhưng % còn thấp</b>Dây hiện tại gấp ${fmt(lift,1)} lần mức chung (${nUsed} mẫu), nhưng thẻ chính ${vtxt(dVmain)} vạch chỉ dự kiến ${pct(D.pm)}, dưới ngưỡng ${fmt(thrP,1)}%. Mồi tiếp hoặc tăng vạch chính.`}
-  else if(nUsed>=5&&lift>=1.4){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây hiện tại cho tỷ lệ ${pct(rate)}, gấp ${fmt(lift,1)} lần trung bình (${nUsed} mẫu). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}. Chuyển thẻ chính và đập.`}
-  else if(nUsed>=5&&lift<=0.7){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây này tỷ lệ chỉ ${pct(rate)}, thấp hơn trung bình ${pct(D.p0)}.`}
-  else{sig.className='signal';sig.innerHTML=`<b>Chưa rõ, mồi tiếp</b>Dây hiện tại ${pct(rate)}, gần trung bình ${pct(D.p0)}${nUsed<5?`, mới ${nUsed} mẫu`:''}. Đợi dây có tỷ lệ cao hơn.`}
+  const thrP=Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10,thr=thrP/100;
+  $('#d-thrv').textContent=fmt(thrP,1)+'%';
+  const pBait=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);
+  if(PK.reliable&&lift>1&&D.pm>=thr){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây ${PK.by} có tỷ lệ cao hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, p = ${fmt(PK.pv,2)}, độ tin cậy ${PK.conf}). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}, trên mức bảng ${fmt(thrP,1)}%.`}
+  else if(PK.reliable&&lift<1){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, p = ${fmt(PK.pv,2)}). Thẻ chính lúc này chỉ ${pct(D.pm)}.`}
+  else if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, nên dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Lần tới vẫn chỉ ${pct(pBait)}, nhưng anh đã tốn ${D.cL} lần phôi. Nên nghỉ hoặc xuống dòng bắt đầu dây mới.`}
+  else{sig.className='signal';sig.innerHTML=`<b>Chưa có dây đáng tin, vô theo bảng</b>Chưa dãy nào đủ ${MIN_N} mẫu và khác mức chung rõ ràng (gần nhất: ${PK.near||PK.by}, p = ${fmt(PK.pv,2)}). Vô lúc nào tỷ lệ cũng gần như nhau: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Muốn tăng tỷ lệ thì tăng vạch chính.`}
+  if(!(D.cL>=D.Lmax&&!PK.reliable))sig.style.borderColor='';
   const row=(k,G,isCur)=>{const r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0;return `<tr${isCur?' style="background:var(--gold-soft)"':''}><td>${k}${isCur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`};
   $('#d-t1').innerHTML=['^','S',...D.keys.slice(1)].filter(k=>D.g1[k]).map(k=>row(lab(k),D.g1[k],k===D.c1)).join('');
   $('#d-t2').innerHTML=Object.entries(D.g2).filter(([k,G])=>G.n>=3&&k.length===2&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c2)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có cặp nào đủ 3 mẫu.</td></tr>`;
@@ -672,8 +678,6 @@ function renderDay(){
 }
 let dVach=store.get('dayVach',0);
 let dVmain=store.get('dayVmain',5);
-let dThr=store.get('dayThr',15),dThrAuto=store.get('dayThrAuto',true);
-$('#d-thr').value=dThr;$('#d-thrauto').checked=dThrAuto;$('#d-thrauto').onchange=e=>{dThrAuto=e.target.checked;store.set('dayThrAuto',dThrAuto);renderDay()};$('#d-thr').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0&&v<=95){dThr=v;store.set('dayThr',dThr);renderDay()}});
 const vtxt=v=>String(v).replace('.',',');
 const r1d=v=>Math.round(v*10)/10;
 function renderVmainSeg(){const i=$('#d-vmain-o');if(document.activeElement!==i)i.value=dVmain}
