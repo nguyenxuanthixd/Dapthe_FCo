@@ -179,7 +179,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
           <div class="mono" id="acct-who" style="word-break:break-all"></div>
           <p class="hint" id="acct-status"></p>
           <button class="btn" id="acct-logout">Đăng xuất</button>
-          <p class="hint">Dữ liệu dây, dây đã vô và cài đặt lưu theo tài khoản, dùng chung giữa các máy.</p>
+          <p class="hint">Dữ liệu dây, dây đã vô và cài đặt lưu theo tài khoản, dùng chung giữa các máy. Quản trị viên của app có thể xem dây để tổng hợp thống kê.</p>
         </div>
         <p class="hint" id="acct-msg"></p>
       </div>
@@ -191,6 +191,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
   <button class="tab" role="tab" data-tab="day" aria-selected="true">Tính dây</button>
   <button class="tab" role="tab" data-tab="up" aria-selected="false">Đập thẻ</button>
   <button class="tab" role="tab" data-tab="rate" aria-selected="false">Bảng tỷ lệ</button>
+  <button class="tab" role="tab" data-tab="admin" aria-selected="false" id="tab-admin-btn" hidden>Admin</button>
 </nav>
 
 <!-- ============ DÂY ============ -->
@@ -363,6 +364,25 @@ td input{width:80px;padding:4px 6px;text-align:right}
 </div>
 </section>
 
+<!-- ============ ADMIN ============ -->
+<section id="tab-admin" hidden>
+<div class="grid">
+  <div class="panel stack">
+    <h2>Tài khoản</h2>
+    <div class="btnrow"><button class="btn small" id="adm-reload">Tải lại danh sách</button></div>
+    <p class="hint" id="adm-msg"></p>
+    <div class="tblwrap log"><table><thead><tr><th>Tài khoản</th><th>Lần đập</th><th>Lên</th><th>Cập nhật</th></tr></thead><tbody id="adm-users"></tbody></table></div>
+    <p class="hint">Bấm vào một tài khoản để xem dây. Chỉ xem, không sửa được dữ liệu của người khác.</p>
+  </div>
+  <div class="panel stack">
+    <h2 id="adm-title">Chọn tài khoản</h2>
+    <div class="tblwrap"><table><thead><tr><th>Mức</th><th>Lần đập</th><th>Lên</th><th>Thực tế</th><th>Bảng kỳ vọng</th><th>So bảng</th></tr></thead><tbody id="adm-sum"></tbody></table></div>
+    <div id="adm-days" class="stack"></div>
+    <div><div class="lbl" style="margin-bottom:6px">Dây đã vô</div><div class="tblwrap"><table><thead><tr><th>Lúc</th><th>Cầu thủ</th><th>Mức</th><th>Dây</th></tr></thead><tbody id="adm-wins"></tbody></table></div></div>
+  </div>
+</div>
+</section>
+
 <!-- ============ RATES ============ -->
 <section id="tab-rate" hidden>
 <div class="panel" style="max-width:640px">
@@ -426,7 +446,8 @@ function dropText(lv){const r=rates[lv-1];if(!r)return'–';const a=Math.min(r[1
 /* ---------- Tabs ---------- */
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b));
-  ['day','up','rate'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab);
+  ['day','up','rate','admin'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab);
+  if(b.dataset.tab==='admin'&&window.__fcoAdminLoad)window.__fcoAdminLoad();
   store.set('tab',b.dataset.tab);
 });
 const lastTab=store.get('tab2','day');store.set('tab2','day'); const tb=document.querySelector(`.tab[data-tab="${lastTab}"]`); if(tb)tb.click();
@@ -810,6 +831,7 @@ $('#d-bk').onclick=()=>{dText=dText.replace(/(\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|
 
 /* ---------- Tài khoản (Firebase) ---------- */
 // Dán firebaseConfig của project Firebase vào đây. Để null thì app chạy như cũ, chỉ lưu trên máy.
+const ADMIN_EMAILS=['nguyenxuanthixd@gmail.com']; // tài khoản admin, xem được dây của mọi tài khoản
 const FIREBASE_CONFIG={
   apiKey:"AIzaSyBSSV0UrmfoQxdkW7NsP-TRIVan8e84PT8",
   authDomain:"dapthe-fco.firebaseapp.com",
@@ -839,12 +861,40 @@ const FIREBASE_CONFIG={
     const ref=()=>db.collection('users').doc(user.uid);
     const status=t=>{$('#acct-status').textContent=t};
     const push=()=>ref().set({data:snapLocal(),email:user.email||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>status('Đã lưu lên tài khoản.')).catch(e=>status('Chưa lưu được: '+em(e)));
+    function setupAdmin(db){
+      $('#tab-admin-btn').hidden=false;
+      let users=[],loaded=false;
+      const J=(o,k,d)=>{try{return o&&o[k]!=null?JSON.parse(o[k]):d}catch(e){return d}};
+      const stat=(text,lv)=>{const tr=(rates[lv-1]?rates[lv-1][0]:0)/100;let n=0,s=0,E=0;parseDay(text||'',lv).sess.forEach(ss=>ss.forEach((r,i)=>{n++;if(r==='S')s++;E+=tr*Math.min(5,ss.v[i]!=null?ss.v[i]:5)/5}));return{n,s,E}};
+      const fmtT=t=>{if(!t)return'–';const d=t.toDate?t.toDate():new Date(t);return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
+      function load(){
+        $('#adm-msg').textContent='Đang tải…';
+        db.collection('users').get().then(q=>{
+          users=q.docs.map(d=>{const x=d.data(),data=x.data||{},texts=J(data,'fcolab_dayTexts',{}),wins=J(data,'fcolab_dayWins',[]);
+            let n=0,s=0;Object.entries(texts).forEach(([lv,t])=>{const r=stat(t,+lv);n+=r.n;s+=r.s});
+            return{id:d.id,email:x.email||d.id,at:x.updatedAt,texts,wins,n,s}}).sort((a,b)=>b.n-a.n);
+          loaded=true;$('#adm-msg').textContent=`${users.length} tài khoản.`;
+          $('#adm-users').innerHTML=users.map((u,i)=>`<tr data-u="${i}" style="cursor:pointer"><td style="font-family:var(--f-body);text-align:left">${escH(u.email)}</td><td>${u.n}</td><td>${u.s}</td><td>${fmtT(u.at)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:left;color:var(--muted)">Chưa có tài khoản nào lưu dữ liệu.</td></tr>';
+        }).catch(e=>{$('#adm-msg').textContent=e.code==='permission-denied'?'Chưa có quyền admin. Kiểm tra luật Firestore đã có đoạn cho admin chưa, và đăng nhập bằng Google với email admin.':'Lỗi: '+(e.code||e)});
+      }
+      function show(u){
+        $('#adm-title').textContent=u.email;
+        const lvs=Object.keys(u.texts).filter(l=>(u.texts[l]||'').trim()).sort((a,b)=>a-b);
+        $('#adm-sum').innerHTML=lvs.map(l=>{const r=stat(u.texts[l],+l),R=(r.s+1)/(r.E+1);return `<tr><td>+${l}→+${+l+1}</td><td>${r.n}</td><td>${r.s}</td><td>${r.n?pct(r.s/r.n):'–'}</td><td>${fmt(r.E,1)}</td><td>×${fmt(R,2)}</td></tr>`}).join('')||'<tr><td colspan="6" style="text-align:left;color:var(--muted)">Chưa có dây.</td></tr>';
+        $('#adm-days').innerHTML=lvs.map(l=>`<div><div class="lbl" style="margin-bottom:4px">Dây +${l} → +${+l+1}</div><textarea readonly rows="5" style="width:100%">${escH(u.texts[l])}</textarea></div>`).join('');
+        $('#adm-wins').innerHTML=(u.wins||[]).slice().reverse().map(w=>`<tr><td>${fmtT(w.t)}</td><td style="font-family:var(--f-body)">${w.name?escH(w.name):'–'}</td><td>+${w.lv}→+${w.lv+1}</td><td style="white-space:normal;text-align:left">${escH(w.line||'')}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';
+      }
+      $('#adm-users').addEventListener('click',e=>{const r=e.target.closest('[data-u]');if(r)show(users[+r.dataset.u])});
+      $('#adm-reload').onclick=load;
+      window.__fcoAdminLoad=()=>{if(!loaded)load()};
+    }
     window.__fcoSync=()=>{if(!user)return;status('Đang lưu…');clearTimeout(timer);timer=setTimeout(push,1200)};
     auth.onAuthStateChanged(async u=>{
       user=u;$('#acct-out').hidden=!!u;$('#acct-in').hidden=!u;
       $('#acct-btn').textContent=u?(u.displayName||u.email||'Tài khoản'):'Đăng nhập';
       if(!u)return;
       $('#acct-who').textContent=u.email||u.displayName||u.uid;msg('');status('Đang đồng bộ…');
+      if(ADMIN_EMAILS.includes((u.email||'').toLowerCase()))setupAdmin(db);
       try{
         const snap=await ref().get(),cloud=snap.exists&&snap.data().data;
         if(cloud){
