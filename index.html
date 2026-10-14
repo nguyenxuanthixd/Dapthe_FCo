@@ -838,6 +838,7 @@ const shrink=(s,n,p0)=>(s+K_SHRINK*p0)/(n+K_SHRINK);
 function lenPattern(D,Lmid){
   const dl=[];let cur={len:0,n:0,E:0};
   D.sess.forEach(s=>s.forEach((r,i)=>{const e=D.tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5;cur.n++;cur.E+=e;if(r==='S'){dl.push(cur);cur={len:0,n:0,E:0}}else cur.len++}));
+  if(dl.length>=8){const so=dl.map(x=>x.len).sort((a,b)=>a-b),md=so.length%2?so[(so.length-1)/2]:(so[so.length/2-1]+so[so.length/2])/2;Lmid=Math.floor(md)+1}
   const isL=x=>x.len>=Lmid,mk=()=>({k:0,n:0,s:0,E:0,sum:0,sh:0});
   const A=mk(),B=mk(),O=mk();
   const add=(g,x)=>{g.k++;g.n+=x.n;g.s++;g.E+=x.E;g.sum+=x.len;if(!isL(x))g.sh++};
@@ -858,7 +859,7 @@ function renderDay(){
   const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
   const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
   const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
-  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;
+  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*Math.max(0.8,Math.min(1.2,PK.R0)));D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;
    const Lmid=pb>0&&pb<1?Math.max(1,Math.ceil(Math.log(0.5)/Math.log(1-pb))):2;D.LP=lenPattern(D,Lmid);
    D.lpF=1;if(D.LP.proven&&D.LP.prevL){D.lpF=Math.max(0.8,Math.min(1.2,D.LP.ratio));const pa=Math.min(0.95,pb*D.lpF);D.Lmin=Math.max(1,Math.floor(Math.log(0.5)/Math.log(1-pa)))}}
   // giới hạn mồi tự động: dây chưa đáng tin thì mồi chỉ tốn phôi, cho tối đa 3 lần; dây đáng tin thì cho đợi tới dây tối đa
@@ -886,16 +887,16 @@ function renderDay(){
   const badPat=PK.reliable&&lift<0.9;
   const pm5=Math.min(0.95,D.base*5/dVmain);
   if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Dây này bất thường, nên nghỉ, lần sau quay lại mồi tiếp. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`}
-  else if(D.anomaly){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Dây bất thường, dừng</b>Mồi đang lên gấp ×${fmt(PK.R0,2)} so với bảng (${D.sN}/${D.n} lần lên). Thường là chuỗi may hoặc ghi sai số vạch. Kiểm tra lại số vạch đã ghi rồi mới vô. Thẻ chính ${vtxt(dVmain)} vạch vẫn chỉ ${pct(D.pm)}.`}
   else if(badPat){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây xấu, dừng</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)}, đã chứng minh qua ${PK.n} mẫu (p = ${fmt(PK.pv,3)}). Thẻ chính lúc này chỉ ${pct(D.pm)}. Mồi tiếp rồi xem lại.`}
   else if(D.cL<D.Lmin){sig.className='signal';sig.innerHTML=`<b>Mồi trước</b>Dây hiện tại mới ${D.cL} lần thua, chưa tới nhịp vô. Mồi tới ít nhất <strong>${D.Lmin} lần thua</strong> (một nửa số dây đã lên trước mức này) rồi app nhắc vô, còn ${D.Lmin-D.cL} lần. Tỷ lệ thẻ chính không đổi (≈ ${pct(D.pm)}); đây là nhịp để không vô ngay sau kèo vừa lên.`}
   else{sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <strong>${pct(D.pm)}</strong>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}. Dây bình thường, không có lý do dừng. Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo, vô lúc nào cũng như nhau, anh quyết theo tỷ lệ này.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
   if(sig.className==='signal go')sig.style.borderColor='';
+  if(D.anomaly&&!(D.cL>=D.Lmax))sig.insertAdjacentHTML('beforeend',`<br><span class="hint" style="color:var(--warn)">Mồi đang lên gấp ×${fmt(PK.R0,2)} so với bảng (${fmt(D.sN,1)}/${fmt(D.n,1)}). Thường là chuỗi may hoặc ghi sai số vạch (kèo chính ghi thiếu c). App không áp phần này cho thẻ chính.</span>`);
   {const nowGo=sig.className==='signal go';if(window.__prevGo===false&&nowGo){try{navigator.vibrate&&navigator.vibrate([150,80,150])}catch(e){}const mi=document.querySelector('#d-mini');setTimeout(()=>{mi.classList.remove('pulse');void mi.offsetWidth;mi.classList.add('pulse')},0)}window.__prevGo=nowGo;}
   {const P=D.LP,row=(nm,g,cur)=>`<tr${cur?' style="font-weight:700"':''}><td style="text-align:left">${nm}${cur?' ◀':''}</td><td>${g.k}</td><td>${g.k?fmt(g.sum/g.k,1):'–'}</td><td>${g.k?pct(g.sh/g.k):'–'}</td><td>${g.k?'×'+fmt(g.s/Math.max(0.01,g.E),2):'–'}</td></tr>`;
    $('#d-lptab').innerHTML=row('Sau dây ngắn',P.O,!P.prevL&&P.dl.length>0)+row('Sau dây dài (1 hoặc 2)',P.A,P.prevL&&!P.prev2)+row('Sau 2 dây dài liền',P.B,P.prev2);
    const verdict=P.proven?(P.ratio>1?`<b>Đã chứng minh</b>: sau dây dài, dây kế lên nhanh hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}). App đang áp: vô sớm hơn và cộng tỷ lệ khi dây trước dài.`:`<b>Đã chứng minh ngược lại</b>: sau dây dài, dây kế lên chậm hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}).`):`<b>Chưa chứng minh</b>: có ${P.A.k}/${PROVE_N} dây sau dây dài${P.A.k?`, hiện ×${fmt(P.ratio,2)} so với sau dây ngắn (p = ${fmt(P.pv,2)})`:''}. Chưa đủ thì app chỉ theo dõi, không cộng tỷ lệ.`;
-   $('#d-lpsum').innerHTML=`Dây dài = từ ${P.Lmid} lần thua trở lên (mức một nửa số dây đã lên trước đó). Các dây gần nhất (số lần thua): <span class="mono">${P.recent.join(' · ')||'–'}</span>. ${verdict}`;
+   $('#d-lpsum').innerHTML=`Dây dài = từ ${P.Lmid} lần thua trở lên (dài hơn trung vị các dây của anh${P.dl.length<8?', chưa đủ 8 dây nên tạm lấy theo bảng':''}). Các dây gần nhất (số lần thua): <span class="mono">${P.recent.join(' · ')||'–'}</span>. ${verdict}`;
    if(D.LP.prevL&&(sig.className==='signal go'||/Mồi trước/.test(sig.innerHTML))){sig.insertAdjacentHTML('beforeend',`<br><span class="hint">Dây trước dài${P.prev2?' (2 dây dài liền)':''}: ${P.proven?`đã chứng minh ×${fmt(P.ratio,2)}, đã áp.`:`theo anh dây này dễ ngắn; dữ liệu mới có ${P.A.k} dây để kiểm (cần ${PROVE_N}), chưa cộng tỷ lệ.`}</span>`)}}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
