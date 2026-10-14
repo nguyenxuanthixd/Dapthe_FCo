@@ -322,6 +322,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <dl class="kv" id="d-pmkv"></dl>
       <p class="hint" style="margin-top:8px">Công thức: tỷ lệ trần (bảng) × vạch chính/5 × thực tế so với bảng × dây hiện tại so với chung × hệ số vạch mồi. Mỗi lần đập trong dây được so với kỳ vọng của bảng theo đúng số vạch lúc đập (vạch mồi v…, vạch chính c…; không ghi thì coi là 5 vạch). Tối đa 95%.</p>
     </div>
+    <div class="card" style="border-top-color:var(--gold)">
+      <h3>Quy luật dây dài / ngắn</h3>
+      <p class="note" id="d-lpsum" style="margin:0 0 8px"></p>
+      <div class="tblwrap"><table><thead><tr><th style="text-align:left">Dây kế tiếp</th><th>Số dây</th><th>TB thua</th><th>Dây ngắn</th><th>So bảng</th></tr></thead><tbody id="d-lptab"></tbody></table></div>
+    </div>
     <div class="card" style="border-top-color:var(--ok)">
       <h3>Kiểm chứng tín hiệu</h3>
       <p class="note" id="d-sigsum" style="margin:0 0 8px"></p>
@@ -829,6 +834,20 @@ function pickRate(D){
 const K_SHRINK=4,LCAP=8;
 function erfc(x){const t=1/(1+.5*Math.abs(x));const y=t*Math.exp(-x*x-1.26551223+t*(1.00002368+t*(.37409196+t*(.09678418+t*(-.18628806+t*(.27886807+t*(-1.13520398+t*(1.48851587+t*(-.82215223+t*.17087277)))))))));return x>=0?y:2-y}
 const shrink=(s,n,p0)=>(s+K_SHRINK*p0)/(n+K_SHRINK);
+// Quy luật dây dài/ngắn: sau 1–2 dây dài, dây kế có lên nhanh hơn không? Chỉ áp khi đã chứng minh (≥30 dây, p < 0,05).
+function lenPattern(D,Lmid){
+  const dl=[];let cur={len:0,n:0,E:0};
+  D.sess.forEach(s=>s.forEach((r,i)=>{const e=D.tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5;cur.n++;cur.E+=e;if(r==='S'){dl.push(cur);cur={len:0,n:0,E:0}}else cur.len++}));
+  const isL=x=>x.len>=Lmid,mk=()=>({k:0,n:0,s:0,E:0,sum:0,sh:0});
+  const A=mk(),B=mk(),O=mk();
+  const add=(g,x)=>{g.k++;g.n+=x.n;g.s++;g.E+=x.E;g.sum+=x.len;if(!isL(x))g.sh++};
+  for(let i=1;i<dl.length;i++){if(isL(dl[i-1])){add(A,dl[i]);if(i>=2&&isL(dl[i-2]))add(B,dl[i])}else add(O,dl[i])}
+  const Rr=(O.s+1)/(O.E+1),t=sigTest({n:A.n,s:A.s,E:A.E},Rr);
+  const ratio=((A.s+3*Rr)/(A.E+3))/Rr;
+  const proven=A.k>=PROVE_N&&t.pv<PROVE_P;
+  const prevL=dl.length>0&&isL(dl[dl.length-1]),prev2=dl.length>1&&prevL&&isL(dl[dl.length-2]);
+  return{dl,A,B,O,Lmid,ratio,pv:t.pv,proven,prevL,prev2,recent:dl.slice(-8).map(x=>x.len)};
+}
 function renderDay(){
   const D=buildDay();
   $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex:1 1 60%">Kèo chính thành công → nhập cầu thủ</button>`+`<button class="btn bad" data-mainfail="1" style="flex:1 1 30%">Kèo chính tạch</button>`;
@@ -839,7 +858,9 @@ function renderDay(){
   const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
   const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
   const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
-  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;}
+  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;
+   const Lmid=pb>0&&pb<1?Math.max(1,Math.ceil(Math.log(0.5)/Math.log(1-pb))):2;D.LP=lenPattern(D,Lmid);
+   D.lpF=1;if(D.LP.proven&&D.LP.prevL){D.lpF=Math.max(0.8,Math.min(1.2,D.LP.ratio));const pa=Math.min(0.95,pb*D.lpF);D.Lmin=Math.max(1,Math.floor(Math.log(0.5)/Math.log(1-pa)))}}
   // giới hạn mồi tự động: dây chưa đáng tin thì mồi chỉ tốn phôi, cho tối đa 3 lần; dây đáng tin thì cho đợi tới dây tối đa
   D.capB=D.Lmax; // chỉ dừng khi dây quá dài mà chưa lên
   const C3=D.g3[D.c3]||{n:0,s:0},FF=D.gF[D.cF]||{n:0,s:0};
@@ -854,10 +875,10 @@ function renderDay(){
   {const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
    const anomaly=D.n>=10&&PK.R0>1.4;
    const liftM=PK.reliable?Math.max(0.8,Math.min(1.2,lift)):1;
-   const base=tran*dVmain/5,pm=Math.min(0.95,base*liftM);
+   const base=tran*dVmain/5,pm=Math.min(0.95,base*liftM*D.lpF);
    D.anomaly=anomaly;D.base=base;
    $('#d-pm').textContent=pct(pm);
-   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1} (bảng Garena)</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>Điều chỉnh theo dây</dt><dd>${PK.reliable?`×${fmt(liftM,2)} (${PK.by}, ${PK.n} mẫu, p = ${fmt(PK.pv,3)})`:'Không có (chưa dãy nào đủ 30 mẫu và p &lt; 0,05)'}</dd><dt>Mồi thực tế so với bảng</dt><dd>×${fmt(PK.R0,2)} <span class="hint">(tham khảo, không áp cho thẻ chính)</span></dd>`;
+   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1} (bảng Garena)</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>Điều chỉnh theo dây</dt><dd>${PK.reliable?`×${fmt(liftM,2)} (${PK.by}, ${PK.n} mẫu, p = ${fmt(PK.pv,3)})`:'Không có (chưa dãy nào đủ 30 mẫu và p &lt; 0,05)'}</dd><dt>Quy luật dây dài/ngắn</dt><dd>${D.lpF!==1?`×${fmt(D.lpF,2)} (dây trước dài, đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd><dt>Mồi thực tế so với bảng</dt><dd>×${fmt(PK.R0,2)} <span class="hint">(tham khảo, không áp cho thẻ chính)</span></dd>`;
    D.pm=pm;}
   const thrP=Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10,thr=thrP/100;
   $('#d-thrv').textContent=fmt(thrP,1)+'%';
@@ -871,6 +892,11 @@ function renderDay(){
   else{sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <strong>${pct(D.pm)}</strong>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}. Dây bình thường, không có lý do dừng. Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo, vô lúc nào cũng như nhau, anh quyết theo tỷ lệ này.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
   if(sig.className==='signal go')sig.style.borderColor='';
   {const nowGo=sig.className==='signal go';if(window.__prevGo===false&&nowGo){try{navigator.vibrate&&navigator.vibrate([150,80,150])}catch(e){}const mi=document.querySelector('#d-mini');setTimeout(()=>{mi.classList.remove('pulse');void mi.offsetWidth;mi.classList.add('pulse')},0)}window.__prevGo=nowGo;}
+  {const P=D.LP,row=(nm,g,cur)=>`<tr${cur?' style="font-weight:700"':''}><td style="text-align:left">${nm}${cur?' ◀':''}</td><td>${g.k}</td><td>${g.k?fmt(g.sum/g.k,1):'–'}</td><td>${g.k?pct(g.sh/g.k):'–'}</td><td>${g.k?'×'+fmt(g.s/Math.max(0.01,g.E),2):'–'}</td></tr>`;
+   $('#d-lptab').innerHTML=row('Sau dây ngắn',P.O,!P.prevL&&P.dl.length>0)+row('Sau dây dài (1 hoặc 2)',P.A,P.prevL&&!P.prev2)+row('Sau 2 dây dài liền',P.B,P.prev2);
+   const verdict=P.proven?(P.ratio>1?`<b>Đã chứng minh</b>: sau dây dài, dây kế lên nhanh hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}). App đang áp: vô sớm hơn và cộng tỷ lệ khi dây trước dài.`:`<b>Đã chứng minh ngược lại</b>: sau dây dài, dây kế lên chậm hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}).`):`<b>Chưa chứng minh</b>: có ${P.A.k}/${PROVE_N} dây sau dây dài${P.A.k?`, hiện ×${fmt(P.ratio,2)} so với sau dây ngắn (p = ${fmt(P.pv,2)})`:''}. Chưa đủ thì app chỉ theo dõi, không cộng tỷ lệ.`;
+   $('#d-lpsum').innerHTML=`Dây dài = từ ${P.Lmid} lần thua trở lên (mức một nửa số dây đã lên trước đó). Các dây gần nhất (số lần thua): <span class="mono">${P.recent.join(' · ')||'–'}</span>. ${verdict}`;
+   if(D.LP.prevL&&(sig.className==='signal go'||/Mồi trước/.test(sig.innerHTML))){sig.insertAdjacentHTML('beforeend',`<br><span class="hint">Dây trước dài${P.prev2?' (2 dây dài liền)':''}: ${P.proven?`đã chứng minh ×${fmt(P.ratio,2)}, đã áp.`:`theo anh dây này dễ ngắn; dữ liệu mới có ${P.A.k} dây để kiểm (cần ${PROVE_N}), chưa cộng tỷ lệ.`}</span>`)}}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
