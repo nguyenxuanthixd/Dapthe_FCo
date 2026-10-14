@@ -185,7 +185,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     </div>
     <div class="field"><span class="lbl">Ngưỡng báo vô (app tự tính)</span>
       <div class="mono" style="font-size:1.3rem;font-weight:700" id="d-thrv">–</div>
-      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App chỉ báo "Có thể vô" khi dây có ít nhất 15 mẫu, khác mức chung rõ ràng (p &lt; 0,1) và đẩy thẻ chính vượt ngưỡng này. Dây tối đa cũng tự tính theo số vạch mồi.</p>
+      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App chỉ báo "Có thể vô" khi dây có ít nhất 15 mẫu, khác mức chung rõ ràng (p &lt; 0,1) và đẩy thẻ chính vượt ngưỡng này. Dây tối đa và giới hạn mồi mỗi kèo cũng tự tính: chưa có dây đáng tin thì tối đa 3 lần mồi rồi vô hoặc dừng.</p>
     </div>
     <div class="field"><span class="lbl">Bấm khi đang mồi</span>
       <div class="btnrow" id="d-keys"></div>
@@ -493,7 +493,7 @@ function record(ok,toLv){
   let winId=null;
   if(from>=2){dayAdd=ok?'='+(from+1):String(dropTo);
     if(!ok&&onTable==='chinh'){const t=from===dLv?dText:(dayTexts[from]||'');const cv=Math.round(g/2)/10;dayAdd=(t&&!/\s$/.test(t)?' ':'')+'c'+cv+dayAdd}
-    if(ok&&onTable==='chinh'){const t=from===dLv?dText:(dayTexts[from]||'');const cv=Math.round(g/2)/10;if(cv!==5)dayAdd=(t&&!/\s$/.test(t)?' ':'')+'c'+cv+dayAdd;const nm=(c.name||'').trim();const line=t.split('\n').pop()+dayAdd+(nm?' ('+nm+')':'');winId=archiveWin(from,nm,line,Math.round(g/2)/10,null);dayAdd+=(nm?' ('+nm+')':'')+'\n'}
+    if(ok&&onTable==='chinh'){const t=from===dLv?dText:(dayTexts[from]||'');const cv=Math.round(g/2)/10;dayAdd=(t&&!/\s$/.test(t)?' ':'')+'c'+cv+dayAdd;const nm=(c.name||'').trim();const line=t.split('\n').pop()+dayAdd+(nm?' ('+nm+')':'');winId=archiveWin(from,nm,line,Math.round(g/2)/10,null);dayAdd+=(nm?' ('+nm+')':'')+'\n'}
     if(!ok&&onTable==='moi'){const vv=Math.max(0.1,Math.min(5,Math.round(g/2)/10));const t=from===dLv?dText:(dayTexts[from]||'');if(lineVachOf(t)!==vv)dayAdd=(t&&!/\s$/.test(t)?' ':'')+'v'+vv+' '+dayAdd}
     if(from===dLv){dText+=dayAdd;$('#d-text').value=dText;saveDay();renderDay()}
     else{dayTexts[from]=(dayTexts[from]||'')+dayAdd;store.set('dayTexts',dayTexts);fillLv()}}
@@ -584,9 +584,9 @@ const lab=k=>k==='S'?'Vô':k==='^'?'Đầu dây':'Về +'+k;
 function parseDay(text,lv){
   const tgt=lv+1,sess=[];let bad=0;
   text.split(/\r?\n/).forEach(line=>{
-    const clean=line.replace(/\([^)]*\)/g,'');const s=[];s.v=[];let cv=null;
+    const clean=line.replace(/\([^)]*\)/g,'');const s=[];s.v=[];s.m=[];let cv=null;
     let cOne=null;
-    for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|(\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}const d=+m[3];s.v.push(cOne!=null?cOne:cv);cOne=null;
+    for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|(\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}const d=+m[3];s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null;
       if(d===tgt)s.push('S');else if(d>=1&&d<=lv-2)s.push(String(d));else bad++}
     sess.push(s);
   });
@@ -615,8 +615,10 @@ function buildDay(){
   const last=sess.length?sess[sess.length-1]:[];
   const c1=last.length?last[last.length-1]:'^',c2=last.length>1?last[last.length-2]+last[last.length-1]:(last.length===1?'^'+last[0]:'^');
   let cL=0;last.forEach(r=>cL=r==='S'?0:cL+1);
+  // số lần mồi trong kèo này = số lần đập không phải kèo chính, tính từ kèo chính gần nhất (hoặc đầu dòng)
+  let bK=0;for(let i=last.length-1;i>=0;i--){if(last.m&&last.m[i])break;bK++}
   const c3=last.length>2?last.slice(-3).join(''):'^'+last.join(''),cF=last.length?last[0]:'^';
-  return{tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
+  return{bK,tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
 }
 // longest pattern with >=4 samples: 3 con cuối → 2 con cuối → 1 con cuối
 function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Math.max(1e-9,m*(1-Math.min(0.95,m/G.n)));const z=(G.s-m)/Math.sqrt(v);return{z,pv:erfc(Math.abs(z)/Math.SQRT2)}}
@@ -647,10 +649,12 @@ function renderDay(){
   const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
   const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
   {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;}
+  // giới hạn mồi tự động: dây chưa đáng tin thì mồi chỉ tốn phôi, cho tối đa 3 lần; dây đáng tin thì cho đợi tới dây tối đa
+  D.capB=PK.reliable?D.Lmax:3;
   const C3=D.g3[D.c3]||{n:0,s:0},FF=D.gF[D.cF]||{n:0,s:0};
   $('#d-next').textContent=pct(rate);
   const curTxt=D.last.length?D.last.map(x=>x==='S'?dLv+1:x).join(''):'(dây mới)';
-  $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>Độ tin cậy</dt><dd>${PK.conf}${PK.reliable?` (p = ${fmt(PK.pv,2)}, ${PK.n} mẫu)`:''}</dd><dt>Dây hiện tại</dt><dd>${D.cL} / tối đa ${D.Lmax} lần thua</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
+  $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>Độ tin cậy</dt><dd>${PK.conf}${PK.reliable?` (p = ${fmt(PK.pv,2)}, ${PK.n} mẫu)`:''}</dd><dt>Dây hiện tại</dt><dd>${D.cL} / tối đa ${D.Lmax} lần thua</dd><dt>Mồi trong kèo này</dt><dd>${D.bK} / giới hạn ${D.capB}</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
   // next-result distribution given prev1, shrunk to overall distribution
   $('#d-dist').innerHTML=D.keys.map(k=>{const q=((A.c[k]||0)+K_SHRINK*(D.tot[k]||0)/D.n)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');
   const lift=PK.L/PK.R0;
@@ -666,9 +670,10 @@ function renderDay(){
   const pBait=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);
   if(PK.reliable&&lift>1&&D.pm>=thr){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây ${PK.by} có tỷ lệ cao hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, p = ${fmt(PK.pv,2)}, độ tin cậy ${PK.conf}). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}, trên mức bảng ${fmt(thrP,1)}%.`}
   else if(PK.reliable&&lift<1){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, p = ${fmt(PK.pv,2)}). Thẻ chính lúc này chỉ ${pct(D.pm)}.`}
+  else if(D.bK>=D.capB){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Hết lượt mồi, đừng mồi thêm</b>Đã mồi ${D.bK} lần trong kèo này (giới hạn ${D.capB}${PK.reliable?', theo dây tối đa':' vì chưa có dây đáng tin, mồi thêm chỉ tốn phôi'}). Vô kèo chính ngay: ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}, hoặc dừng nghỉ.`}
   else if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, nên dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Lần tới vẫn chỉ ${pct(pBait)}, nhưng anh đã tốn ${D.cL} lần phôi. Nên nghỉ hoặc xuống dòng bắt đầu dây mới.`}
   else{sig.className='signal';sig.innerHTML=`<b>Chưa có dây đáng tin, vô theo bảng</b>Chưa dãy nào đủ ${MIN_N} mẫu và khác mức chung rõ ràng (gần nhất: ${PK.near||PK.by}, p = ${fmt(PK.pv,2)}). Vô lúc nào tỷ lệ cũng gần như nhau: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Muốn tăng tỷ lệ thì tăng vạch chính.`}
-  if(!(D.cL>=D.Lmax&&!PK.reliable))sig.style.borderColor='';
+  if(sig.className==='signal go'||!(D.bK>=D.capB||D.cL>=D.Lmax))sig.style.borderColor='';
   const row=(k,G,isCur)=>{const r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0;return `<tr${isCur?' style="background:var(--gold-soft)"':''}><td>${k}${isCur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`};
   $('#d-t1').innerHTML=['^','S',...D.keys.slice(1)].filter(k=>D.g1[k]).map(k=>row(lab(k),D.g1[k],k===D.c1)).join('');
   $('#d-t2').innerHTML=Object.entries(D.g2).filter(([k,G])=>G.n>=3&&k.length===2&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c2)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có cặp nào đủ 3 mẫu.</td></tr>`;
@@ -709,7 +714,7 @@ function renderWins(){
 function openWinForm(){
   $('#d-failform').hidden=true;
   const ln=dText.split('\n').pop();
-  $('#d-winprev').textContent=(ln||'(dây trống)')+(dVmain!==5?' c'+dVmain:'')+'='+(dLv+1);
+  $('#d-winprev').textContent=(ln||'(dây trống)')+' c'+dVmain+'='+(dLv+1);
   $('#d-winform').hidden=false;$('#d-winname').value='';setTimeout(()=>{try{$('#d-winname').focus()}catch(e){}},30);
 }
 function openFailForm(){
@@ -722,7 +727,7 @@ $('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-ft
   const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
 function saveWin(withName){
   const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
-  const ln=dText.split('\n').pop();const ctag=dVmain!==5?(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain:'';const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
+  const ln=dText.split('\n').pop();const ctag=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain;const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
   dText=dText.slice(0,dText.length-ln.length)+line+'\n';
   $('#d-text').value=dText;saveDay();archiveWin(dLv,nm,line,dVmain,dVach||null);
   $('#d-winform').hidden=true;renderDay();
