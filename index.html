@@ -280,6 +280,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <details class="settings">
       <summary class="lbl" style="cursor:pointer">Cài đặt và giải thích</summary>
       <div class="stack" style="margin-top:10px">
+    <div class="field"><span class="lbl">Khung giờ</span>
+      <div class="row2"><div class="seg" id="d-slotmode"><button data-v="all">Mọi giờ</button><button data-v="cur">Khung hiện tại</button></div>
+      <select id="d-sloth" aria-label="Độ dài khung giờ"><option value="2">Mỗi khung 2 giờ</option><option value="3">Mỗi khung 3 giờ</option><option value="4">Mỗi khung 4 giờ</option><option value="6">Mỗi khung 6 giờ</option></select></div>
+      <p class="hint">Mỗi dây mới tự gắn giờ bắt đầu (ví dụ @15:20). "Khung hiện tại" chỉ dùng các dây bắt đầu trong cùng khung giờ với bây giờ để tính.</p>
+    </div>
     <div class="row2">
       <div class="field"><label for="d-lv">Đang mồi ở</label><select id="d-lv"></select></div>
       <div class="field"><label for="d-win">Tính trên</label>
@@ -350,6 +355,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <div class="lbl" style="margin-bottom:6px">Các dây gần nhất (mới nhất ở dưới)</div>
       <div id="c-days" class="cdays"></div>
       <div class="legend" style="margin-top:8px"><span><i style="background:var(--gold)"></i>Lên</span><span><i style="background:var(--bait);opacity:.35"></i>Về +3</span><span><i style="background:var(--bait);opacity:.65"></i>Về +2</span><span><i style="background:var(--bait)"></i>Về +1</span><span><i style="border:2px solid var(--ink)"></i>Kèo chính</span></div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">Theo khung giờ (giờ bắt đầu dây)</div>
+      <div class="tblwrap"><table><thead><tr><th>Khung</th><th>Lần đập</th><th>Lên</th><th>Thực tế</th><th>Bảng</th><th>So bảng</th></tr></thead><tbody id="c-slots"></tbody></table></div>
+      <p class="hint" id="c-slotnote"></p>
     </div>
     <div>
       <div class="lbl" style="margin-bottom:6px">Số lần lên cộng dồn: thực tế so với bảng</div>
@@ -724,7 +734,7 @@ let dLv=store.get('dayLv',5),dWin=store.get('dayWin',50);
 let dayTexts=store.get('dayTexts',null);
 if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main'){const lg=store.get('dayText',null);if(lg)dayTexts[dLv]=lg}}
 let dText=dayTexts[dLv]||'';
-const countAtt=t=>((t||'').replace(/\([^)]*\)/g,'').replace(/[vc]\d(?:[.,]\d)?/gi,'').match(/[0-9]/g)||[]).length;
+const countAtt=t=>((t||'').replace(/\([^)]*\)/g,'').replace(/@\d{1,2}:\d{2}/g,'').replace(/[vc]\d(?:[.,]\d)?/gi,'').match(/[0-9]/g)||[]).length;
 function fillLv(){$('#d-lv').innerHTML=[2,3,4,5,6,7,8,9].map(l=>{const n=countAtt(dayTexts[l]);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
 fillLv();
 $('#d-win').value=String(dWin);$('#d-text').value=dText;
@@ -732,7 +742,8 @@ const lab=k=>k==='S'?'Vô':k==='^'?'Đầu dây':'Về +'+k;
 function parseDay(text,lv){
   const tgt=lv+1,sess=[];let bad=0;
   text.split(/\r?\n/).forEach(line=>{
-    const clean=line.replace(/\([^)]*\)/g,'');const s=[];s.v=[];s.m=[];let cv=null;
+    const tm=line.match(/@(\d{1,2}):(\d{2})/);
+    const clean=line.replace(/\([^)]*\)/g,'').replace(/@\d{1,2}:\d{2}/g,'');const s=[];s.v=[];s.m=[];s.h=tm?Math.min(23,+tm[1]):null;let cv=null;
     let cOne=null;
     for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|(\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}const d=+m[3];s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null;
       if(d===tgt)s.push('S');else if(d>=1&&d<=lv-2)s.push(String(d));else bad++}
@@ -743,10 +754,12 @@ function parseDay(text,lv){
 function buildDay(){
   const {sess,bad}=parseDay(dText,dLv);
   const att=[];
-  sess.forEach(s=>{let L=0;s.forEach((r,i)=>{att.push({L,r,v:s.v[i],pv:i>0?s.v[i-1]:null,p1:i>0?s[i-1]:'^',p2:i>1?s[i-2]+s[i-1]:(i===1?'^'+s[0]:'^'),p3:i>2?s.slice(i-3,i).join(''):'^'+s.slice(0,i).join(''),f:i>0?s[0]:'^'});L=r==='S'?0:L+1})});
+  sess.forEach(s=>{let L=0;s.forEach((r,i)=>{att.push({h:s.h,L,r,v:s.v[i],pv:i>0?s.v[i-1]:null,p1:i>0?s[i-1]:'^',p2:i>1?s[i-2]+s[i-1]:(i===1?'^'+s[0]:'^'),p3:i>2?s.slice(i-3,i).join(''):'^'+s.slice(0,i).join(''),f:i>0?s[0]:'^'});L=r==='S'?0:L+1})});
   const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
   att.forEach(a=>{a.e=tran*Math.min(5,a.v!=null?a.v:5)/5});
-  const win=dWin>0?att.slice(-dWin):att;
+  const curSlot=slotOf(new Date().getHours());
+  const attF=dSlotMode==='cur'?att.filter(a=>a.h!=null&&slotOf(a.h)===curSlot):att;
+  const win=dWin>0?attF.slice(-dWin):attF;
   const E=win.reduce((s,a)=>s+a.e,0);
   const n=win.length,sN=win.filter(a=>a.r==='S').length,p0=n?sN/n:0;
   const keys=['S'];for(let d=dLv-2;d>=1;d--)keys.push(String(d));
@@ -768,7 +781,7 @@ function buildDay(){
   const c3=last.length>2?last.slice(-3).join(''):'^'+last.join(''),cF=last.length?last[0]:'^';
   const done=sess.filter(s=>s.includes('S')),doneN=done.length,avgLen=doneN?done.reduce((a,s)=>a+s.length,0)/doneN:0;
   const needD=avgLen>=LONG_DAY?2:3; // dây dài cần 2 dây, dây ngắn cần 3 dây
-  return{sess,doneN,avgLen,needD,bK,tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
+  return{allAtt:att,sess,doneN,avgLen,needD,bK,tran,E,win,n,sN,p0,keys,tot,g1,g2,g3,gF,gL,cL,c1,c2,c3,cF,bad,lines:sess.length,all:att.length,last};
 }
 // longest pattern with >=4 samples: 3 con cuối → 2 con cuối → 1 con cuối
 function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Math.max(1e-9,m*(1-Math.min(0.95,m/G.n)));const z=(G.s-m)/Math.sqrt(v);return{z,pv:erfc(Math.abs(z)/Math.SQRT2)}}
@@ -834,13 +847,13 @@ function renderDay(){
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv),G=L.filter(r=>r.go);
    $('#d-sigsum').innerHTML=G.length?`App đã báo vô <b>${G.length}</b> lần ở mức này: dự đoán lên ${fmt(SF.pr,1)} kèo, thực tế lên <b>${SF.w}</b>. Hệ số hiệu chỉnh dây <b>×${fmt(SF.f,2)}</b>${SF.f<0.95?' (tín hiệu đang kém hơn dự đoán, app tự giảm ảnh hưởng của dây và báo vô khắt khe hơn)':SF.f>1.05?' (tín hiệu đang tốt hơn dự đoán)':''}.`:`Chưa có kèo chính nào được ghi lúc app đang báo vô ở mức này. Mỗi lần bấm Kèo chính thành công hoặc tạch, app ghi lại để tự kiểm chứng.`;
    $('#d-siglog').innerHTML=L.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td>${r.go?'<span class="pill main">Báo vô</span>':'<span class="pill">Không báo</span>'}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td><td>${r.ok?'<span class="pill ok">Lên</span>':'<span class="pill bad">Tạch</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có kèo chính nào.</td></tr>';}
-  {const mi=$('#d-mini'),tb=sig.querySelector('b');mi.className=sig.className+' mini';mi.style.borderColor=sig.style.borderColor;mi.innerHTML=`<b>${tb?escH(tb.textContent):''}</b><span>Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)} · dây hiện tại ${D.cL} lần thua</span>`;}
+  {const mi=$('#d-mini'),tb=sig.querySelector('b');mi.className=sig.className+' mini';mi.style.borderColor=sig.style.borderColor;mi.innerHTML=`<b>${tb?escH(tb.textContent):''}</b><span>Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)} · dây hiện tại ${D.cL} lần thua${dSlotMode==='cur'?` · khung ${slotLabel(slotOf(new Date().getHours()))}`:''}</span>`;}
   const row=(k,G,isCur)=>{const r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0;return `<tr${isCur?' style="background:var(--gold-soft)"':''}><td>${k}${isCur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`};
   $('#d-t1').innerHTML=['^','S',...D.keys.slice(1)].filter(k=>D.g1[k]).map(k=>row(lab(k),D.g1[k],k===D.c1)).join('');
   $('#d-t2').innerHTML=Object.entries(D.g2).filter(([k,G])=>G.n>=3&&k.length===2&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c2)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có cặp nào đủ 3 mẫu.</td></tr>`;
   $('#d-t3').innerHTML=Object.entries(D.g3).filter(([k,G])=>G.n>=3&&k.length===3&&k[0]!=='^').sort((a,b)=>shrink(b[1].s,b[1].n,D.p0)-shrink(a[1].s,a[1].n,D.p0)).map(([k,G])=>row(k.replace(/S/g,dLv+1),G,k===D.c3)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có dãy 3 con nào đủ 3 mẫu.</td></tr>`;
   $('#d-tf').innerHTML=Object.entries(D.gF).filter(([k])=>k!=='^').sort((a,b)=>b[1].n-a[1].n).map(([k,G])=>row('Bắt đầu '+lab(k).replace('Về ',''),G,k===D.cF)).join('')||`<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>`;
-  renderLen(D);renderVach(D,D.win);renderCharts(D);
+  renderLen(D);renderVach(D,D.win);renderCharts(D);renderSlots(D);
 }
 let dVach=store.get('dayVach',0);
 let dVmain=store.get('dayVmain',5);
@@ -888,10 +901,10 @@ function openFailForm(){
   $('#d-failkeys').innerHTML=opts.map(d=>`<button class="btn bad" data-fto="${d}">Về +${d}</button>`).join('')+`<button class="btn" data-fto="x">Hủy</button>`;
   $('#d-failform').hidden=false;
 }
-$('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;logMain(false);
+$('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;logMain(false);ensureTime();
   const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
 function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];L.push({t:Date.now(),lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok});store.set('sigLog',L.slice(-200))}
-function saveWin(withName){logMain(true);
+function saveWin(withName){logMain(true);ensureTime();
   const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
   const ln=dText.split('\n').pop();const ctag=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain;const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
   dText=dText.slice(0,dText.length-ln.length)+line+'\n';
@@ -923,6 +936,18 @@ function renderCharts(D){
   $('#c-trend').innerHTML=s;
   const d=a-e;$('#c-trendtxt').textContent=Math.abs(d)<1?`Đang khớp bảng: lên ${a} lần, bảng kỳ vọng ${fmt(e,1)}.`:d>0?`Đang hên hơn bảng ${fmt(d,1)} lần lên (${a} so với ${fmt(e,1)}).`:`Đang xui hơn bảng ${fmt(-d,1)} lần lên (${a} so với ${fmt(e,1)}).`;
 }
+let dSlotMode=store.get('daySlotMode','all'),dSlotH=store.get('daySlotH',3);
+function slotOf(hr){return Math.floor(hr/dSlotH)}
+function slotLabel(s){return `${s*dSlotH}–${Math.min(24,(s+1)*dSlotH)}h`}
+function ensureTime(){const ln=dText.split('\n').pop();if(/@\d/.test(ln))return;if(/\d/.test(ln.replace(/[vc]\d(?:[.,]\d)?/gi,'')))return;
+  const d=new Date();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'@'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+' '}
+function renderSlots(D){
+  const by={};D.allAtt.forEach(a=>{if(a.h==null)return;const k=slotOf(a.h);const G=by[k]||(by[k]={n:0,s:0,E:0});G.n++;G.E+=a.e;G.s+=a.r==='S'?1:0});
+  const cur=slotOf(new Date().getHours()),ks=Object.keys(by).map(Number).sort((a,b)=>a-b),un=D.allAtt.filter(a=>a.h==null).length;
+  $('#c-slots').innerHTML=ks.map(k=>{const G=by[k],R=(G.s+3)/(G.E+3),c=k===cur;return `<tr${c?' style="background:var(--gold-soft)"':''}><td>${slotLabel(k)}${c?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(G.s/G.n)}</td><td>${pct(G.E/G.n)}</td><td style="color:${R>=1.2?'var(--ok)':R<=0.8?'var(--bad)':'var(--muted)'}">×${fmt(R,2)}</td></tr>`}).join('')||'<tr><td colspan="6" style="text-align:left;color:var(--muted)">Chưa có dây nào gắn giờ. Từ giờ mỗi dây mới tự gắn giờ bắt đầu.</td></tr>';
+  $('#c-slotnote').textContent=(un?`${un} lần đập chưa có giờ (dây cũ) không tính vào bảng này. `:'')+(dSlotMode==='cur'?`Đang chỉ tính dây trong khung ${slotLabel(cur)}.`:'Đang tính mọi khung giờ.');
+}
+function renderSlotCtl(){document.querySelectorAll('#d-slotmode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===dSlotMode));$('#d-sloth').value=String(dSlotH)}
 function renderLen(D){
   const ks=Object.keys(D.gL).map(Number).sort((a,b)=>a-b);
   const lb=k=>k>=LCAP?LCAP+'+':String(k);
@@ -955,7 +980,7 @@ const _rd=renderDay;renderDay=function(){_rd();try{renderStage()}catch(e){}};
 $('#d-text').addEventListener('input',e=>{dText=e.target.value;saveDay();renderDay()});
 $('#d-lv').onchange=e=>{dayTexts[dLv]=dText;dLv=+e.target.value;dText=dayTexts[dLv]||'';$('#d-text').value=dText;dBackup=null;$('#d-undo-row').hidden=true;$('#d-clr-ask').hidden=true;saveDay();renderDay()};
 $('#d-win').onchange=e=>{dWin=+e.target.value;saveDay();renderDay()};
-$('#d-keys').addEventListener('click',e=>{if(e.target.closest('[data-main]')){openWinForm();return}if(e.target.closest('[data-mainfail]')){openFailForm();return}const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;if(dVach&&lineVach()!==dVach)dText+=(dText&&!/[\s\n]$/.test(dText)?' ':'')+'v'+dVach+' ';dText+=(+k===dLv+1)?'='+k+'\n':k;$('#d-text').value=dText;saveDay();renderDay()});
+$('#d-keys').addEventListener('click',e=>{if(e.target.closest('[data-main]')){openWinForm();return}if(e.target.closest('[data-mainfail]')){openFailForm();return}const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;ensureTime();if(dVach&&lineVach()!==dVach)dText+=(dText&&!/[\s\n]$/.test(dText)?' ':'')+'v'+dVach+' ';dText+=(+k===dLv+1)?'='+k+'\n':k;$('#d-text').value=dText;saveDay();renderDay()});
 $('#d-nl').onclick=()=>{if(!dText.endsWith('\n'))dText+='\n';$('#d-text').value=dText;saveDay();renderDay()};
 let dBackup=null;
 function setDay(t,msg){dBackup=dText;dText=t;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-msg').textContent=msg;$('#d-undo-row').hidden=false;$('#d-clr-ask').hidden=true}
@@ -964,7 +989,7 @@ $('#d-clr').onclick=()=>{if(!dText.trim())return;$('#d-clr-ask').hidden=false;$(
 $('#d-clr-no').onclick=()=>{$('#d-clr-ask').hidden=true};
 $('#d-clr-yes').onclick=()=>setDay('','Đã xóa hết dây.');
 $('#d-undo').onclick=()=>{if(dBackup===null)return;dText=dBackup;dBackup=null;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-row').hidden=true};
-$('#d-bk').onclick=()=>{dText=dText.replace(/(\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=?\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
+$('#d-bk').onclick=()=>{dText=dText.replace(/(\s*@\d{1,2}:\d{2}\s*|\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=?\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
 
 /* ---------- Acc game ---------- */
 (function(){
@@ -1091,6 +1116,9 @@ const FIREBASE_CONFIG={
   }).catch(()=>{$('#acct-btn').textContent='Không tải được đăng nhập';$('#acct-btn').disabled=true});
 })();
 
+document.querySelectorAll('#d-slotmode button').forEach(b=>b.onclick=()=>{dSlotMode=b.dataset.v;store.set('daySlotMode',dSlotMode);renderSlotCtl();renderDay()});
+$('#d-sloth').onchange=e=>{dSlotH=+e.target.value;store.set('daySlotH',dSlotH);renderSlotCtl();renderDay()};
+renderSlotCtl();
 renderWins();renderModeSeg();renderVachSeg();renderVmainSeg();renderRates();renderCfg();renderStage();renderChain();renderDay();
 })();
 </script>
