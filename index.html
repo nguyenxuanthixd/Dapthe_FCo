@@ -291,7 +291,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <div class="field"><span class="lbl">Khung giờ</span>
       <div class="row2"><div class="seg" id="d-slotmode"><button data-v="all">Mọi giờ</button><button data-v="cur">Khung hiện tại</button></div>
       <select id="d-sloth" aria-label="Độ dài khung giờ"><option value="2">Mỗi khung 2 giờ</option><option value="3">Mỗi khung 3 giờ</option><option value="4">Mỗi khung 4 giờ</option><option value="6">Mỗi khung 6 giờ</option></select></div>
-      <p class="hint">Mỗi dây mới tự gắn giờ bắt đầu (ví dụ @15:20). "Khung hiện tại" chỉ dùng các dây bắt đầu trong cùng khung giờ với bây giờ để tính.</p>
+      <p class="hint">Mỗi dây tự gắn giờ bắt đầu phiên mồi (ví dụ @15:20). Các dây liên tiếp giữ cùng giờ đó; chỉ khi ngắt quãng từ 2 tiếng trở lên mới tính là phiên mới với giờ mới. "Khung hiện tại" chỉ dùng các dây bắt đầu trong cùng khung giờ với bây giờ để tính.</p>
     </div>
     <div class="field"><span class="lbl">Đọc dây</span>
       <div class="seg" id="d-mode"><button data-v="fast">Nhanh</button><button data-v="std">Chuẩn</button></div>
@@ -955,8 +955,13 @@ function renderCharts(D){
 let dSlotMode=store.get('daySlotMode','all'),dSlotH=store.get('daySlotH',3);
 function slotOf(hr){return Math.floor(hr/dSlotH)}
 function slotLabel(s){return `${s*dSlotH}–${Math.min(24,(s+1)*dSlotH)}h`}
-function ensureTime(){const ln=dText.split('\n').pop();if(/@\d/.test(ln))return;if(/\d/.test(ln.replace(/[vc]\d(?:[.,]\d)?/gi,'')))return;
-  const d=new Date();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'@'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+' '}
+// Giờ của dây = giờ bắt đầu phiên mồi. Chỉ đổi giờ mới khi ngắt quãng từ 2 tiếng trở lên.
+const SESSION_GAP=2*3600e3;
+function ensureTime(){const now=Date.now(),last=store.get('lastInputAt',0);let st=store.get('sessStart',0);
+  if(!st||now-last>=SESSION_GAP)st=now,store.set('sessStart',st);
+  store.set('lastInputAt',now);
+  const ln=dText.split('\n').pop();if(/@\d/.test(ln))return;if(/\d/.test(ln.replace(/[vc]\d(?:[.,]\d)?/gi,'')))return;
+  const d=new Date(st);dText+=(ln&&!/\s$/.test(ln)?' ':'')+'@'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+' '}
 function renderSlots(D){
   const by={};D.allAtt.forEach(a=>{if(a.h==null)return;const k=slotOf(a.h);const G=by[k]||(by[k]={n:0,s:0,E:0});G.n++;G.E+=a.e;G.s+=a.r==='S'?1:0});
   const cur=slotOf(new Date().getHours()),ks=Object.keys(by).map(Number).sort((a,b)=>a-b),un=D.allAtt.filter(a=>a.h==null).length;
