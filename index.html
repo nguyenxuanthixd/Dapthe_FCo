@@ -94,6 +94,10 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1rem}
 .note{font-size:.84rem;color:var(--muted);max-width:70ch}
 .lvl{font-family:var(--f-display);font-weight:700;font-size:1.05rem}
+/* ---- Account ---- */
+.hdr-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.acct{position:relative}
+.acct-panel{position:absolute;right:0;top:calc(100% + 8px);width:min(320px,calc(100vw - 32px));z-index:30;box-shadow:0 12px 32px rgba(0,0,0,.28)}
 /* ---- Stepper ---- */
 .stepper{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .stepper>button[data-d]{width:42px;height:38px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 1.3rem var(--f-display);cursor:pointer}
@@ -157,7 +161,30 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <h1>Phòng Lab <span>Đập Thẻ</span></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
+  <div class="hdr-right">
   <div class="seg" id="theme" style="min-width:220px" aria-label="Giao diện"><button data-t="light">Sáng</button><button data-t="dark">Tối</button><button data-t="auto">Theo máy</button></div>
+    <div class="acct" id="acct" hidden>
+      <button class="btn small" id="acct-btn">Đăng nhập</button>
+      <div class="panel acct-panel stack" id="acct-panel" hidden>
+        <div id="acct-out" class="stack">
+          <h2 style="margin:0">Đăng nhập</h2>
+          <button class="btn primary" id="acct-google">Đăng nhập bằng Google</button>
+          <div class="field"><label for="acct-email">Email</label><input id="acct-email" type="email" autocomplete="email"></div>
+          <div class="field"><label for="acct-pass">Mật khẩu (từ 6 ký tự)</label><input id="acct-pass" type="password" autocomplete="current-password"></div>
+          <div class="btnrow"><button class="btn" id="acct-login">Đăng nhập</button><button class="btn" id="acct-signup">Tạo tài khoản</button></div>
+          <button class="btn small" id="acct-reset">Quên mật khẩu</button>
+        </div>
+        <div id="acct-in" class="stack" hidden>
+          <h2 style="margin:0">Tài khoản</h2>
+          <div class="mono" id="acct-who" style="word-break:break-all"></div>
+          <p class="hint" id="acct-status"></p>
+          <button class="btn" id="acct-logout">Đăng xuất</button>
+          <p class="hint">Dữ liệu dây, dây đã vô và cài đặt lưu theo tài khoản, dùng chung giữa các máy.</p>
+        </div>
+        <p class="hint" id="acct-msg"></p>
+      </div>
+    </div>
+  </div>
 </header>
 
 <nav class="tabs" role="tablist">
@@ -366,9 +393,9 @@ const $=s=>document.querySelector(s);
   const apply=v=>{if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);
     document.querySelectorAll('#theme button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===v))};
   apply(t);
-  document.querySelectorAll('#theme button').forEach(b=>b.onclick=()=>{t=b.dataset.t;try{localStorage.setItem('fcolab_theme',t)}catch(e){}apply(t)});
+  document.querySelectorAll('#theme button').forEach(b=>b.onclick=()=>{t=b.dataset.t;try{localStorage.setItem('fcolab_theme',t)}catch(e){}apply(t);if(window.__fcoSync)window.__fcoSync()});
 })();
-const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+k,JSON.stringify(v))}catch(e){}}};
+const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+k,JSON.stringify(v))}catch(e){}if(window.__fcoSync)window.__fcoSync()}};
 const fmt=(x,d=1)=>Number.isFinite(x)?x.toLocaleString('vi-VN',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
 const pct=(x,d=1)=>Number.isFinite(x)?fmt(x*100,d)+'%':'–';
 
@@ -780,6 +807,55 @@ $('#d-clr-no').onclick=()=>{$('#d-clr-ask').hidden=true};
 $('#d-clr-yes').onclick=()=>setDay('','Đã xóa hết dây.');
 $('#d-undo').onclick=()=>{if(dBackup===null)return;dText=dBackup;dBackup=null;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-row').hidden=true};
 $('#d-bk').onclick=()=>{dText=dText.replace(/(\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=?\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
+
+/* ---------- Tài khoản (Firebase) ---------- */
+// Dán firebaseConfig của project Firebase vào đây. Để null thì app chạy như cũ, chỉ lưu trên máy.
+const FIREBASE_CONFIG=null;
+(function(){
+  const ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey)&&(location.protocol==='file:'||!/claude|anthropic/i.test(location.hostname));
+  if(!ON)return;
+  $('#acct').hidden=false;
+  const V='10.12.2',libs=['app','auth','firestore'].map(n=>`https://cdn.jsdelivr.net/npm/firebase@${V}/firebase-${n}-compat.js`);
+  const load=src=>new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+  const msg=t=>{$('#acct-msg').textContent=t||''};
+  const ERR={'auth/invalid-credential':'Sai email hoặc mật khẩu.','auth/wrong-password':'Sai mật khẩu.','auth/user-not-found':'Chưa có tài khoản với email này.','auth/email-already-in-use':'Email này đã có tài khoản, bấm Đăng nhập.','auth/weak-password':'Mật khẩu cần ít nhất 6 ký tự.','auth/invalid-email':'Email không hợp lệ.','auth/popup-closed-by-user':'Đã đóng cửa sổ đăng nhập.','auth/unauthorized-domain':'Tên miền này chưa được thêm vào Authorized domains trong Firebase.','auth/network-request-failed':'Mất kết nối mạng.'};
+  const em=e=>ERR[e&&e.code]||('Lỗi: '+((e&&e.code)||e));
+  $('#acct-btn').onclick=()=>{$('#acct-panel').hidden=!$('#acct-panel').hidden};
+  document.addEventListener('click',e=>{if(!e.target.closest('#acct'))$('#acct-panel').hidden=true});
+  const snapLocal=()=>{const o={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fcolab_'))o[k]=localStorage.getItem(k)}}catch(e){}return o};
+  const applyLocal=o=>{try{Object.keys(snapLocal()).forEach(k=>localStorage.removeItem(k));Object.entries(o).forEach(([k,v])=>localStorage.setItem(k,v))}catch(e){}};
+  const same=(a,b)=>{const ka=Object.keys(a).sort(),kb=Object.keys(b).sort();return ka.length===kb.length&&ka.every((k,i)=>k===kb[i]&&a[k]===b[k])};
+  Promise.all([]).then(()=>libs.reduce((p,s)=>p.then(()=>load(s)),Promise.resolve())).then(()=>{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const auth=firebase.auth(),db=firebase.firestore();
+    let user=null,timer=null;
+    const ref=()=>db.collection('users').doc(user.uid);
+    const status=t=>{$('#acct-status').textContent=t};
+    const push=()=>ref().set({data:snapLocal(),email:user.email||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>status('Đã lưu lên tài khoản.')).catch(e=>status('Chưa lưu được: '+em(e)));
+    window.__fcoSync=()=>{if(!user)return;status('Đang lưu…');clearTimeout(timer);timer=setTimeout(push,1200)};
+    auth.onAuthStateChanged(async u=>{
+      user=u;$('#acct-out').hidden=!!u;$('#acct-in').hidden=!u;
+      $('#acct-btn').textContent=u?(u.displayName||u.email||'Tài khoản'):'Đăng nhập';
+      if(!u)return;
+      $('#acct-who').textContent=u.email||u.displayName||u.uid;msg('');status('Đang đồng bộ…');
+      try{
+        const snap=await ref().get(),cloud=snap.exists&&snap.data().data;
+        if(cloud){
+          if(!same(cloud,snapLocal())&&sessionStorage.getItem('fco_pulled')!==u.uid){sessionStorage.setItem('fco_pulled',u.uid);applyLocal(cloud);location.reload();return}
+          status('Đã đồng bộ.');
+        }else{await push();status('Đã chuyển dữ liệu trên máy này lên tài khoản.')}
+      }catch(e){status('Không đồng bộ được: '+em(e))}
+    });
+    const em_=()=>$('#acct-email').value.trim(),pw=()=>$('#acct-pass').value;
+    $('#acct-google').onclick=()=>{const pr=new firebase.auth.GoogleAuthProvider();auth.signInWithPopup(pr).catch(e=>{if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')auth.signInWithRedirect(pr);else msg(em(e))})};
+    $('#acct-login').onclick=()=>auth.signInWithEmailAndPassword(em_(),pw()).catch(e=>msg(em(e)));
+    $('#acct-signup').onclick=()=>auth.createUserWithEmailAndPassword(em_(),pw()).catch(e=>msg(em(e)));
+    $('#acct-reset').onclick=()=>{if(!em_()){msg('Nhập email trước rồi bấm Quên mật khẩu.');return}auth.sendPasswordResetEmail(em_()).then(()=>msg('Đã gửi email đặt lại mật khẩu.')).catch(e=>msg(em(e)))};
+    $('#acct-logout').onclick=async()=>{clearTimeout(timer);try{await push()}catch(e){}
+      const th=(()=>{try{return localStorage.getItem('fcolab_theme')}catch(e){return null}})();
+      await auth.signOut();applyLocal(th?{fcolab_theme:th}:{});sessionStorage.removeItem('fco_pulled');location.reload()};
+  }).catch(()=>{$('#acct-btn').textContent='Không tải được đăng nhập';$('#acct-btn').disabled=true});
+})();
 
 renderWins();renderVachSeg();renderVmainSeg();renderRates();renderCfg();renderStage();renderChain();renderDay();
 })();
