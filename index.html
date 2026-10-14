@@ -195,7 +195,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 01:05</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 01:10</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -327,6 +327,9 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <h3>Về mấy thì lần sau dễ lên?</h3>
       <p class="note" id="d-p1sum" style="margin:0 0 6px"></p>
       <div class="tblwrap" style="margin-bottom:12px"><table><thead><tr><th style="text-align:left">Lần trước</th><th>Số lần</th><th>Lần sau lên</th><th>Tỷ lệ</th><th>So bảng</th></tr></thead><tbody id="d-p1tab"></tbody></table></div>
+      <h3>Phân tích từng dây</h3>
+      <p class="note" id="d-dsum" style="margin:0 0 6px"></p>
+      <div class="tblwrap" style="margin-bottom:12px;max-height:340px;overflow:auto"><table><thead><tr><th>#</th><th>Ngày giờ</th><th style="text-align:left">Dây</th><th>Đập</th><th>Thua</th><th>Lên bằng</th><th>Tỷ lệ lên</th><th>Bảng</th><th>So bảng</th></tr></thead><tbody id="d-dtab"></tbody></table></div>
       <h3>Quy luật dây dài / ngắn</h3>
       <p class="note" id="d-lpsum" style="margin:0 0 8px"></p>
       <div class="tblwrap"><table><thead><tr><th style="text-align:left">Dây kế tiếp</th><th>Số dây</th><th>TB thua</th><th>Dây ngắn</th><th>So bảng</th></tr></thead><tbody id="d-lptab"></tbody></table></div>
@@ -827,7 +830,7 @@ function buildDay(){
 // longest pattern with >=4 samples: 3 con cuối → 2 con cuối → 1 con cuối
 function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Math.max(1e-9,m*(1-Math.min(0.95,m/G.n)));const z=(G.s-m)/Math.sqrt(v);return{z,pv:erfc(Math.abs(z)/Math.SQRT2)}}
 const MIN_N=15,MAX_P=0.1,LONG_DAY=6,PROVE_N=30,PROVE_P=0.05,GO_FAIL=3;
-const HIST_W=0.5; // dây ngày trước tính bằng nửa dây hôm nay
+const HIST_W=1; // dùng toàn bộ dây, mọi ngày tính như nhau
 // "Hôm nay" = ngày bắt đầu phiên đang chạy (phiên qua nửa đêm vẫn tính là cùng ngày), hết phiên thì lấy ngày thật
 function curDayStr(){try{const st=store.get('sessStart',0),last=store.get('lastInputAt',0);if(st&&Date.now()-last<2*3600e3){const d=new Date(st);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}}catch(e){}return todayStr()}
 function todayStr(){const d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
@@ -873,7 +876,7 @@ function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
 function renderDay(){
   const D=buildDay();
   $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex:1 1 60%">Kèo chính thành công → nhập cầu thủ</button>`+`<button class="btn bad" data-mainfail="1" style="flex:1 1 30%">Kèo chính tạch</button>`;
-  $('#d-parse').textContent=`Hôm nay (${D.td}): ${D.nToday} lần đập, xong ${D.doneN} dây. Dây ngày trước: ${D.nHist} lần, dùng làm tham chiếu (tính ×${String(HIST_W).replace('.',',')}).`+(D.bad?` Bỏ qua ${D.bad} số không hợp lệ ở mức này.`:'');
+  $('#d-parse').textContent=`Dùng toàn bộ dây ở mức này: ${D.nToday+D.nHist} lần đập (hôm nay ${D.td}: ${D.nToday} lần, xong ${D.doneN} dây; ngày trước: ${D.nHist} lần), mọi ngày tính như nhau.`+(D.bad?` Bỏ qua ${D.bad} số không hợp lệ ở mức này.`:'');
   const sig=$('#d-signal');
   // ít dữ liệu vẫn tính được: phần nền lấy từ bảng tỷ lệ, dây chỉ bổ sung khi đủ mẫu
   sig.style.borderColor='';
@@ -941,6 +944,14 @@ function renderDay(){
    $('#d-p1tab').innerHTML=R.map(x=>`<tr${x.k===cur?' style="font-weight:700"':''}><td style="text-align:left">${x.lb}${x.k===cur?' ◀':''}</td><td>${fmt(x.g.n,1)}</td><td>${fmt(x.g.s,1)}</td><td>${pct(x.g.s/x.g.n)}</td><td>×${fmt(x.g.s/Math.max(0.01,x.g.E),2)}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>';
    const proven=best&&best.g.n>=PROVE_N&&best.t.pv<PROVE_P&&best.r>1;
    $('#d-p1sum').innerHTML=best?`Theo dây mồi của anh ở mức này, lần sau lên nhiều nhất là sau khi <strong>${best.lb.toLowerCase()}</strong> (${fmt(best.g.s,1)}/${fmt(best.g.n,1)}, ×${fmt(best.r,2)} so với chung). `+(proven?'<strong>Đã chứng minh</strong> (p = '+fmt(best.t.pv,3)+'): app cộng vào tỷ lệ kèo chính khi lần cuối đúng kết quả này.':`<strong>Chưa chứng minh</strong> (${fmt(best.g.n,0)}/${PROVE_N} lần): khác biệt hiện tại có thể chỉ là may rủi, app chưa dùng để báo vô.`):'Chưa đủ dữ liệu (mỗi kết quả cần ít nhất 5 lần).';}
+  {// mỗi dây = chuỗi kết quả kết thúc bằng một lần lên (dây cuối có thể đang chạy)
+   const DL=[];let cur=null;D.sess.forEach((s,li)=>{s.forEach((r,i)=>{if(!cur)cur={d:s.d,h:s.h,tok:[],n:0,E:0,stars:0,main:0};const e=D.tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5;cur.n++;cur.E+=e;if(s.k&&s.k[i])cur.stars++;if(s.m&&s.m[i])cur.main++;
+     cur.tok.push(((s.k&&s.k[i])?'*':'')+((s.m&&s.m[i])?'c':'')+(r==='S'?'='+(dLv+1):r));if(r==='S'){cur.up=(s.m&&s.m[i])?'Kèo chính':'Mồi';DL.push(cur);cur=null}})});
+   if(cur){cur.up=null;DL.push(cur)}
+   const done=DL.filter(x=>x.up),lens=done.map(x=>x.n-1).sort((a,b)=>a-b),med=lens.length?lens[Math.floor((lens.length-1)/2)]:0,tn=done.reduce((a,x)=>a+x.n,0),tE=done.reduce((a,x)=>a+x.E,0);
+   const bins=[[0,2],[3,5],[6,9],[10,14],[15,99]].map(([a,b])=>({lb:b>=99?a+'+':a+'–'+b,c:lens.filter(l=>l>=a&&l<=b).length}));
+   $('#d-dsum').innerHTML=done.length?`<b>${done.length} dây đã lên</b>${cur?' + 1 dây đang chạy':''}: tổng ${tn} lần đập, mỗi dây trung bình <b>${fmt(tn/done.length,1)} lần</b> (theo bảng ${fmt(tE?tn/tE:0,1)} lần), trung vị ${med} lần thua, ngắn nhất ${lens[0]}, dài nhất ${lens[lens.length-1]}. Lên thực tế ${pct(done.length/tn)} mỗi lần đập, bảng ${pct(tE/tn)} → ×${fmt(done.length/Math.max(0.01,tE),2)}.<br>Phân bố số lần thua: ${bins.map(b=>`${b.lb}: <b>${b.c}</b>`).join(' · ')}.`:'Chưa có dây nào lên ở mức này.';
+   $('#d-dtab').innerHTML=DL.map((x,i)=>`<tr${x.up?'':' style="font-weight:700"'}><td>${i+1}</td><td>${x.d||'–'}${x.h!=null?' '+String(x.h).padStart(2,'0')+'h':''}</td><td style="text-align:left" class="mono">${escH(x.tok.join(''))}</td><td>${x.n}</td><td>${x.up?x.n-1:x.n}</td><td>${x.up?(x.up==='Kèo chính'?'<span class="pill main">Kèo chính</span>':'<span class="pill ok">Mồi</span>'):'<span class="pill">Đang chạy</span>'}</td><td>${x.up?pct(1/x.n):'–'}</td><td>${pct(x.E/x.n)}</td><td>${x.up?'×'+fmt(1/x.E,2):'–'}</td></tr>`).reverse().join('')||'<tr><td colspan="9" style="text-align:left;color:var(--muted)">Chưa có dây.</td></tr>';}
   {const P=D.LP,row=(nm,g,cur)=>`<tr${cur?' style="font-weight:700"':''}><td style="text-align:left">${nm}${cur?' ◀':''}</td><td>${g.k}</td><td>${g.k?fmt(g.sum/g.k,1):'–'}</td><td>${g.k?pct(g.sh/g.k):'–'}</td><td>${g.k?'×'+fmt(g.s/Math.max(0.01,g.E),2):'–'}</td></tr>`;
    $('#d-lptab').innerHTML=row('Sau dây ngắn',P.O,!P.prevL&&P.dl.length>0)+row('Sau dây dài (1 hoặc 2)',P.A,P.prevL&&!P.prev2)+row('Sau 2 dây dài liền',P.B,P.prev2);
    const verdict=P.proven?(P.ratio>1?`<b>Đã chứng minh</b>: sau dây dài, dây kế lên nhanh hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}). App đang áp: vô sớm hơn và cộng tỷ lệ khi dây trước dài.`:`<b>Đã chứng minh ngược lại</b>: sau dây dài, dây kế lên chậm hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}).`):`<b>Chưa chứng minh</b>: có ${P.A.k}/${PROVE_N} dây sau dây dài${P.A.k?`, hiện ×${fmt(P.ratio,2)} so với sau dây ngắn (p = ${fmt(P.pv,2)})`:''}. Chưa đủ thì app chỉ theo dõi, không cộng tỷ lệ.`;
