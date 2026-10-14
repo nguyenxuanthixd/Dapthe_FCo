@@ -810,7 +810,14 @@ $('#d-bk').onclick=()=>{dText=dText.replace(/(\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|
 
 /* ---------- Tài khoản (Firebase) ---------- */
 // Dán firebaseConfig của project Firebase vào đây. Để null thì app chạy như cũ, chỉ lưu trên máy.
-const FIREBASE_CONFIG=null;
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyBSSV0UrmfoQxdkW7NsP-TRIVan8e84PT8",
+  authDomain:"dapthe-fco.firebaseapp.com",
+  projectId:"dapthe-fco",
+  storageBucket:"dapthe-fco.firebasestorage.app",
+  messagingSenderId:"589087829930",
+  appId:"1:589087829930:web:df8b4dedac3080d41685d3"
+};
 (function(){
   const ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey)&&(location.protocol==='file:'||!/claude|anthropic/i.test(location.hostname));
   if(!ON)return;
