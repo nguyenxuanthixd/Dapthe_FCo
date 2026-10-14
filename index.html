@@ -257,6 +257,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     </div>
     <div class="field"><span class="lbl">Bấm khi đang mồi</span>
       <div class="btnrow" id="d-keys"></div>
+      <div class="signal" id="d-fixmain" style="margin-top:8px;padding:10px 12px;border-color:var(--warn)" hidden><span class="hint" id="d-fixmsg"></span><div class="btnrow" style="margin-top:6px"><button class="btn bad small" id="d-fixyes">Đúng, đó là kèo chính tạch</button><button class="btn small" id="d-fixno">Không, là mồi</button></div></div>
       <div class="btnrow" style="margin-top:6px"><button class="btn small" id="d-nl">Xuống dòng</button><button class="btn small" id="d-bk">Xóa số cuối</button></div>
       <div class="btnrow" style="margin-top:6px"><button class="btn small" id="d-dl">Xóa dòng cuối</button><button class="btn small bad" id="d-clr">Xóa hết dây</button></div>
       <div class="btnrow" id="d-clr-ask" style="margin-top:6px" hidden><span class="hint" style="align-self:center">Xóa toàn bộ dây?</span><button class="btn small bad" id="d-clr-yes">Xóa</button><button class="btn small" id="d-clr-no">Hủy</button></div>
@@ -916,6 +917,8 @@ function renderDay(){
    $('#d-gotab').innerHTML=G.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td style="text-align:left" class="mono">${escH(r.line||'–')}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td><td>${r.ok?'<span class="pill ok">Lên</span>':'<span class="pill bad">Tạch</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';}
   {const S=D.SK,K=S.K,O=S.O;const UP=S.P.filter(x=>x.up),upN=UP.length,avgMore=upN?UP.reduce((a,x)=>a+x.more,0)/upN:0;
    $('#d-sksum').innerHTML=K.n?`<b>Anh mồi tiếp khi app báo Vô được:</b> mỗi lần bấm mồi lúc đó, app đánh dấu <span class="mono">*</span> trước kết quả trong dây. Đã có <b>${K.n}</b> lần mồi như vậy (${S.P.length} lần bỏ qua tín hiệu): mồi lên <b>${K.s}</b>, bảng dự đoán ${fmt(K.E,1)} → ×${fmt(K.s/Math.max(0.01,K.E),2)}; lúc không báo vô: ×${fmt(O.s/Math.max(0.01,O.E),2)} (${O.n} lần). ${upN?`Sau khi bỏ qua, dây thua thêm trung bình ${fmt(avgMore,1)} lần rồi mới lên (${upN}/${S.P.length} dây đã lên). `:'Chưa dây nào lên sau khi bỏ qua. '}`+(S.proven?`<b>Đã chứng minh</b> lúc báo Vô được tỷ lệ ×${fmt(S.ratio,2)} so với lúc khác (p = ${fmt(S.pv,3)}), app đang áp vào tỷ lệ thẻ chính.`:`<b>Chưa chứng minh</b> (${K.n}/${PROVE_N} lần, p = ${fmt(S.pv,2)}): app chỉ theo dõi.`):`<b>Anh mồi tiếp khi app báo Vô được:</b> chưa có lần nào. Khi đó app tự đánh dấu <span class="mono">*</span> vào dây và so kết quả mồi lúc đó với bảng, để biết thời điểm báo vô có thật sự tốt hơn không.`;}
+  {const fm=dText.match(/\*(\d{1,2})\s*$/),box=$('#d-fixmain');
+   if(fm&&dText!==window.__fixNo){box.hidden=false;$('#d-fixmsg').innerHTML=`Vừa ghi <strong>mồi về +${fm[1]}</strong> lúc app đang báo Vô được. Nếu lần này anh vô <strong>kèo chính</strong> (${vtxt(dVmain)} vạch) mà tạch thì bấm nút đỏ để app ghi đúng là kèo chính tạch.`}else box.hidden=true;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
@@ -985,6 +988,11 @@ function openFailForm(){
 $('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;logMain(false);ensureTime();
   const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+(window.__lastEval&&window.__lastEval.go?'*':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
 function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];const ln=dText.split('\n').pop();L.push({t:Date.now(),v2:1,lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok,tail:ev.tail||'',line:ln.replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}\s*/,'').trim()});store.set('sigLog',L.slice(-200))}
+$('#d-fixyes').onclick=()=>{const fm=dText.match(/\*(\d{1,2})(\s*)$/);if(!fm)return;const pmNow=window.__lastEval?window.__lastEval.pm:0;
+  dText=dText.slice(0,fm.index)+'*c'+dVmain+fm[1]+fm[2];
+  const keep=window.__lastEval;window.__lastEval=Object.assign({},keep||{},{go:true,pm:pmNow});logMain(false);window.__lastEval=keep;
+  $('#d-text').value=dText;saveDay();renderDay()};
+$('#d-fixno').onclick=()=>{window.__fixNo=dText;renderDay()};
 function saveWin(withName){logMain(true);ensureTime();
   const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
   const ln=dText.split('\n').pop();const ctag=(ln&&!/\s$/.test(ln)?' ':'')+(window.__lastEval&&window.__lastEval.go?'*':'')+'c'+dVmain;const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
