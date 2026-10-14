@@ -313,6 +313,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <dl class="kv" id="d-pmkv"></dl>
       <p class="hint" style="margin-top:8px">Công thức: tỷ lệ trần (bảng) × vạch chính/5 × thực tế so với bảng × dây hiện tại so với chung × hệ số vạch mồi. Mỗi lần đập trong dây được so với kỳ vọng của bảng theo đúng số vạch lúc đập (vạch mồi v…, vạch chính c…; không ghi thì coi là 5 vạch). Tối đa 95%.</p>
     </div>
+    <div class="card" style="border-top-color:var(--ok)">
+      <h3>Kiểm chứng tín hiệu</h3>
+      <p class="note" id="d-sigsum" style="margin:0 0 8px"></p>
+      <div class="tblwrap"><table><thead><tr><th>Lúc</th><th>App</th><th>Dự đoán</th><th>Vạch</th><th>Kết quả</th></tr></thead><tbody id="d-siglog"></tbody></table></div>
+    </div>
     <div class="cmp wide">
       <div class="card"><h3>Tỷ lệ vô lần tới</h3><div class="big" id="d-next">–</div><dl class="kv" id="d-nextkv"></dl></div>
       <div class="card bait"><h3>Lần tới sẽ về</h3><dl class="kv" id="d-dist" style="margin-top:0"></dl></div>
@@ -489,7 +494,7 @@ const $=s=>document.querySelector(s);
   document.querySelectorAll('#theme button').forEach(b=>b.onclick=()=>{t=b.dataset.t;try{localStorage.setItem('fcolab_theme',t)}catch(e){}apply(t);if(window.__fcoSync)window.__fcoSync()});
 })();
 // Mỗi acc game có dữ liệu riêng cho các khóa này; acc 'main' dùng khóa gốc (tương thích dữ liệu cũ)
-const PER_ACC=new Set(['dayTexts','dayWins','dayLv','dayVach','dayVmain','cards','log','onTable']);
+const PER_ACC=new Set(['dayTexts','dayWins','dayLv','dayVach','dayVmain','cards','log','onTable','sigLog']);
 const CUR_ACC=(()=>{try{return JSON.parse(localStorage.getItem('fcolab_profile'))||'main'}catch(e){return 'main'}})();
 const kk=k=>PER_ACC.has(k)&&CUR_ACC!=='main'?'p_'+CUR_ACC+'_'+k:k;
 const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+kk(k));return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+kk(k),JSON.stringify(v))}catch(e){}if(window.__fcoSync)window.__fcoSync()}};
@@ -804,23 +809,31 @@ function renderDay(){
   // next-result distribution given prev1, shrunk to overall distribution
   {const pS0=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0),nd=D.keys.length-1;
    $('#d-dist').innerHTML=D.keys.map(k=>{const prior=k==='S'?pS0:(1-pS0)/nd;const base=D.n?(D.tot[k]||0)/D.n:prior;const q=D.n<10?prior:((A.c[k]||0)+K_SHRINK*base)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');}
-  const lift=PK.L/PK.R0;
+  // Hiệu chỉnh theo kết quả các lần app từng báo vô: báo vô mà kèo chính tạch nhiều hơn dự đoán thì giảm phần ảnh hưởng của dây
+  const SF=(()=>{const L=(store.get('sigLog',[])||[]).filter(r=>r.go&&r.lv===dLv);const n=L.length,w=L.filter(r=>r.ok).length,pr=L.reduce((a,r)=>a+(r.pm||0),0);
+    const f=Math.max(0.3,Math.min(1.3,(w+1)/(pr+1)));return{n,w,pr,f:n?f:1}})();
+  const liftRaw=PK.L/PK.R0,lift=1+(liftRaw-1)*SF.f;
   {const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
    let nv={n:0,s:0,E:0};if(dVach)D.win.forEach(x=>{if(x.pv===dVach){nv.n++;nv.E+=x.e;nv.s+=x.r==='S'?1:0}});
    const tv=sigTest(nv,PK.R0),vOk=dVach&&(PK.fast?nv.n>=5:(nv.n>=MIN_N&&tv.pv<MAX_P));const liftV=vOk?((nv.s+3*PK.R0)/(nv.E+3))/PK.R0:1;
-   const base=tran*dVmain/5,pm=Math.min(0.95,base*PK.L*liftV);
+   const base=tran*dVmain/5,pm=Math.min(0.95,base*PK.R0*lift*liftV);
    $('#d-pm').textContent=pct(pm);
-   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1}</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>× Thực tế so với bảng (toàn dây)</dt><dd>×${fmt(PK.R0,2)}</dd><dt>× Dây hiện tại so với chung (${PK.by})</dt><dd>×${fmt(lift,2)}</dd><dt>× Hệ số mồi ${dVach?vtxt(dVach)+' vạch':'(chưa chọn)'}</dt><dd>${dVach?(vOk?`×${fmt(liftV,2)} (${nv.s}/${nv.n})`:`×1 (${nv.s}/${nv.n}, chưa đủ tin cậy)`):'×1'}</dd>`;
+   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1}</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>× Thực tế so với bảng (toàn dây)</dt><dd>×${fmt(PK.R0,2)}</dd><dt>× Dây hiện tại so với chung (${PK.by})</dt><dd>×${fmt(lift,2)}${SF.n&&Math.abs(lift-liftRaw)>0.005?` <span class="hint">(gốc ×${fmt(liftRaw,2)})</span>`:''}</dd><dt>× Hệ số mồi ${dVach?vtxt(dVach)+' vạch':'(chưa chọn)'}</dt><dd>${dVach?(vOk?`×${fmt(liftV,2)} (${nv.s}/${nv.n})`:`×1 (${nv.s}/${nv.n}, chưa đủ tin cậy)`):'×1'}</dd>`;
    D.pm=pm;}
   const thrP=Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10,thr=thrP/100;
   $('#d-thrv').textContent=fmt(thrP,1)+'%';
   const pBait=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0);
-  if(PK.reliable&&lift>=(PK.fast?1.15:1)&&D.pm>=thr+(PK.fast?0.03:0)){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây ${PK.by} có tỷ lệ cao hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, độ tin cậy ${PK.conf}${PK.fast?'':`, p = ${fmt(PK.pv,2)}`}). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}, trên mức bảng ${fmt(thrP,1)}%.`}
+  const extra=SF.f<1?(1-SF.f)*0.05:0;
+  if(PK.reliable&&lift>=(PK.fast?1.15:1)+extra&&D.pm>=thr+(PK.fast?0.03:0)+extra){sig.className='signal go';sig.innerHTML=`<b>Có thể vô</b>Dây ${PK.by} có tỷ lệ cao hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, độ tin cậy ${PK.conf}${PK.fast?'':`, p = ${fmt(PK.pv,2)}`}). Thẻ chính ${vtxt(dVmain)} vạch dự kiến ${pct(D.pm)}, trên mức bảng ${fmt(thrP,1)}%.`}
   else if(PK.reliable&&lift<1){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, p = ${fmt(PK.pv,2)}). Thẻ chính lúc này chỉ ${pct(D.pm)}.`}
   else if(false&&D.bK>=D.capB){sig.className='signal';sig.style.borderColor='var(--bad)';const pm5=Math.min(0.95,D.pm*5/dVmain);sig.innerHTML=PK.reliable?`<b>Hết lượt mồi, dừng mồi</b>Đã mồi ${D.bK} lần, chạm dây tối đa mà chưa ra dây đẹp. Mồi tiếp chỉ tốn phôi. Nên nghỉ, lần sau quay lại mồi tiếp trên dây này. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`:`<b>Đủ ${D.capB} lần mồi, dừng mồi</b>Đây không phải tín hiệu dây đẹp. Dây chưa đáng tin nên mồi thêm cũng không làm tỷ lệ tăng, chỉ tốn phôi (đã mồi ${D.bK} lần). Lúc nào vô thì thẻ chính ${vtxt(dVmain)} vạch cũng ≈ ${pct(D.pm)}${dVmain<5?`, đập 5 vạch ≈ ${pct(pm5)}`:''}. Muốn đập thì đập, không thì nghỉ.`}
   else if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, nên dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Lần tới vẫn chỉ ${pct(pBait)}, nhưng anh đã tốn ${D.cL} lần phôi. Nên nghỉ, lần sau quay lại mồi tiếp trên dây này. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`}
   else{sig.className='signal';sig.innerHTML=PK.reliable?`<b>Dây bình thường, chưa có lợi thế</b>Dây ${PK.by} ×${fmt(lift,2)} so với mức chung (${PK.n} mẫu), thẻ chính ${pct(D.pm)} so với bảng ${fmt(thrP,1)}%. Chưa đạt mức báo vô${PK.fast?' (cần ×1,15 và hơn bảng 3 điểm %)':''}. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Mồi tiếp trong giới hạn, đợi dây đẹp hơn.`:(dMode==='fast'&&D.doneN<D.needD)?(D.doneN?`<b>Đã xong ${D.doneN}/${D.needD} dây, tính theo bảng</b>Chế độ nhanh đọc dây sau ${D.needD} dây (${D.needD===2?'dây dài':'dây ngắn'}, trung bình ${fmt(D.avgLen,1)} lần đập mỗi dây; dài là từ ${LONG_DAY} lần).`:`<b>Chưa có dây nào lên, tính theo bảng</b>Chế độ nhanh đọc dây sau 2 dây nếu dây dài (từ ${LONG_DAY} lần đập), 3 dây nếu dây ngắn.`)+` Trong lúc chờ: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}, mồi ${dVach?vtxt(dVach):5} vạch ≈ ${pct(pBait)} mỗi lần.`:(dMode==='fast')?`<b>Chưa có dây lặp lại đủ 5 lần, vô theo bảng</b>Đã đủ ${D.doneN} dây nhưng dãy cuối hiện tại chưa xuất hiện đủ 5 lần để so. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`:D.n<MIN_N?`<b>Mới ${D.n} lần đập, tính theo bảng</b>Chưa đủ dữ liệu để đọc dây (cần thêm vài chục lần), nên tỷ lệ lấy theo bảng tỷ lệ và số vạch. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}, mồi ${dVach?vtxt(dVach):5} vạch ≈ ${pct(pBait)} mỗi lần. Cứ mồi và ghi, app tự đọc dây khi đủ mẫu.`:`<b>Chưa có dây đáng tin, vô theo bảng</b>Chưa dãy nào đủ ${MIN_N} mẫu và khác mức chung rõ ràng (gần nhất: ${PK.near||PK.by}, p = ${fmt(PK.pv,2)}). Vô lúc nào tỷ lệ cũng gần như nhau: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Muốn tăng tỷ lệ thì tăng vạch chính.`}
   if(sig.className==='signal go'||!(D.bK>=D.capB||D.cL>=D.Lmax))sig.style.borderColor='';
+  window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift};
+  {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv),G=L.filter(r=>r.go);
+   $('#d-sigsum').innerHTML=G.length?`App đã báo vô <b>${G.length}</b> lần ở mức này: dự đoán lên ${fmt(SF.pr,1)} kèo, thực tế lên <b>${SF.w}</b>. Hệ số hiệu chỉnh dây <b>×${fmt(SF.f,2)}</b>${SF.f<0.95?' (tín hiệu đang kém hơn dự đoán, app tự giảm ảnh hưởng của dây và báo vô khắt khe hơn)':SF.f>1.05?' (tín hiệu đang tốt hơn dự đoán)':''}.`:`Chưa có kèo chính nào được ghi lúc app đang báo vô ở mức này. Mỗi lần bấm Kèo chính thành công hoặc tạch, app ghi lại để tự kiểm chứng.`;
+   $('#d-siglog').innerHTML=L.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td>${r.go?'<span class="pill main">Báo vô</span>':'<span class="pill">Không báo</span>'}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td><td>${r.ok?'<span class="pill ok">Lên</span>':'<span class="pill bad">Tạch</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có kèo chính nào.</td></tr>';}
   {const mi=$('#d-mini'),tb=sig.querySelector('b');mi.className=sig.className+' mini';mi.style.borderColor=sig.style.borderColor;mi.innerHTML=`<b>${tb?escH(tb.textContent):''}</b><span>Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)} · dây hiện tại ${D.cL} lần thua</span>`;}
   const row=(k,G,isCur)=>{const r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0;return `<tr${isCur?' style="background:var(--gold-soft)"':''}><td>${k}${isCur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`};
   $('#d-t1').innerHTML=['^','S',...D.keys.slice(1)].filter(k=>D.g1[k]).map(k=>row(lab(k),D.g1[k],k===D.c1)).join('');
@@ -875,9 +888,10 @@ function openFailForm(){
   $('#d-failkeys').innerHTML=opts.map(d=>`<button class="btn bad" data-fto="${d}">Về +${d}</button>`).join('')+`<button class="btn" data-fto="x">Hủy</button>`;
   $('#d-failform').hidden=false;
 }
-$('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;
+$('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;logMain(false);
   const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
-function saveWin(withName){
+function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];L.push({t:Date.now(),lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok});store.set('sigLog',L.slice(-200))}
+function saveWin(withName){logMain(true);
   const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
   const ln=dText.split('\n').pop();const ctag=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain;const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
   dText=dText.slice(0,dText.length-ln.length)+line+'\n';
