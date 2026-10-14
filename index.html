@@ -95,6 +95,8 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .note{font-size:.84rem;color:var(--muted);max-width:70ch}
 .lvl{font-family:var(--f-display);font-weight:700;font-size:1.05rem}
 /* ---- Account ---- */
+.prof{position:relative;display:flex;gap:6px;align-items:center}
+.prof select{width:auto;max-width:160px}
 .hdr-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .acct{position:relative}
 .acct-panel{position:absolute;right:0;top:calc(100% + 8px);width:min(320px,calc(100vw - 32px));z-index:30;box-shadow:0 12px 32px rgba(0,0,0,.28)}
@@ -162,6 +164,19 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
+    <div class="prof" id="prof">
+      <label for="prof-sel" class="lbl">Acc</label>
+      <select id="prof-sel" aria-label="Chọn acc game"></select>
+      <button class="btn small" id="prof-manage">Quản lý</button>
+      <div class="panel acct-panel stack" id="prof-panel" hidden>
+        <h2 style="margin:0">Acc game</h2>
+        <div class="field"><label for="prof-name">Tên acc</label><input id="prof-name" maxlength="24" placeholder="Ví dụ Acc chính, Acc phụ 1"></div>
+        <div class="btnrow"><button class="btn small primary" id="prof-add">Thêm acc mới</button><button class="btn small" id="prof-ren">Đổi tên acc đang chọn</button></div>
+        <button class="btn small bad" id="prof-del">Xóa acc đang chọn</button>
+        <div class="btnrow" id="prof-delask" hidden><span class="hint" style="align-self:center">Xóa hết dây của acc này?</span><button class="btn small bad" id="prof-del-yes">Xóa</button><button class="btn small" id="prof-del-no">Hủy</button></div>
+        <p class="hint" id="prof-msg">Mỗi acc có dây, dây đã vô và thẻ bên Đập thẻ riêng. Bảng tỷ lệ và giao diện dùng chung.</p>
+      </div>
+    </div>
   <div class="seg" id="theme" style="min-width:220px" aria-label="Giao diện"><button data-t="light">Sáng</button><button data-t="dark">Tối</button><button data-t="auto">Theo máy</button></div>
     <div class="acct" id="acct" hidden>
       <button class="btn small" id="acct-btn">Đăng nhập</button>
@@ -376,9 +391,8 @@ td input{width:80px;padding:4px 6px;text-align:right}
   </div>
   <div class="panel stack">
     <h2 id="adm-title">Chọn tài khoản</h2>
-    <div class="tblwrap"><table><thead><tr><th>Mức</th><th>Lần đập</th><th>Lên</th><th>Thực tế</th><th>Bảng kỳ vọng</th><th>So bảng</th></tr></thead><tbody id="adm-sum"></tbody></table></div>
     <div id="adm-days" class="stack"></div>
-    <div><div class="lbl" style="margin-bottom:6px">Dây đã vô</div><div class="tblwrap"><table><thead><tr><th>Lúc</th><th>Cầu thủ</th><th>Mức</th><th>Dây</th></tr></thead><tbody id="adm-wins"></tbody></table></div></div>
+    <div><div class="lbl" style="margin-bottom:6px">Dây đã vô</div><div class="tblwrap"><table><thead><tr><th>Lúc</th><th>Acc</th><th>Cầu thủ</th><th>Mức</th><th>Dây</th></tr></thead><tbody id="adm-wins"></tbody></table></div></div>
   </div>
 </div>
 </section>
@@ -415,7 +429,11 @@ const $=s=>document.querySelector(s);
   apply(t);
   document.querySelectorAll('#theme button').forEach(b=>b.onclick=()=>{t=b.dataset.t;try{localStorage.setItem('fcolab_theme',t)}catch(e){}apply(t);if(window.__fcoSync)window.__fcoSync()});
 })();
-const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+k,JSON.stringify(v))}catch(e){}if(window.__fcoSync)window.__fcoSync()}};
+// Mỗi acc game có dữ liệu riêng cho các khóa này; acc 'main' dùng khóa gốc (tương thích dữ liệu cũ)
+const PER_ACC=new Set(['dayTexts','dayWins','dayLv','dayVach','dayVmain','cards','log','onTable']);
+const CUR_ACC=(()=>{try{return JSON.parse(localStorage.getItem('fcolab_profile'))||'main'}catch(e){return 'main'}})();
+const kk=k=>PER_ACC.has(k)&&CUR_ACC!=='main'?'p_'+CUR_ACC+'_'+k:k;
+const store={get(k,d){try{const v=localStorage.getItem('fcolab_'+kk(k));return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('fcolab_'+kk(k),JSON.stringify(v))}catch(e){}if(window.__fcoSync)window.__fcoSync()}};
 const fmt=(x,d=1)=>Number.isFinite(x)?x.toLocaleString('vi-VN',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
 const pct=(x,d=1)=>Number.isFinite(x)?fmt(x*100,d)+'%':'–';
 
@@ -622,7 +640,7 @@ $('#cf-reset').onclick=()=>{cfg=JSON.parse(JSON.stringify(DEF_CFG));saveUp();ren
 const DEF_DAY='232332311=6 (Charlton)\n216\n111 211 221 1=6\n2=6=6\n322 321=6\n322';
 let dLv=store.get('dayLv',5),dWin=store.get('dayWin',50);
 let dayTexts=store.get('dayTexts',null);
-if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};dayTexts[dLv]=store.get('dayText',DEF_DAY)}
+if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main')dayTexts[dLv]=store.get('dayText',DEF_DAY)}
 let dText=dayTexts[dLv]||'';
 const countAtt=t=>((t||'').replace(/\([^)]*\)/g,'').replace(/[vc]\d(?:[.,]\d)?/gi,'').match(/[0-9]/g)||[]).length;
 function fillLv(){$('#d-lv').innerHTML=[2,3,4,5,6,7,8,9].map(l=>{const n=countAtt(dayTexts[l]);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
@@ -829,6 +847,27 @@ $('#d-clr-yes').onclick=()=>setDay('','Đã xóa hết dây.');
 $('#d-undo').onclick=()=>{if(dBackup===null)return;dText=dBackup;dBackup=null;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-row').hidden=true};
 $('#d-bk').onclick=()=>{dText=dText.replace(/(\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=?\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
 
+/* ---------- Acc game ---------- */
+(function(){
+  let profs=[];try{profs=JSON.parse(localStorage.getItem('fcolab_profiles'))||[]}catch(e){}
+  if(!profs.find(p=>p.id==='main'))profs.unshift({id:'main',name:'Acc 1'});
+  const save=()=>{try{localStorage.setItem('fcolab_profiles',JSON.stringify(profs))}catch(e){}if(window.__fcoSync)window.__fcoSync()};
+  const go=id=>{try{localStorage.setItem('fcolab_profile',JSON.stringify(id))}catch(e){}
+    const f=window.__fcoFlush?window.__fcoFlush():Promise.resolve();Promise.race([f,new Promise(r=>setTimeout(r,2500))]).then(()=>location.reload())};
+  const msg=t=>{$('#prof-msg').textContent=t};
+  const render=()=>{$('#prof-sel').innerHTML=profs.map(p=>`<option value="${p.id}"${p.id===CUR_ACC?' selected':''}>${escH(p.name)}</option>`).join('');$('#prof-del').disabled=CUR_ACC==='main'};
+  render();
+  $('#prof-sel').onchange=e=>go(e.target.value);
+  $('#prof-manage').onclick=()=>{$('#prof-panel').hidden=!$('#prof-panel').hidden;const c=profs.find(p=>p.id===CUR_ACC);$('#prof-name').value=''};
+  document.addEventListener('click',e=>{if(!e.target.closest('#prof'))$('#prof-panel').hidden=true});
+  $('#prof-add').onclick=()=>{const n=$('#prof-name').value.trim()||('Acc '+(profs.length+1));const id='a'+Date.now().toString(36);profs.push({id,name:n});save();msg('Đã thêm, đang chuyển sang acc mới…');go(id)};
+  $('#prof-ren').onclick=()=>{const n=$('#prof-name').value.trim();if(!n){msg('Gõ tên mới vào ô Tên acc trước.');return}const c=profs.find(p=>p.id===CUR_ACC);if(c){c.name=n;save();render();msg('Đã đổi tên.')}};
+  $('#prof-del').onclick=()=>{if(CUR_ACC==='main')return;$('#prof-delask').hidden=false};
+  $('#prof-del-no').onclick=()=>{$('#prof-delask').hidden=true};
+  $('#prof-del-yes').onclick=()=>{const pre='fcolab_p_'+CUR_ACC+'_';try{Object.keys(localStorage).filter(k=>k.startsWith(pre)).forEach(k=>localStorage.removeItem(k))}catch(e){}
+    profs=profs.filter(p=>p.id!==CUR_ACC);save();go('main')};
+})();
+
 /* ---------- Tài khoản (Firebase) ---------- */
 // Dán firebaseConfig của project Firebase vào đây. Để null thì app chạy như cũ, chỉ lưu trên máy.
 const ADMIN_EMAILS=['nguyenxuanthixd@gmail.com']; // tài khoản admin, xem được dây của mọi tài khoản
@@ -878,24 +917,29 @@ const FIREBASE_CONFIG={
       function load(){
         $('#adm-msg').textContent='Đang tải…';
         db.collection('users').get().then(q=>{
-          users=q.docs.map(d=>{const x=d.data(),data=x.data||{},texts=J(data,'fcolab_dayTexts',{}),wins=J(data,'fcolab_dayWins',[]);
+          users=q.docs.map(d=>{const x=d.data(),data=x.data||{};let pl=J(data,'fcolab_profiles',[]);if(!pl.find(p=>p.id==='main'))pl.unshift({id:'main',name:'Acc 1'});
+            const accs=pl.map(p=>{const pf=p.id==='main'?'fcolab_':'fcolab_p_'+p.id+'_';return{name:p.name,texts:J(data,pf+'dayTexts',{}),wins:J(data,pf+'dayWins',[])}});
+            const texts={},wins=[];accs.forEach(a=>{Object.entries(a.texts).forEach(([lv,t])=>{texts[lv]=(texts[lv]?texts[lv]+'\n':'')+(t||'')});(a.wins||[]).forEach(w=>wins.push(Object.assign({acc:a.name},w)))});
             let n=0,s=0;Object.entries(texts).forEach(([lv,t])=>{const r=stat(t,+lv);n+=r.n;s+=r.s});
-            const tm=v=>v?(v.toDate?v.toDate():new Date(v)).getTime():0;return{id:d.id,email:x.email||d.id,name:x.name||'',prov:x.provider||'',at:x.updatedAt,created:x.createdAt,login:x.lastLoginAt,cnt:x.loginCount||0,tc:tm(x.createdAt),tl:tm(x.lastLoginAt),texts,wins,n,s}});sortUsers();
+            const tm=v=>v?(v.toDate?v.toDate():new Date(v)).getTime():0;return{id:d.id,email:x.email||d.id,name:x.name||'',prov:x.provider||'',at:x.updatedAt,created:x.createdAt,login:x.lastLoginAt,cnt:x.loginCount||0,tc:tm(x.createdAt),tl:tm(x.lastLoginAt),accs,texts,wins,n,s}});sortUsers();
           loaded=true;renderUsers();
         }).catch(e=>{$('#adm-msg').textContent=e.code==='permission-denied'?'Chưa có quyền admin. Kiểm tra luật Firestore đã có đoạn cho admin chưa, và đăng nhập bằng Google với email admin.':'Lỗi: '+(e.code||e)});
       }
       function show(u){
         $('#adm-title').textContent=u.email;
-        const lvs=Object.keys(u.texts).filter(l=>(u.texts[l]||'').trim()).sort((a,b)=>a-b);
-        $('#adm-sum').innerHTML=lvs.map(l=>{const r=stat(u.texts[l],+l),R=(r.s+1)/(r.E+1);return `<tr><td>+${l}→+${+l+1}</td><td>${r.n}</td><td>${r.s}</td><td>${r.n?pct(r.s/r.n):'–'}</td><td>${fmt(r.E,1)}</td><td>×${fmt(R,2)}</td></tr>`}).join('')||'<tr><td colspan="6" style="text-align:left;color:var(--muted)">Chưa có dây.</td></tr>';
-        $('#adm-days').innerHTML=lvs.map(l=>`<div><div class="lbl" style="margin-bottom:4px">Dây +${l} → +${+l+1}</div><textarea readonly rows="5" style="width:100%">${escH(u.texts[l])}</textarea></div>`).join('');
-        $('#adm-wins').innerHTML=(u.wins||[]).slice().reverse().map(w=>`<tr><td>${fmtT(w.t)}</td><td style="font-family:var(--f-body)">${w.name?escH(w.name):'–'}</td><td>+${w.lv}→+${w.lv+1}</td><td style="white-space:normal;text-align:left">${escH(w.line||'')}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';
+        const sumT=texts=>{const lvs=Object.keys(texts).filter(l=>(texts[l]||'').trim()).sort((a,b)=>a-b);
+          return {lvs,rows:lvs.map(l=>{const r=stat(texts[l],+l),R=(r.s+1)/(r.E+1);return `<tr><td>+${l}→+${+l+1}</td><td>${r.n}</td><td>${r.s}</td><td>${r.n?pct(r.s/r.n):'–'}</td><td>${fmt(r.E,1)}</td><td>×${fmt(R,2)}</td></tr>`}).join('')}};
+        $('#adm-days').innerHTML=(u.accs||[]).map(a=>{const S=sumT(a.texts);
+          return `<div class="card" style="border-top-color:var(--bait)"><h3>${escH(a.name)}</h3>`+(S.lvs.length?`<div class="tblwrap"><table><thead><tr><th>Mức</th><th>Lần đập</th><th>Lên</th><th>Thực tế</th><th>Bảng kỳ vọng</th><th>So bảng</th></tr></thead><tbody>${S.rows}</tbody></table></div>`+S.lvs.map(l=>`<div class="lbl" style="margin:8px 0 4px">Dây +${l} → +${+l+1}</div><textarea readonly rows="4" style="width:100%">${escH(a.texts[l])}</textarea>`).join(''):'<p class="hint">Chưa có dây.</p>')+`</div>`}).join('');
+        $('#adm-wins').innerHTML=(u.wins||[]).slice().sort((a,b)=>(b.t||0)-(a.t||0)).map(w=>`<tr><td>${fmtT(w.t)}</td><td style="font-family:var(--f-body)">${escH(w.acc||'')}</td><td style="font-family:var(--f-body)">${w.name?escH(w.name):'–'}</td><td>+${w.lv}→+${w.lv+1}</td><td style="white-space:normal;text-align:left">${escH(w.line||'')}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';
       }
+
       $('#adm-users').addEventListener('click',e=>{const r=e.target.closest('[data-u]');if(r)show(users[+r.dataset.u])});
       $('#adm-reload').onclick=load;
       $('#adm-sort').onchange=()=>{sortUsers();renderUsers()};
       window.__fcoAdminLoad=()=>{if(!loaded)load()};
     }
+    window.__fcoFlush=()=>{clearTimeout(timer);return user?push():Promise.resolve()};
     window.__fcoSync=()=>{if(!user)return;status('Đang lưu…');clearTimeout(timer);timer=setTimeout(push,1200)};
     auth.onAuthStateChanged(async u=>{
       user=u;$('#acct-out').hidden=!!u;$('#acct-in').hidden=!u;
@@ -909,7 +953,7 @@ const FIREBASE_CONFIG={
       try{
         const snap=await ref().get(),cloud=snap.exists&&snap.data().data;
         if(cloud){
-          if(!same(cloud,snapLocal())&&sessionStorage.getItem('fco_pulled')!==u.uid){sessionStorage.setItem('fco_pulled',u.uid);applyLocal(cloud);location.reload();return}
+          if(!same(cloud,snapLocal())){if(sessionStorage.getItem('fco_pulled')!==u.uid){sessionStorage.setItem('fco_pulled',u.uid);applyLocal(cloud);location.reload();return}await push()}
           status('Đã đồng bộ.');
         }else{await push();status('Đã chuyển dữ liệu trên máy này lên tài khoản.')}
       }catch(e){status('Không đồng bộ được: '+em(e))}
