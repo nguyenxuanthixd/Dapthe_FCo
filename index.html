@@ -200,6 +200,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
         <div class="btnrow" style="margin-top:8px"><button class="btn primary" id="d-winsave">Lưu dây</button><button class="btn" id="d-winnoname">Lưu không tên</button><button class="btn" id="d-wincancel">Hủy</button></div>
         <p class="hint" style="margin-top:6px">Lưu xong app ghi vào dây kèm tên cầu thủ, xuống dòng để bắt đầu dây mới, và cất dây này vào danh sách "Dây đã vô".</p>
       </div>
+      <div class="signal" id="d-failform" style="margin-top:10px;border-color:var(--bad)" hidden>
+        <span class="lbl">Kèo chính tạch, thẻ chính tụt về cấp nào?</span>
+        <div class="btnrow" id="d-failkeys" style="margin-top:8px"></div>
+        <p class="hint" style="margin-top:6px">App ghi lần tạch này vào dây kèm số vạch chính (nhãn c), dây vẫn chạy tiếp. Lần tạch được tính vào tỷ lệ để không đánh giá quá cao kèo chính.</p>
+      </div>
     </div>
     <div class="field"><label for="d-text">Dây (dòng trên cùng là cũ nhất)</label>
       <textarea id="d-text" rows="9" spellcheck="false"></textarea>
@@ -487,6 +492,7 @@ function record(ok,toLv){
   let dayAdd='';
   let winId=null;
   if(from>=2){dayAdd=ok?'='+(from+1):String(dropTo);
+    if(!ok&&onTable==='chinh'){const t=from===dLv?dText:(dayTexts[from]||'');const cv=Math.round(g/2)/10;dayAdd=(t&&!/\s$/.test(t)?' ':'')+'c'+cv+dayAdd}
     if(ok&&onTable==='chinh'){const t=from===dLv?dText:(dayTexts[from]||'');const cv=Math.round(g/2)/10;if(cv!==5)dayAdd=(t&&!/\s$/.test(t)?' ':'')+'c'+cv+dayAdd;const nm=(c.name||'').trim();const line=t.split('\n').pop()+dayAdd+(nm?' ('+nm+')':'');winId=archiveWin(from,nm,line,Math.round(g/2)/10,null);dayAdd+=(nm?' ('+nm+')':'')+'\n'}
     if(!ok&&onTable==='moi'){const vv=Math.max(0.1,Math.min(5,Math.round(g/2)/10));const t=from===dLv?dText:(dayTexts[from]||'');if(lineVachOf(t)!==vv)dayAdd=(t&&!/\s$/.test(t)?' ':'')+'v'+vv+' '+dayAdd}
     if(from===dLv){dText+=dayAdd;$('#d-text').value=dText;saveDay();renderDay()}
@@ -627,7 +633,7 @@ function erfc(x){const t=1/(1+.5*Math.abs(x));const y=t*Math.exp(-x*x-1.26551223
 const shrink=(s,n,p0)=>(s+K_SHRINK*p0)/(n+K_SHRINK);
 function renderDay(){
   const D=buildDay();
-  $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex-basis:100%">Kèo chính thành công → nhập cầu thủ</button>`;
+  $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex:1 1 60%">Kèo chính thành công → nhập cầu thủ</button>`+`<button class="btn bad" data-mainfail="1" style="flex:1 1 30%">Kèo chính tạch</button>`;
   $('#d-parse').textContent=`Đọc được ${D.all} lần đập trên ${D.lines} dòng; đang tính ${D.n} lần gần nhất.`+(D.bad?` Bỏ qua ${D.bad} số không hợp lệ ở mức này.`:'');
   const sig=$('#d-signal');
   if(D.n<10){sig.className='signal';sig.innerHTML=`<b>Cần thêm dây</b>Mới có ${D.n} lần đập trong khung tính. Nhập thêm ít nhất 10–20 lần để có tỷ lệ.`;
@@ -694,10 +700,19 @@ function renderWins(){
     return `<tr><td>${ts}</td><td style="font-family:var(--f-body)">${w.name?escH(w.name):'<span class="hint">–</span>'}</td><td>+${w.lv}→+${w.lv+1}</td><td style="white-space:normal;word-break:break-all;text-align:left">${escH(w.line.replace(/\s*\([^)]*\)\s*$/,''))}</td><td>${w.vm?vtxt(w.vm):'–'}</td><td><button class="x" data-wdel="${w.id}" aria-label="Xóa">×</button></td></tr>`}).join('')||`<tr><td colspan="6" style="text-align:left;color:var(--muted)">Chưa có dây nào. Bấm "Kèo chính thành công" khi thẻ chính lên.</td></tr>`;
 }
 function openWinForm(){
+  $('#d-failform').hidden=true;
   const ln=dText.split('\n').pop();
   $('#d-winprev').textContent=(ln||'(dây trống)')+(dVmain!==5?' c'+dVmain:'')+'='+(dLv+1);
   $('#d-winform').hidden=false;$('#d-winname').value='';setTimeout(()=>{try{$('#d-winname').focus()}catch(e){}},30);
 }
+function openFailForm(){
+  $('#d-winform').hidden=true;
+  const opts=[];for(let d=dLv-2;d>=1;d--)opts.push(d);
+  $('#d-failkeys').innerHTML=opts.map(d=>`<button class="btn bad" data-fto="${d}">Về +${d}</button>`).join('')+`<button class="btn" data-fto="x">Hủy</button>`;
+  $('#d-failform').hidden=false;
+}
+$('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;
+  const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
 function saveWin(withName){
   const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
   const ln=dText.split('\n').pop();const ctag=dVmain!==5?(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain:'';const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
@@ -743,7 +758,7 @@ const _rd=renderDay;renderDay=function(){_rd();try{renderStage()}catch(e){}};
 $('#d-text').addEventListener('input',e=>{dText=e.target.value;saveDay();renderDay()});
 $('#d-lv').onchange=e=>{dayTexts[dLv]=dText;dLv=+e.target.value;dText=dayTexts[dLv]||'';$('#d-text').value=dText;dBackup=null;$('#d-undo-row').hidden=true;$('#d-clr-ask').hidden=true;saveDay();renderDay()};
 $('#d-win').onchange=e=>{dWin=+e.target.value;saveDay();renderDay()};
-$('#d-keys').addEventListener('click',e=>{if(e.target.closest('[data-main]')){openWinForm();return}const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;if(dVach&&lineVach()!==dVach)dText+=(dText&&!/[\s\n]$/.test(dText)?' ':'')+'v'+dVach+' ';dText+=(+k===dLv+1)?'='+k:k;$('#d-text').value=dText;saveDay();renderDay()});
+$('#d-keys').addEventListener('click',e=>{if(e.target.closest('[data-main]')){openWinForm();return}if(e.target.closest('[data-mainfail]')){openFailForm();return}const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;if(dVach&&lineVach()!==dVach)dText+=(dText&&!/[\s\n]$/.test(dText)?' ':'')+'v'+dVach+' ';dText+=(+k===dLv+1)?'='+k:k;$('#d-text').value=dText;saveDay();renderDay()});
 $('#d-nl').onclick=()=>{if(!dText.endsWith('\n'))dText+='\n';$('#d-text').value=dText;saveDay();renderDay()};
 let dBackup=null;
 function setDay(t,msg){dBackup=dText;dText=t;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-msg').textContent=msg;$('#d-undo-row').hidden=false;$('#d-clr-ask').hidden=true}
