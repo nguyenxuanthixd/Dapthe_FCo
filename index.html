@@ -514,12 +514,15 @@ const pct=(x,d=1)=>Number.isFinite(x)?fmt(x*100,d)+'%':'–';
 /* ---------- Rates ---------- */
 // [tỷ lệ trần %, tụt ít nhất, tụt nhiều nhất] — index 0 = +1→+2
 // thua ở +L: tụt tối thiểu 2 cấp, tối đa về +1 (vd +5 → +3/+2/+1, +6 → +4/+3/+2/+1)
-const DEF_RATES=[[100,0,0],[81,2,2],[64,2,2],[50,2,3],[26,2,4],[15,2,5],[7,2,6],[4,2,7],[2,2,8]];
+// Tỷ lệ chính thức Garena công bố (Hệ thống nâng cấp 2.0, cập nhật 03.11.2025), tối đa +13
+const DEF_RATES=[[100,0,0],[81,2,2],[64,2,2],[50,2,3],[26,2,4],[15,2,5],[7,2,6],[5,2,7],[4,2,8],[3,2,9],[2,2,10],[1,2,11]];
+const MAX_LV=DEF_RATES.length+1;
 let rates=store.get('rates',null);
-if(!Array.isArray(rates)||rates.length!==9)rates=DEF_RATES.map(r=>r.slice());
+if(!Array.isArray(rates)||!rates.length)rates=DEF_RATES.map(r=>r.slice());
+if(!store.get('rates_v2025',false)){rates=DEF_RATES.map(r=>r.slice());store.set('rates',rates);store.set('rates_v2025',true);store.set('drop_v3',true)}
 rates=rates.map((r,i)=>r.length>=3?r:[r[0],r[1],r[1]]);
 // luật: thua là tụt tối thiểu 2 cấp (trừ +1→+2 không thua)
-if(!store.get('drop_v3',false)){rates=rates.map((r,i)=>[r[0],DEF_RATES[i][1],DEF_RATES[i][2]]);store.set('rates',rates);store.set('drop_v3',true)}
+if(!store.get('drop_v3',false)){rates=rates.map((r,i)=>DEF_RATES[i]?[r[0],DEF_RATES[i][1],DEF_RATES[i][2]]:r);store.set('rates',rates);store.set('drop_v3',true)}
 function renderRates(){
   $('#rt-body').innerHTML=rates.map((r,i)=>`<tr><td class="lvl">+${i+1} → +${i+2}</td><td><input type="number" id="rt-p${i}" data-i="${i}" data-c="0" min="0" max="100" step="0.1" value="${r[0]}"></td><td><input type="number" id="rt-a${i}" data-i="${i}" data-c="1" min="0" max="9" step="1" value="${r[1]}"></td><td><input type="number" id="rt-b${i}" data-i="${i}" data-c="2" min="0" max="9" step="1" value="${r[2]}"></td></tr>`).join('');
 }
@@ -554,7 +557,7 @@ function startReal(){}
 function renderTracker(){renderChain()}
 
 /* ---------- Upgrade stage ---------- */
-const DEF_CFG={bonus:[0,1,2,4,6,8,11,15,19,24],base:20,mult:1.15};
+const DEF_CFG={bonus:[0,1,2,4,6,8,11,15,17,19,21,24,27],base:20,mult:1.15};
 let cfg=store.get('cfg',JSON.parse(JSON.stringify(DEF_CFG)));
 let cards=store.get('cards',{chinh:{name:'Tiền đạo chính',pos:'ST',ovr:112,lv:5},moi:{name:'Thẻ mồi',pos:'CB',ovr:98,lv:5}});
 const STAT_L=['Tốc','Sút','Chuyền','Rê','Thủ','Lực'];
@@ -734,8 +737,8 @@ let dLv=store.get('dayLv',5),dWin=store.get('dayWin',50);
 let dayTexts=store.get('dayTexts',null);
 if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main'){const lg=store.get('dayText',null);if(lg)dayTexts[dLv]=lg}}
 let dText=dayTexts[dLv]||'';
-const countAtt=t=>((t||'').replace(/\([^)]*\)/g,'').replace(/@\d{1,2}:\d{2}/g,'').replace(/[vc]\d(?:[.,]\d)?/gi,'').match(/[0-9]/g)||[]).length;
-function fillLv(){$('#d-lv').innerHTML=[2,3,4,5,6,7,8,9].map(l=>{const n=countAtt(dayTexts[l]);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
+const countAtt=(t,l)=>parseDay(t||'',l).sess.reduce((n,s)=>n+s.length,0);
+function fillLv(){$('#d-lv').innerHTML=Array.from({length:MAX_LV-2},(_,i)=>i+2).map(l=>{const n=countAtt(dayTexts[l],l);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
 fillLv();
 $('#d-win').value=String(dWin);$('#d-text').value=dText;
 const lab=k=>k==='S'?'Vô':k==='^'?'Đầu dây':'Về +'+k;
@@ -745,8 +748,11 @@ function parseDay(text,lv){
     const tm=line.match(/@(\d{1,2}):(\d{2})/);
     const clean=line.replace(/\([^)]*\)/g,'').replace(/@\d{1,2}:\d{2}/g,'');const s=[];s.v=[];s.m=[];s.h=tm?Math.min(23,+tm[1]):null;let cv=null;
     let cOne=null;
-    for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|(\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}const d=+m[3];s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null;
-      if(d===tgt)s.push('S');else if(d>=1&&d<=lv-2)s.push(String(d));else bad++}
+    for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|=(\d{1,2})|(1[0-2]|\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}
+      let tok=null;if(m[3]!=null){if(+m[3]===tgt)tok='S'}else{let d=+m[4];if(d>lv-2&&d!==tgt&&m[4].length===2){/* vd "11" ở mức thấp: đọc từng chữ số */for(const ch of m[4]){const dd=+ch;if(dd===tgt||(dd>=1&&dd<=lv-2)){s.push(dd===tgt?'S':String(dd));s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null}else bad++}continue}
+        if(d===tgt)tok='S';else if(d>=1&&d<=lv-2)tok=String(d)}
+      if(tok==null){bad++;continue}
+      s.push(tok);s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null}
     sess.push(s);
   });
   return{sess,bad};
@@ -975,7 +981,7 @@ function renderLen(D){
   $('#d-lenchart').innerHTML=s;
   $('#d-lencur').textContent=`Dây đang chạy: ${D.cL} lần thua liên tiếp → tỷ lệ ở độ dài này ${D.gL[curK]?pct(shrink(D.gL[curK].s,D.gL[curK].n,D.p0)):'chưa có mẫu'}.`;
 }
-function saveDay(){dayTexts[dLv]=dText;store.set('dayTexts',dayTexts);store.set('dayLv',dLv);store.set('dayWin',dWin);const o=$('#d-lv').selectedOptions[0];if(o){const n=countAtt(dText);o.textContent=`+${dLv} → +${dLv+1}${n?` (${n} lần)`:''}`}}
+function saveDay(){dayTexts[dLv]=dText;store.set('dayTexts',dayTexts);store.set('dayLv',dLv);store.set('dayWin',dWin);const o=$('#d-lv').selectedOptions[0];if(o){const n=countAtt(dText,dLv);o.textContent=`+${dLv} → +${dLv+1}${n?` (${n} lần)`:''}`}}
 const _rd=renderDay;renderDay=function(){_rd();try{renderStage()}catch(e){}};
 $('#d-text').addEventListener('input',e=>{dText=e.target.value;saveDay();renderDay()});
 $('#d-lv').onchange=e=>{dayTexts[dLv]=dText;dLv=+e.target.value;dText=dayTexts[dLv]||'';$('#d-text').value=dText;dBackup=null;$('#d-undo-row').hidden=true;$('#d-clr-ask').hidden=true;saveDay();renderDay()};
@@ -989,7 +995,7 @@ $('#d-clr').onclick=()=>{if(!dText.trim())return;$('#d-clr-ask').hidden=false;$(
 $('#d-clr-no').onclick=()=>{$('#d-clr-ask').hidden=true};
 $('#d-clr-yes').onclick=()=>setDay('','Đã xóa hết dây.');
 $('#d-undo').onclick=()=>{if(dBackup===null)return;dText=dBackup;dBackup=null;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-row').hidden=true};
-$('#d-bk').onclick=()=>{dText=dText.replace(/(\s*@\d{1,2}:\d{2}\s*|\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=?\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
+$('#d-bk').onclick=()=>{dText=dText.replace(/(\s*@\d{1,2}:\d{2}\s*|\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=\d{1,2}|1[0-2]|\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
 
 /* ---------- Acc game ---------- */
 (function(){
