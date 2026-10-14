@@ -300,7 +300,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     </div>
     <div class="field"><span class="lbl">Tỷ lệ bảng ở vạch chính (app tự tính)</span>
       <div class="mono" style="font-size:1.3rem;font-weight:700" id="d-thrv">–</div>
-      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App có 3 tín hiệu: "Mồi trước" (dây hiện tại chưa tới số lần thua tối thiểu, mức mà một nửa số dây đã lên trước đó), "Vô được" (tỷ lệ đúng như số hiện ra; khi chuyển sang Vô được, ô tín hiệu nháy và điện thoại rung để nhắc) và "Dừng" (dây quá dài, dây bất thường hoặc dây xấu đã chứng minh). Dây tối đa tự tính theo số vạch mồi: chỉ khoảng 10% dây dài tới mức đó.</p>
+      <p class="hint">Bằng tỷ lệ bảng ở số vạch chính đang chọn. App có 3 tín hiệu: "Mồi trước" (dây hiện tại chưa tới số lần thua tối thiểu, mức mà một nửa số dây đã lên trước đó), "Vô được" (tỷ lệ đúng như số hiện ra; khi chuyển sang Vô được, ô tín hiệu nháy và điện thoại rung để nhắc) và "Dừng" (dây quá dài, dây bất thường hoặc dây xấu đã chứng minh). Dây tối đa tự tính theo số vạch mồi: chỉ khoảng 10% dây dài tới mức đó. Khi app báo Vô được mà anh mồi tiếp, kết quả mồi đó được đánh dấu * trong dây để app so thời điểm báo vô với bảng.</p>
     </div>
         <p class="hint">Khi bấm số mồi, app tự chèn nhãn v1–v5 vào dây mỗi lần anh đổi số vạch. Gõ tay cũng được, vạch lẻ 0,1–0,9, ví dụ <span class="mono">v2 312 v3.7 21 c4.5=6</span> (c = số vạch thẻ chính lúc vô). Bấm −/+ mỗi lần 0,1 vạch hoặc gõ số vào ô.</p>
       </div>
@@ -326,6 +326,10 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <h3>Quy luật dây dài / ngắn</h3>
       <p class="note" id="d-lpsum" style="margin:0 0 8px"></p>
       <div class="tblwrap"><table><thead><tr><th style="text-align:left">Dây kế tiếp</th><th>Số dây</th><th>TB thua</th><th>Dây ngắn</th><th>So bảng</th></tr></thead><tbody id="d-lptab"></tbody></table></div>
+    </div>
+    <div class="card" style="border-top-color:var(--gold)">
+      <h3>Báo Vô được nhưng anh mồi tiếp</h3>
+      <p class="note" id="d-sksum" style="margin:0"></p>
     </div>
     <div class="card" style="border-top-color:var(--ok)">
       <h3>Kiểm chứng tín hiệu</h3>
@@ -767,13 +771,13 @@ function parseDay(text,lv){
   const tgt=lv+1,sess=[];let bad=0,curH=null,curD=null;
   text.split(/\r?\n/).forEach(line=>{
     const tm=line.match(/@(?:(\d{1,2})\/(\d{1,2})\s+)?(\d{1,2}):(\d{2})/);if(tm){curH=Math.min(23,+tm[3]);if(tm[1])curD=tm[1]+'/'+tm[2]}
-    const clean=line.replace(/\([^)]*\)/g,'').replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}/g,'');if(tm&&!clean.trim())return;const s=[];s.v=[];s.m=[];s.h=curH;s.d=curD;let cv=null;
+    const clean=line.replace(/\([^)]*\)/g,'').replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}/g,'');if(tm&&!clean.trim())return;const s=[];s.v=[];s.m=[];s.k=[];s.h=curH;s.d=curD;let cv=null,skip=false;
     let cOne=null;
-    for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|=(\d{1,2})|(1[0-2]|\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}
-      let tok=null;if(m[3]!=null){if(+m[3]===tgt)tok='S'}else{let d=+m[4];if(d>lv-2&&d!==tgt&&m[4].length===2){/* vd "11" ở mức thấp: đọc từng chữ số */for(const ch of m[4]){const dd=+ch;if(dd===tgt||(dd>=1&&dd<=lv-2)){s.push(dd===tgt?'S':String(dd));s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null}else bad++}continue}
+    for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|=(\d{1,2})|(1[0-2]|\d)|(\*)/gi)){if(m[5]){skip=true;continue}if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}
+      let tok=null;if(m[3]!=null){if(+m[3]===tgt)tok='S'}else{let d=+m[4];if(d>lv-2&&d!==tgt&&m[4].length===2){/* vd "11" ở mức thấp: đọc từng chữ số */for(const ch of m[4]){const dd=+ch;if(dd===tgt||(dd>=1&&dd<=lv-2)){s.push(dd===tgt?'S':String(dd));s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);s.k.push(skip);skip=false;cOne=null}else bad++}continue}
         if(d===tgt)tok='S';else if(d>=1&&d<=lv-2)tok=String(d)}
       if(tok==null){bad++;continue}
-      s.push(tok);s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null}
+      s.push(tok);s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);s.k.push(skip);skip=false;cOne=null}
     sess.push(s);
   });
   return{sess,bad};
@@ -849,6 +853,12 @@ function lenPattern(D,Lmid){
   const prevL=dl.length>0&&isL(dl[dl.length-1]),prev2=dl.length>1&&prevL&&isL(dl[dl.length-2]);
   return{dl,A,B,O,Lmid,ratio,pv:t.pv,proven,prevL,prev2,recent:dl.slice(-8).map(x=>x.len)};
 }
+// Lần mồi khi app đang báo "Vô được" (đánh dấu * trong dây): kết quả mồi lúc đó so với bảng = chất lượng thời điểm báo vô.
+function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
+  D.sess.forEach(s=>{let open=null;s.forEach((r,i)=>{const e=D.tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5,g=s.k&&s.k[i]?K:O;if(s.m&&s.m[i])return;g.n++;g.E+=e;if(r==='S')g.s++;
+    if(s.k&&s.k[i]){if(!open)open={more:0,up:false};if(r==='S'){open.up=true;P.push(open);open=null}else open.more++}});if(open)P.push(open)});
+  const R=(O.s+1)/(O.E+1),t=sigTest(K,R),ratio=((K.s+3*R)/(K.E+3))/R;
+  return{K,O,P,ratio,pv:t.pv,proven:K.n>=PROVE_N&&t.pv<PROVE_P}}
 function renderDay(){
   const D=buildDay();
   $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex:1 1 60%">Kèo chính thành công → nhập cầu thủ</button>`+`<button class="btn bad" data-mainfail="1" style="flex:1 1 30%">Kèo chính tạch</button>`;
@@ -876,10 +886,10 @@ function renderDay(){
   {const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
    const anomaly=D.n>=10&&PK.R0>1.4;
    const liftM=PK.reliable?Math.max(0.8,Math.min(1.2,lift)):1;
-   const base=tran*dVmain/5,pm=Math.min(0.95,base*liftM*D.lpF);
+   D.SK=skipStats(D);D.skF=D.SK.proven?Math.max(0.8,Math.min(1.2,D.SK.ratio)):1;const base=tran*dVmain/5,pm=Math.min(0.95,base*liftM*D.lpF*D.skF);
    D.anomaly=anomaly;D.base=base;
    $('#d-pm').textContent=pct(pm);
-   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1} (bảng Garena)</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>Điều chỉnh theo dây</dt><dd>${PK.reliable?`×${fmt(liftM,2)} (${PK.by}, ${PK.n} mẫu, p = ${fmt(PK.pv,3)})`:'Không có (chưa dãy nào đủ 30 mẫu và p &lt; 0,05)'}</dd><dt>Quy luật dây dài/ngắn</dt><dd>${D.lpF!==1?`×${fmt(D.lpF,2)} (dây trước dài, đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd><dt>Mồi thực tế so với bảng</dt><dd>×${fmt(PK.R0,2)} <span class="hint">(tham khảo, không áp cho thẻ chính)</span></dd>`;
+   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1} (bảng Garena)</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>Điều chỉnh theo dây</dt><dd>${PK.reliable?`×${fmt(liftM,2)} (${PK.by}, ${PK.n} mẫu, p = ${fmt(PK.pv,3)})`:'Không có (chưa dãy nào đủ 30 mẫu và p &lt; 0,05)'}</dd><dt>Quy luật dây dài/ngắn</dt><dd>${D.lpF!==1?`×${fmt(D.lpF,2)} (dây trước dài, đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd><dt>Lúc báo Vô được (mồi đánh dấu *)</dt><dd>${D.skF!==1?`×${fmt(D.skF,2)} (đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd><dt>Mồi thực tế so với bảng</dt><dd>×${fmt(PK.R0,2)} <span class="hint">(tham khảo, không áp cho thẻ chính)</span></dd>`;
    D.pm=pm;}
   const thrP=Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10,thr=thrP/100;
   $('#d-thrv').textContent=fmt(thrP,1)+'%';
@@ -898,6 +908,8 @@ function renderDay(){
    const verdict=P.proven?(P.ratio>1?`<b>Đã chứng minh</b>: sau dây dài, dây kế lên nhanh hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}). App đang áp: vô sớm hơn và cộng tỷ lệ khi dây trước dài.`:`<b>Đã chứng minh ngược lại</b>: sau dây dài, dây kế lên chậm hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}).`):`<b>Chưa chứng minh</b>: có ${P.A.k}/${PROVE_N} dây sau dây dài${P.A.k?`, hiện ×${fmt(P.ratio,2)} so với sau dây ngắn (p = ${fmt(P.pv,2)})`:''}. Chưa đủ thì app chỉ theo dõi, không cộng tỷ lệ.`;
    $('#d-lpsum').innerHTML=`Dây dài = từ ${P.Lmid} lần thua trở lên (dài hơn trung vị các dây của anh${P.dl.length<8?', chưa đủ 8 dây nên tạm lấy theo bảng':''}). Các dây gần nhất (số lần thua): <span class="mono">${P.recent.join(' · ')||'–'}</span>. ${verdict}`;
    if(D.LP.prevL&&(sig.className==='signal go'||/Mồi trước/.test(sig.innerHTML))){sig.insertAdjacentHTML('beforeend',`<br><span class="hint">Dây trước dài${P.prev2?' (2 dây dài liền)':''}: ${P.proven?`đã chứng minh ×${fmt(P.ratio,2)}, đã áp.`:`theo anh dây này dễ ngắn; dữ liệu mới có ${P.A.k} dây để kiểm (cần ${PROVE_N}), chưa cộng tỷ lệ.`}</span>`)}}
+  {const S=D.SK,K=S.K,O=S.O;const avgMore=S.P.length?S.P.reduce((a,x)=>a+x.more,0)/S.P.length:0,upN=S.P.filter(x=>x.up).length;
+   $('#d-sksum').innerHTML=K.n?`Mỗi lần anh bấm mồi lúc app đang báo <b>Vô được</b>, app đánh dấu <span class="mono">*</span> trước kết quả trong dây. Đã có <b>${K.n}</b> lần mồi như vậy (${S.P.length} lần bỏ qua tín hiệu): mồi lên <b>${K.s}</b>, bảng dự đoán ${fmt(K.E,1)} → ×${fmt(K.s/Math.max(0.01,K.E),2)}; lúc không báo vô: ×${fmt(O.s/Math.max(0.01,O.E),2)} (${O.n} lần). Sau khi bỏ qua, dây thua thêm trung bình ${fmt(avgMore,1)} lần rồi mới lên (${upN}/${S.P.length} đã lên). `+(S.proven?`<b>Đã chứng minh</b> lúc báo Vô được tỷ lệ ×${fmt(S.ratio,2)} so với lúc khác (p = ${fmt(S.pv,3)}), app đang áp vào tỷ lệ thẻ chính.`:`<b>Chưa chứng minh</b> (${K.n}/${PROVE_N} lần, p = ${fmt(S.pv,2)}): app chỉ theo dõi.`):`Chưa có lần nào. Khi app báo <b>Vô được</b> mà anh bấm mồi tiếp, app tự đánh dấu <span class="mono">*</span> vào dây và so kết quả mồi lúc đó với bảng, để biết thời điểm báo vô có thật sự tốt hơn không.`;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
@@ -1051,7 +1063,7 @@ const _rd=renderDay;renderDay=function(){_rd();try{renderStage()}catch(e){}};
 $('#d-text').addEventListener('input',e=>{dText=e.target.value;saveDay();renderDay()});
 $('#d-lv').onchange=e=>{dayTexts[dLv]=dText;dLv=+e.target.value;dText=dayTexts[dLv]||'';$('#d-text').value=dText;dBackup=null;$('#d-undo-row').hidden=true;$('#d-clr-ask').hidden=true;saveDay();renderDay()};
 $('#d-win').onchange=e=>{dWin=+e.target.value;saveDay();renderDay()};
-$('#d-keys').addEventListener('click',e=>{if(e.target.closest('[data-main]')){openWinForm();return}if(e.target.closest('[data-mainfail]')){openFailForm();return}const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;ensureTime();if(dVach&&lineVach()!==dVach)dText+=(dText&&!/[\s\n]$/.test(dText)?' ':'')+'v'+dVach+' ';dText+=(+k===dLv+1)?'='+k+'\n':k;$('#d-text').value=dText;saveDay();renderDay()});
+$('#d-keys').addEventListener('click',e=>{if(e.target.closest('[data-main]')){openWinForm();return}if(e.target.closest('[data-mainfail]')){openFailForm();return}const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;ensureTime();if(dVach&&lineVach()!==dVach)dText+=(dText&&!/[\s\n]$/.test(dText)?' ':'')+'v'+dVach+' ';if(window.__lastEval&&window.__lastEval.go)dText+='*';dText+=(+k===dLv+1)?'='+k+'\n':k;$('#d-text').value=dText;saveDay();renderDay()});
 $('#d-nl').onclick=()=>{if(!dText.endsWith('\n'))dText+='\n';$('#d-text').value=dText;saveDay();renderDay()};
 let dBackup=null;
 function setDay(t,msg){dBackup=dText;dText=t;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-msg').textContent=msg;$('#d-undo-row').hidden=false;$('#d-clr-ask').hidden=true}
