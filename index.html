@@ -245,6 +245,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
   <div class="panel stack">
     <h2>Nhập dây</h2>
     <div class="signal mini" id="d-mini"></div>
+    <div class="row2">
+      <div class="field"><label for="d-lv">Cấp đang đập</label><select id="d-lv"></select></div>
+      <div class="field"><label for="d-win">Tính trên</label>
+        <select id="d-win"><option value="20">20 lần gần nhất</option><option value="30">30 lần gần nhất</option><option value="50">50 lần gần nhất</option><option value="100">100 lần gần nhất</option><option value="0">Toàn bộ</option></select></div>
+    </div>
     <div class="field"><span class="lbl">Bấm khi đang mồi</span>
       <div class="btnrow" id="d-keys"></div>
       <div class="btnrow" style="margin-top:6px"><button class="btn small" id="d-nl">Xuống dòng</button><button class="btn small" id="d-bk">Xóa số cuối</button></div>
@@ -284,11 +289,6 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <div class="row2"><div class="seg" id="d-slotmode"><button data-v="all">Mọi giờ</button><button data-v="cur">Khung hiện tại</button></div>
       <select id="d-sloth" aria-label="Độ dài khung giờ"><option value="2">Mỗi khung 2 giờ</option><option value="3">Mỗi khung 3 giờ</option><option value="4">Mỗi khung 4 giờ</option><option value="6">Mỗi khung 6 giờ</option></select></div>
       <p class="hint">Mỗi dây mới tự gắn giờ bắt đầu (ví dụ @15:20). "Khung hiện tại" chỉ dùng các dây bắt đầu trong cùng khung giờ với bây giờ để tính.</p>
-    </div>
-    <div class="row2">
-      <div class="field"><label for="d-lv">Đang mồi ở</label><select id="d-lv"></select></div>
-      <div class="field"><label for="d-win">Tính trên</label>
-        <select id="d-win"><option value="20">20 lần gần nhất</option><option value="30">30 lần gần nhất</option><option value="50">50 lần gần nhất</option><option value="100">100 lần gần nhất</option><option value="0">Toàn bộ</option></select></div>
     </div>
     <div class="field"><span class="lbl">Đọc dây</span>
       <div class="seg" id="d-mode"><button data-v="fast">Nhanh</button><button data-v="std">Chuẩn</button></div>
