@@ -291,7 +291,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <div class="field"><span class="lbl">Khung giờ</span>
       <div class="row2"><div class="seg" id="d-slotmode"><button data-v="all">Mọi giờ</button><button data-v="cur">Khung hiện tại</button></div>
       <select id="d-sloth" aria-label="Độ dài khung giờ"><option value="2">Mỗi khung 2 giờ</option><option value="3">Mỗi khung 3 giờ</option><option value="4">Mỗi khung 4 giờ</option><option value="6">Mỗi khung 6 giờ</option></select></div>
-      <p class="hint">Mỗi dây tự gắn giờ bắt đầu phiên mồi (ví dụ @15:20). Các dây liên tiếp giữ cùng giờ đó; chỉ khi ngắt quãng từ 2 tiếng trở lên mới tính là phiên mới với giờ mới. "Khung hiện tại" chỉ dùng các dây bắt đầu trong cùng khung giờ với bây giờ để tính.</p>
+      <p class="hint">Đầu mỗi phiên mồi app ghi ngày giờ một lần (ví dụ @14/10 15:20), các dây sau trong phiên dùng chung mốc đó; chỉ khi ngắt quãng từ 2 tiếng trở lên mới tính là phiên mới với giờ mới. "Khung hiện tại" chỉ dùng các dây bắt đầu trong cùng khung giờ với bây giờ để tính.</p>
     </div>
     <div class="field"><span class="lbl">Đọc dây</span>
       <p class="hint">App đọc dây khi đã xong ít nhất 3 dây. Chỉ báo vô khi dãy cuối đã xuất hiện ít nhất 5 lần, cao hơn mức chung từ ×1,15 và thẻ chính hơn bảng từ 3 điểm % trở lên.</p>
@@ -747,6 +747,7 @@ const DEF_DAY='232332311=6 (Charlton)\n216\n111 211 221 1=6\n2=6=6\n322 321=6\n3
 let dLv=store.get('dayLv',5),dWin=store.get('dayWin',50);
 let dayTexts=store.get('dayTexts',null);
 if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main'){const lg=store.get('dayText',null);if(lg)dayTexts[dLv]=lg}}
+if(!store.get('timeDedup2',false)){Object.keys(dayTexts).forEach(l=>{let last=null;dayTexts[l]=(dayTexts[l]||'').split('\n').map(ln=>{const m=ln.match(/@(\d{1,2}):(\d{2})/);if(!m)return ln;const mins=+m[1]*60+ +m[2];if(last!=null&&mins>=last&&mins-last<120)return ln.replace(/@\d{1,2}:\d{2}\s*/,'');last=mins;return ln}).join('\n')});store.set('dayTexts',dayTexts);store.set('timeDedup2',true)}
 let dText=dayTexts[dLv]||'';
 const countAtt=(t,l)=>parseDay(t||'',l).sess.reduce((n,s)=>n+s.length,0);
 function fillLv(){$('#d-lv').innerHTML=Array.from({length:MAX_LV-2},(_,i)=>i+2).map(l=>{const n=countAtt(dayTexts[l],l);return `<option value="${l}"${l===dLv?' selected':''}>+${l} → +${l+1}${n?` (${n} lần)`:''}</option>`}).join('')}
@@ -754,10 +755,10 @@ fillLv();
 $('#d-win').value=String(dWin);$('#d-text').value=dText;
 const lab=k=>k==='S'?'Vô':k==='^'?'Đầu dây':'Về +'+k;
 function parseDay(text,lv){
-  const tgt=lv+1,sess=[];let bad=0;
+  const tgt=lv+1,sess=[];let bad=0,curH=null,curD=null;
   text.split(/\r?\n/).forEach(line=>{
-    const tm=line.match(/@(\d{1,2}):(\d{2})/);
-    const clean=line.replace(/\([^)]*\)/g,'').replace(/@\d{1,2}:\d{2}/g,'');const s=[];s.v=[];s.m=[];s.h=tm?Math.min(23,+tm[1]):null;let cv=null;
+    const tm=line.match(/@(?:(\d{1,2})\/(\d{1,2})\s+)?(\d{1,2}):(\d{2})/);if(tm){curH=Math.min(23,+tm[3]);if(tm[1])curD=tm[1]+'/'+tm[2]}
+    const clean=line.replace(/\([^)]*\)/g,'').replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}/g,'');const s=[];s.v=[];s.m=[];s.h=curH;s.d=curD;let cv=null;
     let cOne=null;
     for(const m of clean.matchAll(/v(\d(?:[.,]\d)?)|c(\d(?:[.,]\d)?)|=(\d{1,2})|(1[0-2]|\d)/gi)){if(m[1]){cv=parseFloat(m[1].replace(',','.'));continue}if(m[2]){cOne=parseFloat(m[2].replace(',','.'));continue}
       let tok=null;if(m[3]!=null){if(+m[3]===tgt)tok='S'}else{let d=+m[4];if(d>lv-2&&d!==tgt&&m[4].length===2){/* vd "11" ở mức thấp: đọc từng chữ số */for(const ch of m[4]){const dd=+ch;if(dd===tgt||(dd>=1&&dd<=lv-2)){s.push(dd===tgt?'S':String(dd));s.v.push(cOne!=null?cOne:cv);s.m.push(cOne!=null);cOne=null}else bad++}continue}
@@ -935,7 +936,7 @@ function openFailForm(){
 }
 $('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;logMain(false);ensureTime();
   const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
-function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];const ln=dText.split('\n').pop();L.push({t:Date.now(),lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok,tail:ev.tail||'',line:ln.replace(/@\d{1,2}:\d{2}\s*/,'').trim()});store.set('sigLog',L.slice(-200))}
+function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];const ln=dText.split('\n').pop();L.push({t:Date.now(),lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok,tail:ev.tail||'',line:ln.replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}\s*/,'').trim()});store.set('sigLog',L.slice(-200))}
 function saveWin(withName){logMain(true);ensureTime();
   const nm=withName?$('#d-winname').value.trim():'';const tgt=dLv+1;
   const ln=dText.split('\n').pop();const ctag=(ln&&!/\s$/.test(ln)?' ':'')+'c'+dVmain;const line=ln+ctag+'='+tgt+(nm?' ('+nm+')':'');
@@ -976,8 +977,10 @@ const SESSION_GAP=2*3600e3;
 function ensureTime(){const now=Date.now(),last=store.get('lastInputAt',0);let st=store.get('sessStart',0);
   if(!st||now-last>=SESSION_GAP)st=now,store.set('sessStart',st);
   store.set('lastInputAt',now);
+  if(store.get('sessMarked',0)===st&&/@\d/.test(dText))return; // phiên này đã ghi giờ ở đầu dây rồi
   const ln=dText.split('\n').pop();if(/@\d/.test(ln))return;if(/\d/.test(ln.replace(/[vc]\d(?:[.,]\d)?/gi,'')))return;
-  const d=new Date(st);dText+=(ln&&!/\s$/.test(ln)?' ':'')+'@'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+' '}
+  const d=new Date(st),p2=n=>String(n).padStart(2,'0');
+  dText+=(ln&&!/\s$/.test(ln)?' ':'')+'@'+p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes())+' ';store.set('sessMarked',st)}
 function renderSlots(D){
   const by={};D.allAtt.forEach(a=>{if(a.h==null)return;const k=slotOf(a.h);const G=by[k]||(by[k]={n:0,s:0,E:0});G.n++;G.E+=a.e;G.s+=a.r==='S'?1:0});
   const cur=slotOf(new Date().getHours()),ks=Object.keys(by).map(Number).sort((a,b)=>a-b),un=D.allAtt.filter(a=>a.h==null).length;
@@ -1026,7 +1029,7 @@ $('#d-clr').onclick=()=>{if(!dText.trim())return;$('#d-clr-ask').hidden=false;$(
 $('#d-clr-no').onclick=()=>{$('#d-clr-ask').hidden=true};
 $('#d-clr-yes').onclick=()=>setDay('','Đã xóa hết dây.');
 $('#d-undo').onclick=()=>{if(dBackup===null)return;dText=dBackup;dBackup=null;$('#d-text').value=dText;saveDay();renderDay();$('#d-undo-row').hidden=true};
-$('#d-bk').onclick=()=>{dText=dText.replace(/(\s*@\d{1,2}:\d{2}\s*|\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=\d{1,2}|1[0-2]|\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
+$('#d-bk').onclick=()=>{dText=dText.replace(/(\s*@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}\s*|\s*\([^)]*\)|[vc]\d(?:[.,]\d)?\s*|=\d{1,2}|1[0-2]|\d|\s)$/i,'');$('#d-text').value=dText;saveDay();renderDay()};
 
 /* ---------- Acc game ---------- */
 (function(){
