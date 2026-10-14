@@ -68,7 +68,10 @@ textarea{font-family:var(--f-mono);font-size:12px;min-height:90px;resize:vertica
 .card.bait{border-top-color:var(--bait)}
 .card h3{margin:0 0 10px;font-family:var(--f-display);font-size:1.1rem;text-transform:uppercase;letter-spacing:.03em}
 .big{font-family:var(--f-display);font-weight:800;font-size:2.6rem;line-height:1}
-.kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;margin-top:10px;font-size:.88rem}
+.kv{display:grid;grid-template-columns:minmax(10em,1fr) minmax(0,auto);gap:6px 14px;margin-top:10px;font-size:.88rem;align-items:baseline}
+.kv dd{overflow-wrap:anywhere}
+.cmp.wide{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+@media (max-width:700px){.cmp.wide{grid-template-columns:1fr}}
 .kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
 .verdict{margin-top:14px;padding:12px 14px;border-radius:8px;background:var(--gold-soft);border-left:4px solid var(--gold)}
 .verdict.ok{background:var(--ok-soft);border-color:var(--ok)}
@@ -275,7 +278,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <dl class="kv" id="d-pmkv"></dl>
       <p class="hint" style="margin-top:8px">Công thức: tỷ lệ trần (bảng) × vạch chính/5 × thực tế so với bảng × dây hiện tại so với chung × hệ số vạch mồi. Mỗi lần đập trong dây được so với kỳ vọng của bảng theo đúng số vạch lúc đập (vạch mồi v…, vạch chính c…; không ghi thì coi là 5 vạch). Tối đa 95%.</p>
     </div>
-    <div class="cmp">
+    <div class="cmp wide">
       <div class="card"><h3>Tỷ lệ vô lần tới</h3><div class="big" id="d-next">–</div><dl class="kv" id="d-nextkv"></dl></div>
       <div class="card bait"><h3>Lần tới sẽ về</h3><dl class="kv" id="d-dist" style="margin-top:0"></dl></div>
     </div>
