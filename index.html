@@ -195,7 +195,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 00:10</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 00:20</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -796,7 +796,7 @@ function buildDay(){
   const attF=dSlotMode==='cur'?att.filter(a=>a.h!=null&&slotOf(a.h)===curSlot):att;
   const win=dWin>0?attF.slice(-dWin):attF;
   // Dây hôm nay là chính; dây các ngày trước là dữ liệu tham chiếu, tính với trọng số HIST_W
-  const td=todayStr();win.forEach(a=>{a.today=a.d===td;a.w=a.today?1:HIST_W});
+  const td=curDayStr();win.forEach(a=>{a.today=a.d===td;a.w=a.today?1:HIST_W});
   const E=win.reduce((s,a)=>s+a.e*a.w,0);
   const n=win.reduce((s,a)=>s+a.w,0),sN=win.reduce((s,a)=>s+(a.r==='S'?a.w:0),0),p0=n?sN/n:0;
   const nToday=win.filter(a=>a.today).length,nHist=win.length-nToday;
@@ -825,6 +825,8 @@ function buildDay(){
 function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Math.max(1e-9,m*(1-Math.min(0.95,m/G.n)));const z=(G.s-m)/Math.sqrt(v);return{z,pv:erfc(Math.abs(z)/Math.SQRT2)}}
 const MIN_N=15,MAX_P=0.1,LONG_DAY=6,PROVE_N=30,PROVE_P=0.05,GO_FAIL=3;
 const HIST_W=0.5; // dây ngày trước tính bằng nửa dây hôm nay
+// "Hôm nay" = ngày bắt đầu phiên đang chạy (phiên qua nửa đêm vẫn tính là cùng ngày), hết phiên thì lấy ngày thật
+function curDayStr(){try{const st=store.get('sessStart',0),last=store.get('lastInputAt',0);if(st&&Date.now()-last<2*3600e3){const d=new Date(st);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}}catch(e){}return todayStr()}
 function todayStr(){const d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
 function pickRate(D){
   const z={n:0,s:0,E:0},A=D.g1[D.c1]||z,B=D.g2[D.c2]||z,C=D.g3[D.c3]||z;
@@ -859,8 +861,10 @@ function lenPattern(D,Lmid){
 }
 // Lần mồi khi app đang báo "Vô được" (đánh dấu * trong dây): kết quả mồi lúc đó so với bảng = chất lượng thời điểm báo vô.
 function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
-  D.sess.forEach(s=>{let open=null;s.forEach((r,i)=>{const e=D.tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5,g=s.k&&s.k[i]?K:O;if(s.m&&s.m[i])return;g.n++;g.E+=e;if(r==='S')g.s++;
-    if(s.k&&s.k[i]){if(!open)open={more:0,up:false};if(r==='S'){open.up=true;P.push(open);open=null}else open.more++}});if(open)P.push(open)});
+  // mỗi đợt báo vô = chuỗi * liên tiếp; tính số lần thua từ lúc bắt đầu đợt tới khi dây lên
+  D.sess.forEach(s=>{let eps=[],inEp=false;s.forEach((r,i)=>{const kk2=s.k&&s.k[i];if(kk2&&!inEp)eps.push({more:0,up:false});inEp=!!kk2;
+    if(r==='S'){eps.forEach(x=>x.up=true);P.push(...eps);eps=[];inEp=false}else eps.forEach(x=>x.more++);
+    if(s.m&&s.m[i])return;const e=D.tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5,g=kk2?K:O;g.n++;g.E+=e;if(r==='S')g.s++});P.push(...eps)});
   const R=(O.s+1)/(O.E+1),t=sigTest(K,R),ratio=((K.s+3*R)/(K.E+3))/R;
   return{K,O,P,ratio,pv:t.pv,proven:K.n>=PROVE_N&&t.pv<PROVE_P}}
 function renderDay(){
@@ -928,7 +932,7 @@ function renderDay(){
    $('#d-gosum').innerHTML=G.length?`<b>Anh vô kèo chính khi app báo Vô được:</b> ${G.length} kèo, lên <b>${w}</b>, tạch <b>${f}</b>. Theo tỷ lệ app báo, đáng lẽ lên ${fmt(pr,1)} kèo (khoảng bình thường ${lo}–${hi}). `+(w<lo?'Đang tạch nhiều hơn mức may rủi bình thường, anh kiểm tra lại số vạch đã ghi.':w>hi?'Đang lên nhiều hơn dự đoán.':'Đúng mức may rủi, tỷ lệ app báo là chính xác.')+(G.length<20?' (Dưới 20 kèo, lệch vài kèo là bình thường.)':''):`<b>Anh vô kèo chính khi app báo Vô được:</b> chưa có kèo nào. Mỗi lần bấm Kèo chính thành công hoặc tạch lúc đang báo Vô được, app ghi lại ở đây và đánh dấu * trong dây.`;
    $('#d-gotab').innerHTML=G.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td style="text-align:left" class="mono">${escH(r.line||'–')}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td><td>${r.ok?'<span class="pill ok">Lên</span>':'<span class="pill bad">Tạch</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';}
   {const S=D.SK,K=S.K,O=S.O;const UP=S.P.filter(x=>x.up),upN=UP.length,avgMore=upN?UP.reduce((a,x)=>a+x.more,0)/upN:0;
-   $('#d-sksum').innerHTML=K.n?`<b>Anh mồi tiếp khi app báo Vô được:</b> mỗi lần bấm mồi lúc đó, app đánh dấu <span class="mono">*</span> trước kết quả trong dây. Đã có <b>${K.n}</b> lần mồi như vậy (${S.P.length} lần bỏ qua tín hiệu): mồi lên <b>${K.s}</b>, bảng dự đoán ${fmt(K.E,1)} → ×${fmt(K.s/Math.max(0.01,K.E),2)}; lúc không báo vô: ×${fmt(O.s/Math.max(0.01,O.E),2)} (${O.n} lần). ${upN?`Sau khi bỏ qua, dây thua thêm trung bình ${fmt(avgMore,1)} lần rồi mới lên (${upN}/${S.P.length} dây đã lên). `:'Chưa dây nào lên sau khi bỏ qua. '}`+(S.proven?`<b>Đã chứng minh</b> lúc báo Vô được tỷ lệ ×${fmt(S.ratio,2)} so với lúc khác (p = ${fmt(S.pv,3)}), app đang áp vào tỷ lệ thẻ chính.`:`<b>Chưa chứng minh</b> (${K.n}/${PROVE_N} lần${K.n>=10?`, p = ${fmt(S.pv,2)}`:''}): app chỉ theo dõi.`):`<b>Anh mồi tiếp khi app báo Vô được:</b> chưa có lần nào. Khi đó app tự đánh dấu <span class="mono">*</span> vào dây và so kết quả mồi lúc đó với bảng, để biết thời điểm báo vô có thật sự tốt hơn không.`;}
+   $('#d-sksum').innerHTML=K.n?`<b>Anh mồi tiếp khi app báo Vô được:</b> mỗi lần bấm mồi lúc đó, app đánh dấu <span class="mono">*</span> trước kết quả trong dây. Đã có <b>${K.n}</b> lần mồi như vậy (${S.P.length} đợt báo vô): mồi lên <b>${K.s}</b>, bảng dự đoán ${fmt(K.E,1)} → ×${fmt(K.s/Math.max(0.01,K.E),2)}; lúc không báo vô: ×${fmt(O.s/Math.max(0.01,O.E),2)} (${O.n} lần). ${upN?`Tính từ lúc app báo vô, dây thua thêm trung bình ${fmt(avgMore,1)} lần rồi mới lên (${upN}/${S.P.length} đợt đã lên). `:'Chưa đợt nào lên. '}`+(S.proven?`<b>Đã chứng minh</b> lúc báo Vô được tỷ lệ ×${fmt(S.ratio,2)} so với lúc khác (p = ${fmt(S.pv,3)}), app đang áp vào tỷ lệ thẻ chính.`:`<b>Chưa chứng minh</b> (${K.n}/${PROVE_N} lần${K.n>=10?`, p = ${fmt(S.pv,2)}`:''}): app chỉ theo dõi.`):`<b>Anh mồi tiếp khi app báo Vô được:</b> chưa có lần nào. Khi đó app tự đánh dấu <span class="mono">*</span> vào dây và so kết quả mồi lúc đó với bảng, để biết thời điểm báo vô có thật sự tốt hơn không.`;}
   {const fm=dText.match(/\*(\d{1,2})\s*$/),box=$('#d-fixmain');
    if(fm&&dText!==window.__fixNo){box.hidden=false;$('#d-fixmsg').innerHTML=`Vừa ghi <strong>mồi về +${fm[1]}</strong> lúc app đang báo Vô được. Nếu lần này anh vô <strong>kèo chính</strong> (${vtxt(dVmain)} vạch) mà tạch thì bấm nút đỏ để app ghi đúng là kèo chính tạch.`}else box.hidden=true;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
