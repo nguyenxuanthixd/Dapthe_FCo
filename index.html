@@ -195,7 +195,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 00:25</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 00:35</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -877,8 +877,11 @@ function renderDay(){
   const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
   const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
   const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
-  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*Math.max(0.8,Math.min(1.2,PK.R0)));D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;
-   const Lmid=pb>0&&pb<1?Math.max(1,Math.ceil(Math.log(0.5)/Math.log(1-pb))):2;D.LP=lenPattern(D,Lmid);
+  // Mốc dây (vô từ / dừng) tính theo các dây đã xong, không để chính dây đang chạy kéo mốc lên xuống giữa chừng
+  {let Ecur=0;{const L=D.last;let st=0;for(let i=L.length-1;i>=0;i--){if(L[i]==='S'){st=i+1;break}}for(let i=st;i<L.length;i++)Ecur+=D.tran*Math.min(5,L.v[i]!=null?L.v[i]:5)/5}
+   const wCur=D.last.length&&D.last.d!=null&&D.last.d!==curDayStr()?HIST_W:1,R0c=(D.sN+3)/Math.max(0.01,D.E-Ecur*wCur+3);D.R0c=R0c;}
+  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*Math.max(0.8,Math.min(1.2,D.R0c)));D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;
+   const pt=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5),Lmid=pt>0&&pt<1?Math.max(1,Math.ceil(Math.log(0.5)/Math.log(1-pt))):2;D.LP=lenPattern(D,Lmid);
    D.LminBase=D.Lmin;D.earlyRule=false;if(D.LP.prevL&&!(D.LP.proven&&D.LP.ratio<1)){D.Lmin=Math.max(1,Math.floor(D.Lmin/2));D.earlyRule=true}
    {// Báo vô mà thua liền GO_FAIL lần -> mồi thêm LminBase lần rồi gợi ý lại (lặp lại trong cùng dây, tới khi lên hoặc chạm dây tối đa)
     const L=D.last;let st=0;for(let i=L.length-1;i>=0;i--){if(L[i]==='S'){st=i+1;break}}
@@ -911,7 +914,7 @@ function renderDay(){
   const pm5=Math.min(0.95,D.base*5/dVmain);
   if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Dây này bất thường, nên nghỉ, lần sau quay lại mồi tiếp. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`}
   else if(badPat){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây xấu, dừng</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)}, đã chứng minh qua ${PK.n} mẫu (p = ${fmt(PK.pv,3)}). Thẻ chính lúc này chỉ ${pct(D.pm)}. Mồi tiếp rồi xem lại.`}
-  else if(D.pauseLeft>0){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Mồi tiếp, ${D.pauseLeft} lần nữa gợi ý lại</b>${D.mainHit?`Kèo chính vừa <strong>tạch</strong> lúc app báo vô${D.goFailTk.length>1?` (đợt này: ${D.goFailTk.join(', ')})`:''}.`:`Lần báo vô ${D.goRounds>1?'thứ '+D.goRounds+' ':''}vừa rồi thua liền <strong>${GO_FAIL} lần</strong> (${D.goFailTk.join(', ')}).`} App tính lại: dây đang dài, mồi thêm <strong>${D.pauseLeft} lần thua</strong> nữa thì app gợi ý Vô được lần nữa. Dây đã ${D.cL} lần thua, dừng hẳn ở ${D.Lmax} lần. Tỷ lệ kèo chính lúc này vẫn ${pct(D.pm)}.`}
+  else if(D.pauseLeft>0){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Mồi tiếp, ${D.pauseLeft} lần nữa gợi ý lại</b>${D.mainHit?`Kèo chính vừa <strong>tạch</strong> lúc app báo vô${D.goFailTk.length>1?` (đợt này: ${D.goFailTk.join(', ')})`:''}.`:`Lần báo vô ${D.goRounds>1?'thứ '+D.goRounds+' ':''}vừa rồi thua liền <strong>${GO_FAIL} lần</strong> (${D.goFailTk.join(', ')}).`} App tính lại: mồi thêm <strong>${D.pauseLeft} lần thua</strong> nữa, tới <strong>lần thua thứ ${D.cL+D.pauseLeft}</strong> của dây thì vô được lần nữa. Dây đã ${D.cL} lần thua, dừng hẳn ở ${D.Lmax} lần. Tỷ lệ kèo chính lúc này vẫn ${pct(D.pm)}.`}
   else if(D.cL<D.Lmin){sig.className='signal';sig.innerHTML=`<b>Mồi trước</b>Dây hiện tại mới ${D.cL} lần thua, chưa tới nhịp vô. Mồi tới ít nhất <strong>${D.Lmin} lần thua</strong> ${D.earlyRule?'(dây trước dài nên theo quy tắc của anh vô sớm, bình thường là '+D.LminBase+' lần)':'(một nửa số dây đã lên trước mức này)'} rồi app nhắc vô, còn ${D.Lmin-D.cL} lần. Tỷ lệ thẻ chính không đổi (≈ ${pct(D.pm)}); đây là nhịp để không vô ngay sau kèo vừa lên.`}
   else{sig.className='signal go';sig.innerHTML=`<b>Vô được${D.goRounds?' (lần '+(D.goRounds+1)+')':''}</b>${D.goRounds?`Đã mồi đủ sau ${D.goRounds} lần báo vô bị thua liền, app gợi ý lại. ${D.goFailNow?`Lần này đã thua ${D.goFailNow}/${GO_FAIL}. `:''}`:(D.goFailNow?`Đang báo vô, đã thua ${D.goFailNow}/${GO_FAIL} (thua đủ ${GO_FAIL} lần hoặc kèo chính tạch thì app tính lại). `:'')}Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <strong>${pct(D.pm)}</strong>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}. Dây bình thường, không có lý do dừng. Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo, vô lúc nào cũng như nhau, anh quyết theo tỷ lệ này.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
   if(sig.className==='signal go')sig.style.borderColor='';
@@ -933,8 +936,10 @@ function renderDay(){
    $('#d-gotab').innerHTML=G.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td style="text-align:left" class="mono">${escH(r.line||'–')}</td><td>${pct(r.pm)}</td><td>${vtxt(r.vm||5)}</td><td>${r.ok?'<span class="pill ok">Lên</span>':'<span class="pill bad">Tạch</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';}
   {const S=D.SK,K=S.K,O=S.O;const UP=S.P.filter(x=>x.up),upN=UP.length,avgMore=upN?UP.reduce((a,x)=>a+x.more,0)/upN:0;
    $('#d-sksum').innerHTML=K.n?`<b>Anh mồi tiếp khi app báo Vô được:</b> mỗi lần bấm mồi lúc đó, app đánh dấu <span class="mono">*</span> trước kết quả trong dây. Đã có <b>${K.n}</b> lần mồi như vậy (${S.P.length} đợt báo vô): mồi lên <b>${K.s}</b>, bảng dự đoán ${fmt(K.E,1)} → ×${fmt(K.s/Math.max(0.01,K.E),2)}; lúc không báo vô: ×${fmt(O.s/Math.max(0.01,O.E),2)} (${O.n} lần). ${upN?`Tính từ lúc app báo vô, dây thua thêm trung bình ${fmt(avgMore,1)} lần rồi mới lên (${upN}/${S.P.length} đợt đã lên). `:'Chưa đợt nào lên. '}`+(S.proven?`<b>Đã chứng minh</b> lúc báo Vô được tỷ lệ ×${fmt(S.ratio,2)} so với lúc khác (p = ${fmt(S.pv,3)}), app đang áp vào tỷ lệ thẻ chính.`:`<b>Chưa chứng minh</b> (${K.n}/${PROVE_N} lần${K.n>=10?`, p = ${fmt(S.pv,2)}`:''}): app chỉ theo dõi.`):`<b>Anh mồi tiếp khi app báo Vô được:</b> chưa có lần nào. Khi đó app tự đánh dấu <span class="mono">*</span> vào dây và so kết quả mồi lúc đó với bảng, để biết thời điểm báo vô có thật sự tốt hơn không.`;}
-  {const fm=dText.match(/\*(\d{1,2})\s*$/),box=$('#d-fixmain');
-   if(fm&&dText!==window.__fixNo){box.hidden=false;$('#d-fixmsg').innerHTML=`Vừa ghi <strong>mồi về +${fm[1]}</strong> lúc app đang báo Vô được. Nếu lần này anh vô <strong>kèo chính</strong> (${vtxt(dVmain)} vạch) mà tạch thì bấm nút đỏ để app ghi đúng là kèo chính tạch.`}else box.hidden=true;}
+  {const box=$('#d-fixmain'),fm=dText.match(/\*(\d{1,2})\s*$/),fu=dText.match(/\*=(\d{1,2})\s*$/);
+   if(fu&&dText!==window.__fixNo){box.hidden=false;window.__fixMode='up';$('#d-fixmsg').innerHTML=`Vừa ghi <strong>lên +${fu[1]}</strong> lúc app đang báo Vô được. Lần lên này là <strong>kèo chính</strong> hay <strong>mồi</strong>?`;$('#d-fixyes').textContent='Kèo chính lên → nhập cầu thủ';$('#d-fixyes').className='btn primary small';$('#d-fixno').textContent='Mồi lên'}
+   else if(fm&&dText!==window.__fixNo){box.hidden=false;window.__fixMode='loss';$('#d-fixmsg').innerHTML=`Vừa ghi <strong>về +${fm[1]}</strong> lúc app đang báo Vô được. Lần này là <strong>kèo chính</strong> hay <strong>mồi</strong>?`;$('#d-fixyes').textContent='Kèo chính tạch';$('#d-fixyes').className='btn bad small';$('#d-fixno').textContent='Mồi'}
+   else box.hidden=true;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
@@ -1004,7 +1009,8 @@ function openFailForm(){
 $('#d-failkeys').addEventListener('click',e=>{const b=e.target.closest('[data-fto]');if(!b)return;$('#d-failform').hidden=true;if(b.dataset.fto==='x')return;logMain(false);ensureTime();
   const ln=dText.split('\n').pop();dText+=(ln&&!/\s$/.test(ln)?' ':'')+(window.__lastEval&&window.__lastEval.go?'*':'')+'c'+dVmain+b.dataset.fto;$('#d-text').value=dText;saveDay();renderDay()});
 function logMain(ok){const ev=window.__lastEval;if(!ev)return;const L=store.get('sigLog',[])||[];const ln=dText.split('\n').pop();L.push({t:Date.now(),v2:1,lv:dLv,go:ev.go,pm:ev.pm,by:ev.by,lift:ev.lift,vm:dVmain,ok,tail:ev.tail||'',line:ln.replace(/@(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}\s*/,'').trim()});store.set('sigLog',L.slice(-200))}
-$('#d-fixyes').onclick=()=>{const fm=dText.match(/\*(\d{1,2})(\s*)$/);if(!fm)return;const pmNow=window.__lastEval?window.__lastEval.pm:0;
+$('#d-fixyes').onclick=()=>{if(window.__fixMode==='up'){const fu=dText.match(/\*=(\d{1,2})\s*$/);if(!fu)return;dText=dText.slice(0,fu.index);const SL=store.get('skipLog',[])||[];if(SL.length&&SL[SL.length-1].up&&SL[SL.length-1].lv===dLv){SL.pop();store.set('skipLog',SL)}window.__skipFlash=null;$('#d-text').value=dText;saveDay();renderDay();openWinForm();return}
+  const fm=dText.match(/\*(\d{1,2})(\s*)$/);if(!fm)return;const pmNow=window.__lastEval?window.__lastEval.pm:0;
   dText=dText.slice(0,fm.index)+'*c'+dVmain+fm[1]+fm[2];
   const keep=window.__lastEval;window.__lastEval=Object.assign({},keep||{},{go:true,pm:pmNow});logMain(false);window.__lastEval=keep;
   $('#d-text').value=dText;saveDay();renderDay()};
