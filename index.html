@@ -691,7 +691,7 @@ function sigTest(G,R0){const m=G.E*R0;if(!G.n||m<=0)return{z:0,pv:1};const v=Mat
 const MIN_N=15,MAX_P=0.1;
 function pickRate(D){
   const z={n:0,s:0,E:0},A=D.g1[D.c1]||z,B=D.g2[D.c2]||z,C=D.g3[D.c3]||z;
-  const R0=(D.sN+1)/(D.E+1);                       // thực tế chung so với bảng
+  const R0=(D.sN+3)/(D.E+3);                       // thực tế chung so với bảng (kéo về 1 khi ít dữ liệu)
   const cands=[];
   if(D.c3.length===3)cands.push([C,'3 con cuối "'+D.c3+'"']);
   cands.push([B,'2 con cuối "'+D.c2.replace('^','đầu ')+'"'],[A,'con cuối "'+lab(D.c1)+'"']);
@@ -709,8 +709,8 @@ function renderDay(){
   $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex:1 1 60%">Kèo chính thành công → nhập cầu thủ</button>`+`<button class="btn bad" data-mainfail="1" style="flex:1 1 30%">Kèo chính tạch</button>`;
   $('#d-parse').textContent=`Đọc được ${D.all} lần đập trên ${D.lines} dòng; đang tính ${D.n} lần gần nhất.`+(D.bad?` Bỏ qua ${D.bad} số không hợp lệ ở mức này.`:'');
   const sig=$('#d-signal');
-  if(D.n<10){sig.className='signal';sig.innerHTML=`<b>Cần thêm dây</b>Mới có ${D.n} lần đập trong khung tính. Nhập thêm ít nhất 10–20 lần để có tỷ lệ.`;
-    ['#d-next'].forEach(s=>$(s).textContent='–');$('#d-nextkv').innerHTML='';$('#d-dist').innerHTML='';$('#d-t1').innerHTML='';$('#d-t2').innerHTML='';$('#d-pm').textContent='–';$('#d-pmkv').innerHTML='';$('#d-t3').innerHTML='';$('#d-tf').innerHTML='';$('#d-tv').innerHTML='';$('#d-tl').innerHTML='';$('#d-lenchart').innerHTML='';$('#d-lencur').textContent='';$('#d-lenv').className='verdict';$('#d-lenv').innerHTML='';return}
+  // ít dữ liệu vẫn tính được: phần nền lấy từ bảng tỷ lệ, dây chỉ bổ sung khi đủ mẫu
+  sig.style.borderColor='';
   const A=D.g1[D.c1]||{n:0,s:0,c:{}},B=D.g2[D.c2]||{n:0,s:0};
   const r1=shrink(A.s,A.n,D.p0),r2=shrink(B.s,B.n,D.p0);
   const PK=pickRate(D),rate=PK.rate,nUsed=PK.n;
@@ -722,7 +722,8 @@ function renderDay(){
   const curTxt=D.last.length?D.last.map(x=>x==='S'?dLv+1:x).join(''):'(dây mới)';
   $('#d-nextkv').innerHTML=`<dt>Dây hiện tại</dt><dd>${curTxt}</dd><dt>Đang dựa theo</dt><dd>${PK.by}</dd><dt>Độ tin cậy</dt><dd>${PK.conf}${PK.reliable?` (p = ${fmt(PK.pv,2)}, ${PK.n} mẫu)`:''}</dd><dt>Dây hiện tại</dt><dd>${D.cL} / tối đa ${D.Lmax} lần thua</dd><dt>Mồi trong kèo này</dt><dd>${D.bK} / giới hạn ${D.capB}</dd><dt>TB khung tính</dt><dd>${pct(D.p0)} (${D.sN}/${D.n})</dd><dt>Sau con cuối "${lab(D.c1)}"</dt><dd>${A.s}/${A.n} → ${pct(r1)}</dd><dt>Sau 2 con cuối "${D.c2.replace('^','đầu ')}"</dt><dd>${B.s}/${B.n} → ${pct(r2)}</dd><dt>Sau 3 con cuối "${D.c3.replace('^','đầu ')}"</dt><dd>${C3.s}/${C3.n} → ${pct(shrink(C3.s,C3.n,D.p0))}</dd><dt>Dây bắt đầu bằng ${D.cF==='^'?'–':lab(D.cF)}</dt><dd>${FF.s}/${FF.n} → ${pct(shrink(FF.s,FF.n,D.p0))}</dd>`;
   // next-result distribution given prev1, shrunk to overall distribution
-  $('#d-dist').innerHTML=D.keys.map(k=>{const q=((A.c[k]||0)+K_SHRINK*(D.tot[k]||0)/D.n)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');
+  {const pS0=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*PK.R0),nd=D.keys.length-1;
+   $('#d-dist').innerHTML=D.keys.map(k=>{const prior=k==='S'?pS0:(1-pS0)/nd;const base=D.n?(D.tot[k]||0)/D.n:prior;const q=D.n<10?prior:((A.c[k]||0)+K_SHRINK*base)/(A.n+K_SHRINK);return `<dt>${lab(k)}</dt><dd>${pct(q)}</dd>`}).join('');}
   const lift=PK.L/PK.R0;
   {const tran=rates[dLv-1]?rates[dLv-1][0]/100:0;
    let nv={n:0,s:0,E:0};if(dVach)D.win.forEach(x=>{if(x.pv===dVach){nv.n++;nv.E+=x.e;nv.s+=x.r==='S'?1:0}});
@@ -738,7 +739,7 @@ function renderDay(){
   else if(PK.reliable&&lift<1){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Sau dây ${PK.by} tỷ lệ thấp hơn mức chung ×${fmt(lift,2)} (${PK.n} mẫu, p = ${fmt(PK.pv,2)}). Thẻ chính lúc này chỉ ${pct(D.pm)}.`}
   else if(D.bK>=D.capB){sig.className='signal';sig.style.borderColor='var(--bad)';const pm5=Math.min(0.95,D.pm*5/dVmain);sig.innerHTML=PK.reliable?`<b>Hết lượt mồi, dừng mồi</b>Đã mồi ${D.bK} lần, chạm dây tối đa mà chưa ra dây đẹp. Mồi tiếp chỉ tốn phôi. Nên nghỉ, lần sau quay lại mồi tiếp trên dây này. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`:`<b>Đủ ${D.capB} lần mồi, dừng mồi</b>Đây không phải tín hiệu dây đẹp. Dây chưa đáng tin nên mồi thêm cũng không làm tỷ lệ tăng, chỉ tốn phôi (đã mồi ${D.bK} lần). Lúc nào vô thì thẻ chính ${vtxt(dVmain)} vạch cũng ≈ ${pct(D.pm)}${dVmain<5?`, đập 5 vạch ≈ ${pct(pm5)}`:''}. Muốn đập thì đập, không thì nghỉ.`}
   else if(D.cL>=D.Lmax){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài, nên dừng</b>Đã ${D.cL} lần thua liên tiếp. Với ${dVach?vtxt(dVach):5} vạch mồi (khoảng ${pct(pBait)} mỗi lần), chỉ khoảng 10% dây kéo dài tới ${D.Lmax} lần. Lần tới vẫn chỉ ${pct(pBait)}, nhưng anh đã tốn ${D.cL} lần phôi. Nên nghỉ, lần sau quay lại mồi tiếp trên dây này. Dây chỉ kết thúc khi có thẻ lên +${dLv+1}.`}
-  else{sig.className='signal';sig.innerHTML=`<b>Chưa có dây đáng tin, vô theo bảng</b>Chưa dãy nào đủ ${MIN_N} mẫu và khác mức chung rõ ràng (gần nhất: ${PK.near||PK.by}, p = ${fmt(PK.pv,2)}). Vô lúc nào tỷ lệ cũng gần như nhau: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Muốn tăng tỷ lệ thì tăng vạch chính.`}
+  else{sig.className='signal';sig.innerHTML=D.n<MIN_N?`<b>Mới ${D.n} lần đập, tính theo bảng</b>Chưa đủ dữ liệu để đọc dây (cần thêm vài chục lần), nên tỷ lệ lấy theo bảng tỷ lệ và số vạch. Thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}, mồi ${dVach?vtxt(dVach):5} vạch ≈ ${pct(pBait)} mỗi lần. Cứ mồi và ghi, app tự đọc dây khi đủ mẫu.`:`<b>Chưa có dây đáng tin, vô theo bảng</b>Chưa dãy nào đủ ${MIN_N} mẫu và khác mức chung rõ ràng (gần nhất: ${PK.near||PK.by}, p = ${fmt(PK.pv,2)}). Vô lúc nào tỷ lệ cũng gần như nhau: thẻ chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}. Muốn tăng tỷ lệ thì tăng vạch chính.`}
   if(sig.className==='signal go'||!(D.bK>=D.capB||D.cL>=D.Lmax))sig.style.borderColor='';
   const row=(k,G,isCur)=>{const r=shrink(G.s,G.n,D.p0),l=D.p0?r/D.p0:0;return `<tr${isCur?' style="background:var(--gold-soft)"':''}><td>${k}${isCur?' ◀':''}</td><td>${G.n}</td><td>${G.s}</td><td>${pct(r)}</td><td style="color:${l>=1.4?'var(--ok)':l<=0.7?'var(--bad)':'var(--muted)'}">×${fmt(l,1)}</td></tr>`};
   $('#d-t1').innerHTML=['^','S',...D.keys.slice(1)].filter(k=>D.g1[k]).map(k=>row(lab(k),D.g1[k],k===D.c1)).join('');
@@ -928,7 +929,7 @@ const FIREBASE_CONFIG={
       function show(u){
         $('#adm-title').textContent=u.email;
         const sumT=texts=>{const lvs=Object.keys(texts).filter(l=>(texts[l]||'').trim()).sort((a,b)=>a-b);
-          return {lvs,rows:lvs.map(l=>{const r=stat(texts[l],+l),R=(r.s+1)/(r.E+1);return `<tr><td>+${l}→+${+l+1}</td><td>${r.n}</td><td>${r.s}</td><td>${r.n?pct(r.s/r.n):'–'}</td><td>${fmt(r.E,1)}</td><td>×${fmt(R,2)}</td></tr>`}).join('')}};
+          return {lvs,rows:lvs.map(l=>{const r=stat(texts[l],+l),R=(r.s+3)/(r.E+3);return `<tr><td>+${l}→+${+l+1}</td><td>${r.n}</td><td>${r.s}</td><td>${r.n?pct(r.s/r.n):'–'}</td><td>${fmt(r.E,1)}</td><td>×${fmt(R,2)}</td></tr>`}).join('')}};
         $('#adm-days').innerHTML=(u.accs||[]).map(a=>{const S=sumT(a.texts);
           return `<div class="card" style="border-top-color:var(--bait)"><h3>${escH(a.name)}</h3>`+(S.lvs.length?`<div class="tblwrap"><table><thead><tr><th>Mức</th><th>Lần đập</th><th>Lên</th><th>Thực tế</th><th>Bảng kỳ vọng</th><th>So bảng</th></tr></thead><tbody>${S.rows}</tbody></table></div>`+S.lvs.map(l=>`<div class="lbl" style="margin:8px 0 4px">Dây +${l} → +${+l+1}</div><textarea readonly rows="4" style="width:100%">${escH(a.texts[l])}</textarea>`).join(''):'<p class="hint">Chưa có dây.</p>')+`</div>`}).join('');
         $('#adm-wins').innerHTML=(u.wins||[]).slice().sort((a,b)=>(b.t||0)-(a.t||0)).map(w=>`<tr><td>${fmtT(w.t)}</td><td style="font-family:var(--f-body)">${escH(w.acc||'')}</td><td style="font-family:var(--f-body)">${w.name?escH(w.name):'–'}</td><td>+${w.lv}→+${w.lv+1}</td><td style="white-space:normal;text-align:left">${escH(w.line||'')}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';
