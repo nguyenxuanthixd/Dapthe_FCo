@@ -227,7 +227,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 
 <nav class="tabs" role="tablist">
   <button class="tab" role="tab" data-tab="day" aria-selected="true">Tính dây</button>
-  <button class="tab" role="tab" data-tab="up" aria-selected="false">Đập thẻ</button>
+  <button class="tab" role="tab" data-tab="up" aria-selected="false" hidden>Đập thẻ</button>
   <button class="tab" role="tab" data-tab="rate" aria-selected="false">Bảng tỷ lệ</button>
   <button class="tab" role="tab" data-tab="admin" aria-selected="false" id="tab-admin-btn" hidden>Admin</button>
 </nav>
@@ -449,7 +449,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
   <div class="tblwrap"><table><thead><tr><th>Lần đập</th><th>Tỷ lệ trần (%)</th><th>Tụt ít nhất</th><th>Tụt nhiều nhất</th></tr></thead><tbody id="rt-body"></tbody></table></div>
   <div class="btnrow" style="margin-top:12px"><button class="btn small" id="rt-reset">Khôi phục mặc định</button></div>
 </div>
-<div class="panel" style="max-width:640px;margin-top:18px">
+<div class="panel" style="max-width:640px;margin-top:18px" hidden>
   <h2>OVR theo cấp và công thức phôi</h2>
   <p class="note">OVR cộng thêm so với +1 (ước tính, sửa theo game). Mỗi phôi góp: <span class="mono">min(100, Gốc × Hệ số^(OVR phôi − OVR thẻ))</span> %. Ví dụ Gốc 20, phôi bằng OVR thẻ thì 5 phôi đầy 100%. Nếu thấy lệch với game, tích "Nhập % thanh đúng như game hiển thị" ở tab Đập thẻ.</p>
   <div class="row2" style="margin-bottom:12px">
