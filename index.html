@@ -196,7 +196,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 14:10</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 14:40</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -284,6 +284,8 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <div class="stepper" id="d-vmain"><button data-d="-0.1" aria-label="Bớt 0,1 vạch chính">−</button><input id="d-vmain-o" type="number" min="0.1" max="5" step="0.1" aria-label="Số vạch thẻ chính"><button data-d="0.1" aria-label="Thêm 0,1 vạch chính">+</button></div>
     </div>
     </div>
+    <div class="field"><span class="lbl">Dừng mồi khi dây thua tới (tự đặt theo phôi mang theo)</span>
+      <input id="d-cap" type="number" min="0" step="1" placeholder="Tự động" style="max-width:140px" aria-label="Giới hạn số lần thua mỗi dây"><p class="hint" id="d-caphint" style="margin-top:4px"></p></div>
     <div class="field"><label for="d-text">Dây (dòng trên cùng là cũ nhất)</label>
       <textarea id="d-text" rows="9" spellcheck="false"></textarea>
       <p class="hint">Mỗi chữ số là cấp mồi tụt về khi thua. Số bằng cấp đích (ví dụ 6, có hoặc không có dấu =) là vô. Mỗi dòng là một dây: dây kết thúc khi có thẻ lên (bấm Lên hoặc Kèo chính thành công là app tự xuống dòng). Mỗi mức đập có dây riêng, đổi mức là chuyển sang dây của mức đó. Chữ trong ngoặc như (Charlton) được bỏ qua.</p>
@@ -877,6 +879,26 @@ function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
     if(s.m&&s.m[i])return;const e=D.tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5,g=kk2?K:O;g.n++;g.E+=e;if(r==='S')g.s++});P.push(...eps)});
   const R=(O.s+1)/(O.E+1),t=sigTest(K,R),ratio=((K.s+3*R)/(K.E+3))/R;
   return{K,O,P,ratio,pv:t.pv,proven:K.n>=PROVE_N&&t.pv<PROVE_P}}
+// Từ +6 trở lên: gộp dây các mức theo "rớt mấy bậc" để dò dây có đủ mẫu
+const POOL_FROM=6;
+function poolAtt(D){
+  if(dLv<POOL_FROM)return{att:D.allAtt,pooled:false,ctx:{p1:D.c1,p2:D.c2,p3:D.c3}};
+  const out=[];let idx=0;
+  for(let lv=POOL_FROM;lv<MAX_LV;lv++){const txt=lv===dLv?dText:(dayTexts[lv]||'');if(!txt)continue;const tran=rates[lv-1]?rates[lv-1][0]/100:0;
+    const mp=r=>r==='S'?'S':'r'+(lv-(+r));
+    parseDay(txt,lv).sess.forEach(s=>{const m=s.map(mp);let L=0;m.forEach((r,i)=>{out.push({d:s.d,h:s.h,L,r,e:tran*Math.min(5,s.v[i]!=null?s.v[i]:5)/5,
+      p1:i>0?m[i-1]:'^',p2:i>1?m[i-2]+m[i-1]:(i===1?'^'+m[0]:'^'),p3:i>2?m.slice(i-3,i).join(''):'^'+m.slice(0,i).join(''),o:idx++});L=r==='S'?0:L+1})})}
+  const dk=d=>{if(!d)return 0;const [a,b]=d.split('/').map(Number);return b*100+a};
+  out.sort((a,b)=>dk(a.d)-dk(b.d)||((a.h??-1)-(b.h??-1))||a.o-b.o);
+  const ml=D.last.map(r=>r==='S'?'S':'r'+(dLv-(+r))),n=ml.length;
+  return{att:out,pooled:true,ctx:{p1:n?ml[n-1]:'^',p2:n>1?ml[n-2]+ml[n-1]:(n===1?'^'+ml[0]:'^'),p3:n>2?ml.slice(-3).join(''):'^'+ml.join('')}};
+}
+function keyLab(k,pooled){k=String(k).replace(/^[^|]*\|/,'');if(k==='^')return 'đầu dây';
+  return pooled?k.replace('^','đầu ').replace(/r(\d+)/g,'↓$1 ').replace(/S/g,'lên ').trim():k.replace('^','đầu ').split('').map(x=>x==='S'?'lên':x).join('')}
+// Kỳ vọng số lần đập (5 vạch) để từ mức k lên lại mức lv, tính cả rớt khi tạch
+function climbCost(lv){const f=new Array(lv+1).fill(0);
+  for(let it=0;it<3000;it++){for(let k=1;k<lv;k++){const R=rates[k-1]||[100,0,0],p=R[0]/100,dn=R[1]||0,dx=R[2]||0;let av=0,c=0;
+    for(let d=Math.max(1,dn);d<=Math.max(1,dx);d++){av+=f[Math.max(1,k-d)];c++}f[k]=1+p*f[k+1]+(1-p)*(dx?av/c:f[k])}}return f}
 // ===== Dò dây có tự chấm điểm =====
 // Mỗi cách dò chỉ dùng dữ liệu TRƯỚC lần đập đó để đoán "đẹp"/"xấu", rồi so với kết quả thật -> biết cách nào trúng.
 const DET_DEFS=[
@@ -889,12 +911,12 @@ const DET_DEFS=[
   {id:'sp1',name:'Con cuối (trong phiên)',key:(a,c)=>a.d==null?null:a.d+'|'+a.p1}
 ];
 const DET_GOOD=1.3,DET_BAD=0.75,DET_MINK=4,DET_TRUST_N=10,DET_TRUST=1.2;
-function runDetectors(D,ctxNow){
+function runDetectors(D,ctxNow,ATT){ATT=ATT||D.allAtt;
   const st=DET_DEFS.map(()=>({}));const sc=DET_DEFS.map(()=>({gn:0,gs:0,gE:0,bn:0,bs:0,bE:0}));
   let S=0,E=0;const lens=[];let prevLen=null;
   const call=(G,R)=>{if(!G||G.n<DET_MINK)return null;const L=((G.s+2*R)/(G.E+2))/R;return L>=DET_GOOD?{v:'good',L,G}:L<=DET_BAD?{v:'bad',L,G}:{v:'mid',L,G}};
   const medOf=()=>{if(!lens.length)return 3;const so=[...lens].sort((a,b)=>a-b);return so[Math.floor((so.length-1)/2)]};
-  D.allAtt.forEach(a=>{const R=(S+3)/(E+3),c={prevLen,med:medOf()},win=a.r==='S'?1:0;
+  ATT.forEach(a=>{const R=(S+3)/(E+3),c={prevLen,med:medOf()},win=a.r==='S'?1:0;
     DET_DEFS.forEach((d,i)=>{const k=d.key(a,c);if(k==null)return;const r=call(st[i][k],R);
       if(r&&r.v==='good'){sc[i].gn++;sc[i].gs+=win;sc[i].gE+=a.e}else if(r&&r.v==='bad'){sc[i].bn++;sc[i].bs+=win;sc[i].bE+=a.e}
       const G=st[i][k]||(st[i][k]={n:0,s:0,E:0});G.n++;G.s+=win;G.E+=a.e});
@@ -905,7 +927,7 @@ function runDetectors(D,ctxNow){
     const tg=sigTest({n:t.gn,s:t.gs,E:t.gE},base),tb=sigTest({n:t.bn,s:t.bs,E:t.bE},base),pG=tg.z>0?tg.pv/2:1,pB=tb.z<0?tb.pv/2:1;
     const trustG=t.gn>=DET_TRUST_N&&gr>=DET_TRUST&&pG<0.15,trustB=t.bn>=DET_TRUST_N&&br<=1/DET_TRUST&&pB<0.15,failG=t.gn>=DET_TRUST_N&&gr<1;
     return{...d,k,call:r,sc:t,gr,br,pG,trustG,trustB,failG}});
-  return{now,base,S,E,n:D.allAtt.length,good:now.filter(x=>x.trustG&&x.call&&x.call.v==='good'),bad:now.filter(x=>x.trustB&&x.call&&x.call.v==='bad'),
+  return{now,base,S,E,n:ATT.length,good:now.filter(x=>x.trustG&&x.call&&x.call.v==='good'),bad:now.filter(x=>x.trustB&&x.call&&x.call.v==='bad'),
     hint:now.filter(x=>!x.trustG&&x.call&&x.call.v==='good')};
 }
 function renderDay(){
@@ -921,7 +943,7 @@ function renderDay(){
   // Mốc dây (vô từ / dừng) tính theo các dây đã xong, không để chính dây đang chạy kéo mốc lên xuống giữa chừng
   {let Ecur=0;{const L=D.last;let st=0;for(let i=L.length-1;i>=0;i--){if(L[i]==='S'){st=i+1;break}}for(let i=st;i<L.length;i++)Ecur+=D.tran*Math.min(5,L.v[i]!=null?L.v[i]:5)/5}
    const wCur=D.last.length&&D.last.d!=null&&D.last.d!==curDayStr()?HIST_W:1,R0c=(D.sN+3)/Math.max(0.01,D.E-Ecur*wCur+3);D.R0c=R0c;}
-  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*Math.max(0.8,Math.min(1.2,D.R0c)));D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;
+  {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*Math.max(0.8,Math.min(1.2,D.R0c)));D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;D.LmaxAuto=D.Lmax;{const cap=+store.get('baitCap',0)||0;if(cap>0){D.Lmax=cap;D.Lmin=Math.min(D.Lmin,Math.max(1,cap-1))}}D.pbNow=pb;
    const pt=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5),Lmid=pt>0&&pt<1?Math.max(1,Math.ceil(Math.log(0.5)/Math.log(1-pt))):2;D.LP=lenPattern(D,Lmid);
    D.LminBase=D.Lmin;D.earlyRule=false;if(D.LP.prevL&&!(D.LP.proven&&D.LP.ratio<1)){D.Lmin=Math.max(1,Math.floor(D.Lmin/2));D.earlyRule=true}
    {// Báo vô mà thua liền GO_FAIL lần -> mồi thêm LminBase lần rồi gợi ý lại (lặp lại trong cùng dây, tới khi lên hoặc chạm dây tối đa)
@@ -951,7 +973,7 @@ function renderDay(){
    D.SK=skipStats(D);D.skF=D.SK.proven?Math.max(0.8,Math.min(1.2,D.SK.ratio)):1;const base=tran*dVmain/5,pm=Math.min(0.95,base*liftM*D.lpF*D.skF);
    D.anomaly=anomaly;D.base=base;
    $('#d-pm').textContent=pct(pm);
-   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1} (bảng Garena)</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>Điều chỉnh theo dây</dt><dd>${PK.reliable?`×${fmt(liftM,2)} (${PK.by}, ${PK.n} mẫu, p = ${fmt(PK.pv,3)})`:'Không có (chưa dãy nào đủ 30 mẫu và p &lt; 0,05)'}</dd><dt>Quy luật dây dài/ngắn</dt><dd>${D.lpF!==1?`×${fmt(D.lpF,2)} (dây trước dài, đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd><dt>Lúc báo Vô được (mồi đánh dấu *)</dt><dd>${D.skF!==1?`×${fmt(D.skF,2)} (đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd><dt>Mồi thực tế so với bảng</dt><dd>×${fmt(PK.R0,2)} <span class="hint">(tham khảo, không áp cho thẻ chính)</span></dd>`;
+   $('#d-pmkv').innerHTML=`<dt>Tỷ lệ trần +${dLv}→+${dLv+1} (bảng Garena)</dt><dd>${pct(tran)}</dd><dt>× ${vtxt(dVmain)}/5 vạch chính</dt><dd>${pct(base)}</dd><dt>Điều chỉnh theo dây</dt><dd>${PK.reliable?`×${fmt(liftM,2)} (${PK.by}, ${PK.n} mẫu, p = ${fmt(PK.pv,3)})`:'Không có (chưa dãy nào đủ 30 mẫu và p &lt; 0,05)'}</dd><dt>Quy luật dây dài/ngắn</dt><dd>${D.lpF!==1?`×${fmt(D.lpF,2)} (dây trước dài, đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd><dt>Lúc báo Vô được (mồi đánh dấu *)</dt><dd>${D.skF!==1?`×${fmt(D.skF,2)} (đã chứng minh)`:'Không áp (chưa chứng minh)'}</dd>${dLv>=POOL_FROM?(()=>{const R=rates[dLv-1]||[0,0,0],dn=Math.max(1,R[1]||0),dx=Math.max(dn,R[2]||0),f=climbCost(dLv);let av=0,c=0;for(let d=dn;d<=dx;d++){av+=f[Math.max(1,dLv-d)];c++}const pb5=tran,pbv=Math.min(0.95,tran*Math.min(5,dVach||5)/5);return `<dt>Tạch thì thẻ rớt về</dt><dd>+${Math.max(1,dLv-dx)} … +${dLv-dn}</dd><dt>Đập lại lên +${dLv} (5 vạch)</dt><dd>≈ ${fmt(av/c,0)} lần đập</dd><dt>Mồi lên trung bình</dt><dd>1 lần / ${fmt(1/Math.max(0.001,pbv),1)} lần mồi ${dVach?vtxt(dVach):5} vạch${(dVach||5)<5?` (5 vạch: ${fmt(1/Math.max(0.001,pb5),1)})`:''}</dd>`})():''}<dt>Mồi thực tế so với bảng</dt><dd>×${fmt(PK.R0,2)} <span class="hint">(tham khảo, không áp cho thẻ chính)</span></dd>`;
    D.pm=pm;}
   const thrP=Math.round((rates[dLv-1]?rates[dLv-1][0]:0)*dVmain/5*10)/10,thr=thrP/100;
   $('#d-thrv').textContent=fmt(thrP,1)+'%';
@@ -965,10 +987,10 @@ function renderDay(){
     for(const [G,key,len] of C){if(len===3&&key.length<3)continue;if(G.n>=4){const L=((G.s+2*R)/(G.E+2))/R;return{n:G.n,s:G.s,E:G.E,L,lab:key==='^'?'đầu dây':key.replace('^','đầu ').split('').map(x=>x==='S'?dLv+1:x).join(''),len:key==='^'?0:len,p:G.s/G.n,p0:SG.n?SG.sN/SG.n:0}}}return null})();D.RT=RT;
   const rtTxt=RT?`Rà dây: ${RT.len===0?'ở <strong>đầu dây</strong>':`sau ${RT.len===1?'con cuối':RT.len+' con cuối'} "<strong>${RT.lab}</strong>"`} lần sau lên ${fmt(RT.s,1)}/${fmt(RT.n,1)} (${pct(RT.p)}), chung ${pct(RT.p0)} → <strong>×${fmt(RT.L,2)}</strong>${D.SG.sess?' trong phiên này':' (phiên mới chưa đủ dữ liệu, tạm dùng toàn bộ dây)'}.`:`Đọc dây: dãy cuối hiện tại chưa xuất hiện đủ 4 lần ${D.SG.sess?'trong phiên này':'trong các dây trước'}, chưa đọc được.`;
   D.rtTxt=rtTxt;
-  const DET=runDetectors(D,{p1:D.c1,p2:D.c2,p3:D.c3,L:D.cL,h:new Date().getHours(),d:curDayStr()});D.DET=DET;
+  const PA=poolAtt(D);const DET=runDetectors(D,{p1:PA.ctx.p1,p2:PA.ctx.p2,p3:PA.ctx.p3,L:D.cL,h:new Date().getHours(),d:curDayStr()},PA.att);DET.pooled=PA.pooled;D.DET=DET;
   const goodNow=DET.good.length>0,badNow=!goodNow&&DET.bad.length>0;
-  const detTxt=goodNow?`Dò dây: <strong>${DET.good.map(x=>x.name+' "'+x.k.replace(/^[^|]*\|/,'').replace('^','đầu dây')+'"').join(', ')}</strong> đang báo đẹp; cách dò này đã trúng ${DET.good.map(x=>x.sc.gs+'/'+x.sc.gn+' (×'+fmt(x.gr,2)+')').join(', ')} khi báo đẹp trước đây.`
-    :badNow?`Dò dây: <strong>${DET.bad.map(x=>x.name+' "'+x.k.replace(/^[^|]*\|/,'').replace('^','đầu dây')+'"').join(', ')}</strong> đang báo xấu, đã đúng khi báo xấu trước đây.`
+  const detTxt=goodNow?`Dò dây: <strong>${DET.good.map(x=>x.name+' "'+keyLab(x.k,DET.pooled)+'"').join(', ')}</strong> đang báo đẹp; cách dò này đã trúng ${DET.good.map(x=>x.sc.gs+'/'+x.sc.gn+' (×'+fmt(x.gr,2)+')').join(', ')} khi báo đẹp trước đây.`
+    :badNow?`Dò dây: <strong>${DET.bad.map(x=>x.name+' "'+keyLab(x.k,DET.pooled)+'"').join(', ')}</strong> đang báo xấu, đã đúng khi báo xấu trước đây.`
     :DET.hint.length?`Dò dây: ${DET.hint.map(x=>x.name).join(', ')} báo đẹp nhưng <strong>chưa được tin</strong> (chưa trúng đủ ${DET_TRUST_N} lần với ×${String(DET_TRUST).replace('.',',')}).`
     :'Dò dây: chưa cách dò nào đáng tin đang báo đẹp.';
   {const SG=D.SG,R=(SG.sN+3)/(SG.E+3);let b=null;D.keys.slice(1).forEach(k=>{const G=SG.g1[k];if(G&&G.n>=4){const L=((G.s+2*R)/(G.E+2))/R;if(!b||L>b.L)b={k,L,p:G.s/G.n,s:G.s,n:G.n}}});D.bestP1=b&&b.L>=1.3?b:null;}
@@ -1018,12 +1040,13 @@ function renderDay(){
    else if(fm&&dText!==window.__fixNo){box.hidden=false;window.__fixMode='loss';$('#d-fixmsg').innerHTML=`Vừa ghi <strong>về +${fm[1]}</strong> lúc app đang báo Vô được. Lần này là <strong>kèo chính</strong> hay <strong>mồi</strong>?`;$('#d-fixyes').textContent='Kèo chính tạch';$('#d-fixyes').className='btn bad small';$('#d-fixno').textContent='Mồi'}
    else box.hidden=true;}
   {const T=D.DET;$('#d-dettab').innerHTML=T.now.map(x=>{const st=x.trustG?'<span class="pill ok">Đang trúng</span>':x.failG?'<span class="pill bad">Trượt, tắt</span>':x.trustB?'<span class="pill">Báo xấu đúng</span>':(x.sc.gn>=DET_TRUST_N&&x.gr>=1)?'<span class="pill">Nhỉnh, chưa chắc</span>':'<span class="pill">Chưa đủ</span>';
-     const nowTxt=x.k==null?'–':(x.k.replace(/^[^|]*\|/,'').replace('^','đầu dây')+(x.call?(x.call.v==='good'?' · <b>đẹp</b>':x.call.v==='bad'?' · xấu':' · thường'):' · chưa đủ mẫu'));
+     const nowTxt=x.k==null?'–':(keyLab(x.k,T.pooled)+(x.call?(x.call.v==='good'?' · <b>đẹp</b>':x.call.v==='bad'?' · xấu':' · thường'):' · chưa đủ mẫu'));
      return `<tr${(x.trustG&&x.call&&x.call.v==='good')?' style="font-weight:700"':''}><td style="text-align:left">${x.name}</td><td style="text-align:left">${nowTxt}</td><td>${x.sc.gn}</td><td>${x.sc.gs}</td><td>${x.gr!=null?'×'+fmt(x.gr,2):'–'}</td><td>${x.sc.gn?pct(Math.min(1,x.pG)):'–'}</td><td>${x.sc.bn}</td><td>${x.sc.bn?x.sc.bs:'–'}</td><td>${st}</td></tr>`}).join('');
-   $('#d-detsum').innerHTML=`App thử ${DET_DEFS.length} cách dò trên ${T.n} lần đập ở mức này. Mỗi lần, từng cách dò chỉ dùng dữ liệu <b>trước</b> lần đó để đoán, rồi so với kết quả thật. Mức chung: lên ${T.S}/${T.n} (${pct(T.S/Math.max(1,T.n))}). Cách dò được tin khi báo đẹp từ ${DET_TRUST_N} lần trở lên, trúng gấp ×${String(DET_TRUST).replace('.',',')} mức chung và khả năng chỉ là may dưới 15%; trúng kém hơn mức chung thì tự tắt.`+(T.good.length?` <b>Đang báo đẹp: ${T.good.map(x=>x.name).join(', ')}.</b>`:'');}
+   $('#d-detsum').innerHTML=`App thử ${DET_DEFS.length} cách dò trên ${T.n} lần đập ${T.pooled?'của các mức từ +'+POOL_FROM+' trở lên (gộp theo số bậc rớt: ↓2 = rớt 2 bậc)':'ở mức này'}. Mỗi lần, từng cách dò chỉ dùng dữ liệu <b>trước</b> lần đó để đoán, rồi so với kết quả thật. Mức chung: lên ${T.S}/${T.n} (${pct(T.S/Math.max(1,T.n))}). Cách dò được tin khi báo đẹp từ ${DET_TRUST_N} lần trở lên, trúng gấp ×${String(DET_TRUST).replace('.',',')} mức chung và khả năng chỉ là may dưới 15%; trúng kém hơn mức chung thì tự tắt.`+(T.good.length?` <b>Đang báo đẹp: ${T.good.map(x=>x.name).join(', ')}.</b>`:'');}
   {const L=D.last;let st=0;for(let i=L.length-1;i>=0;i--){if(L[i]==='S'){st=i+1;break}}const curN=L.length-st;
    const todayN=D.allAtt.filter(a=>a.d===curDayStr()).length;
    $('#d-turns').innerHTML=`Dây này: <b>${curN}</b> lượt · lượt tới: <b>${curN+1}</b> · hôm nay ${todayN}`;}
+  $('#d-caphint').textContent=(+store.get('baitCap',0)||0)>0?`Đang đặt: thua tới ${store.get('baitCap',0)} lần thì app báo Dừng (tự động sẽ là ${D.LmaxAuto}).`:`Đang tự động: dừng ở ${D.LmaxAuto} lần thua (chỉ 10% dây dài tới đó). Mồi ${dVach?vtxt(dVach):5} vạch trung bình ${fmt(1/Math.max(0.001,D.pbNow),1)} lần mới lên 1 lần.`;
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
@@ -1180,6 +1203,7 @@ function renderLen(D){
 }
 function saveDay(){dayTexts[dLv]=dText;store.set('dayTexts',dayTexts);store.set('dayLv',dLv);store.set('dayWin',dWin);const o=$('#d-lv').selectedOptions[0];if(o){const n=countAtt(dText,dLv);o.textContent=`+${dLv} → +${dLv+1}${n?` (${n} lần)`:''}`}}
 const _rd=renderDay;renderDay=function(){_rd();try{renderStage()}catch(e){}};
+$('#d-cap').value=store.get('baitCap',0)||'';$('#d-cap').addEventListener('input',e=>{store.set('baitCap',Math.max(0,Math.floor(+e.target.value||0)));renderDay()});
 $('#d-text').addEventListener('input',e=>{dText=e.target.value;saveDay();renderDay()});
 $('#d-lv').onchange=e=>{dayTexts[dLv]=dText;dLv=+e.target.value;dText=dayTexts[dLv]||'';$('#d-text').value=dText;dBackup=null;$('#d-undo-row').hidden=true;$('#d-clr-ask').hidden=true;saveDay();renderDay()};
 $('#d-win').onchange=e=>{dWin=+e.target.value;saveDay();renderDay()};
