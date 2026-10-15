@@ -111,7 +111,8 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .crow .cn{font:600 .7rem var(--f-mono);color:var(--muted);width:2.4em;text-align:right;flex:none}
 .crow .cb{display:flex;flex-wrap:wrap;gap:3px}
 .chip{min-width:22px;height:22px;padding:0 4px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font:700 .72rem var(--f-mono);color:#fff;background:var(--bait)}
-.kcn{margin-left:6px;padding:1px 7px;border-radius:999px;font:700 .7rem var(--f-body);align-self:center;white-space:nowrap}.kcn.ok{background:var(--ok);color:#06210f}.kcn.bad{background:var(--bad);color:#fff}
+.kcn{margin-left:6px;padding:1px 7px;border-radius:999px;font:700 .7rem var(--f-body);align-self:center;white-space:nowrap}.kcn.ok{background:var(--ok);color:#06210f}.kcn.bad{background:var(--bad);color:#fff}.kcn.miss{background:var(--warn);color:#1b1404}
+.chip.k{position:relative}.chip.k::after{content:'';position:absolute;left:50%;bottom:-5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--warn)}
 .turnc{margin-left:8px;font:700 .72rem var(--f-mono);color:var(--muted);align-self:center;white-space:nowrap}
 .chip.d3{opacity:.4}.chip.d2{opacity:.7}.chip.s{background:var(--gold);color:#1b1404}.chip.m{box-shadow:0 0 0 2px var(--ink) inset}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
@@ -197,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 16:45</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 16:50</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -386,7 +387,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
     <div>
       <div class="lbl" style="margin-bottom:6px">Các dây gần nhất (mới nhất ở dưới)</div>
       <div id="c-days" class="cdays"></div>
-      <div class="legend" style="margin-top:8px"><span><i style="background:var(--gold)"></i>Lên</span><span><i style="background:var(--bait);opacity:.35"></i>Về +3</span><span><i style="background:var(--bait);opacity:.65"></i>Về +2</span><span><i style="background:var(--bait)"></i>Về +1</span><span><i style="border:2px solid var(--ink)"></i>Kèo chính</span></div>
+      <div class="legend" style="margin-top:8px"><span><i style="background:var(--gold)"></i>Lên</span><span><i style="background:var(--bait);opacity:.35"></i>Về +3</span><span><i style="background:var(--bait);opacity:.65"></i>Về +2</span><span><i style="background:var(--bait)"></i>Về +1</span><span><i style="background:var(--warn);border-radius:50%;width:6px;height:6px"></i>Lúc app báo vô</span><span><i style="border:2px solid var(--ink)"></i>Kèo chính</span></div>
     </div>
     <div>
       <div class="lbl" style="margin-bottom:6px">Theo khung giờ (giờ bắt đầu dây)</div>
@@ -1139,7 +1140,7 @@ $('#d-wins-copy').onclick=()=>{const txt=dWins.map(w=>`${new Date(w.t).toLocaleS
 function renderCharts(D){
   // chuỗi dây gần nhất
   const rows=D.sess.map((s,i)=>({s,i})).filter(o=>o.s.length).slice(-10);
-  $('#c-days').innerHTML=rows.map(({s,i})=>`<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';const gap=j&&j%5===0?' style="margin-left:6px"':'';const t=` title="Lượt ${j+1}"`;return r==='S'?`<span class="chip s${m}"${gap}${t}>${dLv+1}</span>`:`<span class="chip d${r}${m}"${gap}${t}>${r}</span>`}).join('')}<span class="turnc">${s.length} lượt</span>${(()=>{const L=[];s.forEach((r,j)=>{if(s.m&&s.m[j])L.push(r==='S'?`<span class="kcn ok">Kèo chính lên${s.nm?' ('+escH(s.nm)+')':''}</span>`:`<span class="kcn bad">Kèo chính tạch về +${r}</span>`)});return L.join('')})()}</span></div>`).join('')||'<p class="hint">Chưa có dây.</p>';
+  $('#c-days').innerHTML=rows.map(({s,i})=>`<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';const gap=j&&j%5===0?' style="margin-left:6px"':'';const kq=s.k&&s.k[j]?' k':'';const t=` title="Lượt ${j+1}${kq?' · lúc app báo vô':''}"`;return r==='S'?`<span class="chip s${m}${kq}"${gap}${t}>${dLv+1}</span>`:`<span class="chip d${r}${m}${kq}"${gap}${t}>${r}</span>`}).join('')}<span class="turnc">${s.length} lượt</span>${(()=>{const L=[];s.forEach((r,j)=>{if(s.m&&s.m[j])L.push(r==='S'?`<span class="kcn ok">Kèo chính lên${s.nm?' ('+escH(s.nm)+')':''}</span>`:`<span class="kcn bad">Kèo chính tạch về +${r}</span>`);else if(r==='S'&&s.k&&s.k[j])L.push(`<span class="kcn miss">App báo vô, anh mồi và lên (lượt ${j+1})</span>`)});return L.join('')})()}</span></div>`).join('')||'<p class="hint">Chưa có dây.</p>';
   // cộng dồn thực tế so với bảng
   const w=D.win;if(!w.length){$('#c-trend').innerHTML='';$('#c-trendtxt').textContent='';return}
   let a=0,e=0;const A=[0],B=[0];w.forEach(x=>{a+=x.r==='S'?1:0;e+=x.e;A.push(a);B.push(e)});
