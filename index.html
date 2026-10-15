@@ -196,7 +196,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 14:40</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 14:45</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -945,7 +945,7 @@ function renderDay(){
    const wCur=D.last.length&&D.last.d!=null&&D.last.d!==curDayStr()?HIST_W:1,R0c=(D.sN+3)/Math.max(0.01,D.E-Ecur*wCur+3);D.R0c=R0c;}
   {const pb=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5*Math.max(0.8,Math.min(1.2,D.R0c)));D.Lmax=pb>0?Math.ceil(Math.log(0.1)/Math.log(1-pb)):99;D.Lmin=pb>0&&pb<1?Math.max(2,Math.floor(Math.log(0.5)/Math.log(1-pb))):2;D.LmaxAuto=D.Lmax;{const cap=+store.get('baitCap',0)||0;if(cap>0){D.Lmax=cap;D.Lmin=Math.min(D.Lmin,Math.max(1,cap-1))}}D.pbNow=pb;
    const pt=Math.min(0.95,D.tran*Math.min(5,dVach||5)/5),Lmid=pt>0&&pt<1?Math.max(1,Math.ceil(Math.log(0.5)/Math.log(1-pt))):2;D.LP=lenPattern(D,Lmid);
-   D.LminBase=D.Lmin;D.earlyRule=false;if(D.LP.prevL&&!(D.LP.proven&&D.LP.ratio<1)){D.Lmin=Math.max(1,Math.floor(D.Lmin/2));D.earlyRule=true}
+   D.LminBase=D.Lmin;D.earlyRule=false;if(D.LP.prevL&&D.LP.proven&&D.LP.ratio>1){D.Lmin=Math.max(1,Math.floor(D.Lmin/2));D.earlyRule=true} // chỉ vô sớm sau dây dài khi số liệu đã chứng minh
    {// Báo vô mà thua liền GO_FAIL lần -> mồi thêm LminBase lần rồi gợi ý lại (lặp lại trong cùng dây, tới khi lên hoặc chạm dây tối đa)
     const L=D.last;let st=0;for(let i=L.length-1;i>=0;i--){if(L[i]==='S'){st=i+1;break}}
     // Tính lại điểm vô: lấy các dây trước của anh đã dài hơn mức hiện tại, xem chúng thường lên ở lần thua thứ mấy (trung vị)
@@ -1023,7 +1023,7 @@ function renderDay(){
    $('#d-lptab').innerHTML=row('Sau dây ngắn',P.O,!P.prevL&&P.dl.length>0)+row('Sau dây dài (1 hoặc 2)',P.A,P.prevL&&!P.prev2)+row('Sau 2 dây dài liền',P.B,P.prev2);
    const verdict=P.proven?(P.ratio>1?`<b>Đã chứng minh</b>: sau dây dài, dây kế lên nhanh hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}). App đang áp: vô sớm hơn và cộng tỷ lệ khi dây trước dài.`:`<b>Đã chứng minh ngược lại</b>: sau dây dài, dây kế lên chậm hơn ×${fmt(P.ratio,2)} (p = ${fmt(P.pv,3)}).`):`<b>Chưa chứng minh</b>: có ${P.A.k}/${PROVE_N} dây sau dây dài${P.A.k?`, hiện ×${fmt(P.ratio,2)} so với sau dây ngắn (p = ${fmt(P.pv,2)})`:''}. Chưa đủ thì app chỉ theo dõi, không cộng tỷ lệ.`;
    $('#d-lpsum').innerHTML=`Dây dài = từ ${P.Lmid} lần thua trở lên (dài hơn trung vị các dây của anh${P.dl.length<8?', chưa đủ 8 dây nên tạm lấy theo bảng':''}). Các dây gần nhất (số lần thua): <span class="mono">${P.recent.join(' · ')||'–'}</span>. ${verdict}`;
-   if(D.LP.prevL&&(sig.className==='signal go'||/Mồi trước/.test(sig.innerHTML))){sig.insertAdjacentHTML('beforeend',`<br><span class="hint">Dây trước dài${P.prev2?' (2 dây dài liền)':''}: ${P.proven?`đã chứng minh ×${fmt(P.ratio,2)}, đã áp.`:`theo quy tắc của anh dây này dễ ngắn nên app nhắc vô sớm hơn; tỷ lệ chưa cộng vì mới có ${P.A.k}/${PROVE_N} dây để kiểm.`}</span>`)}}
+   /* đã bỏ ghi chú 'dây trước dài nên vô sớm' vì số liệu chưa ủng hộ quy tắc này */}
   {let SL0=store.get('skipLog',[])||[];if(!SL0.some(r=>r.lv===dLv)&&!store.get('skipSeed_'+dLv,false)){const add=[];D.sess.forEach(s=>s.forEach((r,i)=>{if(s.k&&s.k[i]&&!(s.m&&s.m[i]))add.push({t:Date.now(),lv:dLv,k:r==='S'?String(dLv+1):r,up:r==='S',pm:D.base,vm:dVmain,line:s.slice(0,i).map(x=>x==='S'?dLv+1:x).join('')+' (ghi lại từ dây)'})}));if(add.length){store.set('skipLog',SL0.concat(add).slice(-200));store.set('skipSeed_'+dLv,true)}}}
   {const SL=(store.get('skipLog',[])||[]).filter(r=>r.lv===dLv),upN=SL.filter(r=>r.up).length;
    $('#d-sktab').innerHTML=SL.slice(-8).reverse().map(r=>{const d=new Date(r.t);return `<tr><td>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td style="text-align:left" class="mono">${escH(r.line||'(đầu dây)')}</td><td>${r.up?`<span class="pill ok">Lên +${r.k}</span>`:`<span class="pill">Về +${r.k}</span>`}</td><td>${pct(r.pm)} (${vtxt(r.vm||5)} vạch)</td></tr>`}).join('')||'<tr><td colspan="4" style="text-align:left;color:var(--muted)">Chưa có.</td></tr>';
