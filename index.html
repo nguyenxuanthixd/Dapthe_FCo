@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 20:00</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 20:10</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -900,7 +900,7 @@ function poolAtt(D){
   return{att:out,pooled:true,ctx:{p1:n?ml[n-1]:'^',p2:n>1?ml[n-2]+ml[n-1]:(n===1?'^'+ml[0]:'^'),p3:n>2?ml.slice(-3).join(''):'^'+ml.join('')}};
 }
 function keyLab(k,pooled){k=String(k).replace(/^[^|]*\|/,'');if(k==='^')return 'đầu dây';
-  return pooled?k.replace('^','đầu ').replace(/r(\d+)/g,'↓$1 ').replace(/S/g,'lên ').trim():k.replace('^','đầu ').split('').map(x=>x==='S'?'lên':x).join('')}
+  return pooled?k.replace('^','đầu ').replace(/r(\d+)/g,(m,n)=>'+'+(dLv-(+n))+' ').replace(/S/g,'lên ').trim():k.replace('^','đầu ').split('').map(x=>x==='S'?'lên':x).join('')}
 // Kỳ vọng số lần đập (5 vạch) để từ mức k lên lại mức lv, tính cả rớt khi tạch
 function climbCost(lv){const f=new Array(lv+1).fill(0);
   for(let it=0;it<3000;it++){for(let k=1;k<lv;k++){const R=rates[k-1]||[100,0,0],p=R[0]/100,dn=R[1]||0,dx=R[2]||0;let av=0,c=0;
@@ -933,7 +933,8 @@ function runDetectors(D,ctxNow,ATT){ATT=ATT||D.allAtt;
     const tg=sigTest({n:t.gn,s:t.gs,E:t.gE},base),tb=sigTest({n:t.bn,s:t.bs,E:t.bE},base),pG=tg.z>0?tg.pv/2:1,pB=tb.z<0?tb.pv/2:1;
     const trustG=t.gn>=DET_TRUST_N&&gr>=DET_TRUST&&pG<0.15,trustB=t.bn>=DET_TRUST_N&&br<=1/DET_TRUST&&pB<0.15,failG=t.gn>=DET_TRUST_N&&gr<1;
     return{...d,k,call:r,sc:t,gr,br,pG,trustG,trustB,failG}});
-  return{now,base,S,E,n:ATT.length,good:now.filter(x=>x.trustG&&x.call&&x.call.v==='good'),bad:now.filter(x=>x.trustB&&x.call&&x.call.v==='bad'),
+  const goodKeys=DET_DEFS.map((d,i)=>Object.entries(st[i]).filter(([k,G])=>{const r=call(G,R);return r&&r.v==='good'}).map(([k,G])=>({k,n:G.n,s:G.s,L:call(G,R).L})));
+  return{goodKeys,now,base,S,E,n:ATT.length,good:now.filter(x=>x.trustG&&x.call&&x.call.v==='good'),bad:now.filter(x=>x.trustB&&x.call&&x.call.v==='bad'),
     hint:now.filter(x=>!x.trustG&&x.call&&x.call.v==='good')};
 }
 // Tỷ lệ thật theo từng số vạch ở mức đang đập (vạch làm tròn 0,5). Đủ EMP_N lần thì dùng thay bảng.
@@ -1018,6 +1019,13 @@ function renderDay(){
   else if(D.cL<D.Lmin&&!goodNow){sig.className='signal';sig.innerHTML=`<b>Mồi trước</b>${detTxt} Dây mới ${D.cL} lần thua; chưa có dãy đẹp rõ thì mồi tới ${D.Lmin} lần thua ${D.earlyRule?'(dây trước dài nên vô sớm, bình thường '+D.LminBase+')':''}, còn ${D.Lmin-D.cL} lần. Kèo chính ≈ ${pct(D.pm)}.`}
   else if(badNow){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Chờ, dây đang xấu</b>${detTxt} Mồi tiếp rồi app dò lại. Dây ${D.cL} lần thua, dừng ở ${D.Lmax}.`}
   else{sig.className='signal go';sig.innerHTML=`<b>${goodNow?'Vô được, dây đẹp':'Vô được'}${D.goRounds?' (lần '+(D.goRounds+1)+')':''}</b>${detTxt}${goodNow?'':' Vô theo số lần thua.'} ${D.goRounds?`Sau ${D.goRounds} lần báo vô bị thua, app đọc dây lại và gợi ý vô. ${D.goFailNow?`Lần này đã thua ${D.goFailNow}/${GO_FAIL}. `:''}`:(D.goFailNow?`Đang báo vô, đã thua ${D.goFailNow}/${GO_FAIL} (thua đủ ${GO_FAIL} lần hoặc kèo chính tạch thì app tính lại). `:'')}Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <strong>${pct(D.pm)}</strong>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}.  Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
+  // Chế độ Gợi ý vô: chỉ gợi ý theo CON CUỐI về (khi cách dò "Con cuối" đang trúng), còn lại im lặng, chỉ nhắc khi dây quá dài
+  if(!store.get('probeMode',false)){const P1=DET.now.find(x=>x.id==='p1'),stop=D.cL>=D.Lmax;sig.style.borderColor='';
+    const gk=(DET.goodKeys[0]||[]).filter(g=>g.k!=='^'&&g.k!=='S').sort((a,b)=>b.L-a.L),lb=k=>{k=String(k).replace(/^[^|]*\|/,'');const m=k.match(/^r(\d+)$/);return m?'về +'+(dLv-(+m[1])):/^\d$/.test(k)?'về +'+k:keyLab(k,DET.pooled)};
+    const p1ok=P1&&P1.sc.gn>=DET_TRUST_N&&P1.gr>=DET_TRUST&&P1.pG<0.2;const ok=p1ok&&P1.call&&P1.call.v==='good';
+    if(stop){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}.`}
+    else if(ok){sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Con cuối <strong>${lb(P1.k)}</strong>: trước đây sau kết quả này lần kế lên ${P1.call.G.s}/${P1.call.G.n} (${pct(P1.call.G.s/P1.call.G.n)}), cách dò "Con cuối" đã trúng ${P1.sc.gs}/${P1.sc.gn} lần báo. Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
+    else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${p1ok?`Chờ con cuối ${gk.length?gk.map(g=>'<strong>'+lb(g.k)+'</strong>').join(' hoặc '):'đẹp'} thì app báo vô.`:`Cách dò "Con cuối" chưa đủ tin (đang ${P1&&P1.sc.gn?'trúng '+P1.sc.gs+'/'+P1.sc.gn:'thu thập'}), app chưa báo vô.`} Dây này ${D.cL} lần thua.`}}
   if(store.get('probeMode',false)){const stop=D.cL>=D.Lmax;sig.className='signal';sig.style.borderColor=stop?'var(--bad)':'';
     sig.innerHTML=stop?`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}. Đang ở chế độ dò dây nên app chỉ nhắc, không gợi ý vô.`:`<b>Đang dò dây</b>Dây này ${D.cL} lần thua. App chỉ ghi và tính, không báo vô. Xem bảng "Dò dây: bảng tự chấm" và "Tỷ lệ thật theo số vạch" để theo dõi. Bấm "Gợi ý vô" khi muốn app báo lại.`;}
   if(sig.className==='signal go')sig.style.borderColor='';
@@ -1060,7 +1068,7 @@ function renderDay(){
   {const T=D.DET;$('#d-dettab').innerHTML=T.now.map(x=>{const st=x.trustG?'<span class="pill ok">Đang trúng</span>':x.failG?'<span class="pill bad">Trượt, tắt</span>':x.trustB?'<span class="pill">Báo xấu đúng</span>':(x.sc.gn>=DET_TRUST_N&&x.gr>=1)?'<span class="pill">Nhỉnh, chưa chắc</span>':'<span class="pill">Chưa đủ</span>';
      const nowTxt=x.k==null?'–':(keyLab(x.k,T.pooled)+(x.call?(x.call.v==='good'?' · <b>đẹp</b>':x.call.v==='bad'?' · xấu':' · thường'):' · chưa đủ mẫu'));
      return `<tr${(x.trustG&&x.call&&x.call.v==='good')?' style="font-weight:700"':''}><td style="text-align:left">${x.name}</td><td style="text-align:left">${nowTxt}</td><td>${x.sc.gn}</td><td>${x.sc.gs}</td><td>${x.gr!=null?'×'+fmt(x.gr,2):'–'}</td><td>${x.sc.gn?pct(Math.min(1,x.pG)):'–'}</td><td>${x.sc.bn}</td><td>${x.sc.bn?x.sc.bs:'–'}</td><td>${st}</td></tr>`}).join('');
-   $('#d-detsum').innerHTML=`App thử ${DET_DEFS.length} cách dò trên ${T.n} lần đập ${T.pooled?'của các mức từ +'+POOL_FROM+' trở lên (gộp theo số bậc rớt: ↓2 = rớt 2 bậc)':'ở mức này'}. Mỗi lần, từng cách dò chỉ dùng dữ liệu <b>trước</b> lần đó để đoán, rồi so với kết quả thật. Mức chung: lên ${T.S}/${T.n} (${pct(T.S/Math.max(1,T.n))}). Cách dò được tin khi báo đẹp từ ${DET_TRUST_N} lần trở lên, trúng gấp ×${String(DET_TRUST).replace('.',',')} mức chung và khả năng chỉ là may dưới 15%; trúng kém hơn mức chung thì tự tắt.`+(T.good.length?` <b>Đang báo đẹp: ${T.good.map(x=>x.name).join(', ')}.</b>`:'');}
+   $('#d-detsum').innerHTML=`App thử ${DET_DEFS.length} cách dò trên ${T.n} lần đập ${T.pooled?'của các mức từ +'+POOL_FROM+' trở lên (gộp theo số bậc rớt, hiển thị quy về mức đang đập)':'ở mức này'}. Mỗi lần, từng cách dò chỉ dùng dữ liệu <b>trước</b> lần đó để đoán, rồi so với kết quả thật. Mức chung: lên ${T.S}/${T.n} (${pct(T.S/Math.max(1,T.n))}). Cách dò được tin khi báo đẹp từ ${DET_TRUST_N} lần trở lên, trúng gấp ×${String(DET_TRUST).replace('.',',')} mức chung và khả năng chỉ là may dưới 15%; trúng kém hơn mức chung thì tự tắt.`+(T.good.length?` <b>Đang báo đẹp: ${T.good.map(x=>x.name).join(', ')}.</b>`:'');}
   {const L=D.last;let st=0;for(let i=L.length-1;i>=0;i--){if(L[i]==='S'){st=i+1;break}}const curN=L.length-st;
    const todayN=D.allAtt.filter(a=>a.d===curDayStr()).length;
    $('#d-turns').innerHTML=`Dây này: <b>${curN}</b> lượt · lượt tới: <b>${curN+1}</b> · hôm nay ${todayN}`;}
