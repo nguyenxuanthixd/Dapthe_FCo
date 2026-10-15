@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 20:10</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 20:15</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -252,7 +252,6 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="grid daygrid">
   <div class="panel stack">
     <h2>Nhập dây</h2>
-    <div class="btnrow" style="margin-bottom:6px"><button class="chip-btn" id="d-mode-probe">Dò dây</button><button class="chip-btn" id="d-mode-go">Gợi ý vô</button></div>
     <div class="signal mini" id="d-mini"></div>
     <div class="row2">
       <div class="field"><label for="d-lv">Cấp đang đập</label><select id="d-lv"></select></div>
@@ -1075,7 +1074,6 @@ function renderDay(){
   $('#d-caphint').textContent=(+store.get('baitCap',0)||0)>0?`Đang đặt: thua tới ${store.get('baitCap',0)} lần thì app báo Dừng (tự động sẽ là ${D.LmaxAuto}).`:`Đang tự động: dừng ở ${D.LmaxAuto} lần thua (chỉ 10% dây dài tới đó). Mồi ${dVach?vtxt(dVach):5} vạch trung bình ${fmt(1/Math.max(0.001,D.pbNow),1)} lần mới lên 1 lần.`;
   {const T=D.EMP;$('#d-emptab').innerHTML=T.rows.map(g=>{const b=Math.min(0.95,D.tran*g.v/5),r=T.rateAt(g.v);return `<tr${Math.abs(g.v-dVmain)<0.26||Math.abs(g.v-(dVach||5))<0.26?' style="font-weight:700"':''}><td>${vtxt(g.v)}</td><td>${g.n}</td><td>${g.s}</td><td>${pct(g.s/g.n)}</td><td>${pct(b)}</td><td style="color:${g.s/Math.max(0.01,g.E)>=1.2?'var(--ok)':g.s/Math.max(0.01,g.E)<=0.8?'var(--bad)':'var(--muted)'}">×${fmt(g.s/Math.max(0.01,g.E),2)}</td><td>${pct(r.p)}${r.src==='vach'?' (thật)':r.src==='level'?' (theo mức)':' (bảng)'}</td></tr>`}).join('')||'<tr><td colspan="7" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>';
    $('#d-empsum').innerHTML=`Cả mức +${dLv}→+${dLv+1}: ${T.lvl.n} lần đập, lên ${T.lvl.s}, bảng dự kiến ${fmt(T.lvl.E,1)} → <b>×${fmt(T.lvl.ratio,2)}</b>${T.lvl.n?` (khả năng chỉ là may: ${pct(Math.min(1,T.lvl.pv))})`:''}. Số vạch nào đủ ${EMP_N} lần thì app dùng tỷ lệ thật của vạch đó cho kèo chính và mồi. Chưa đủ thì nếu cả mức lệch rõ (từ 50 lần, khả năng may dưới 10%) app nhân theo mức lệch đó; không thì dùng bảng.`;}
-  {const pm=store.get('probeMode',false);$('#d-mode-probe').classList.toggle('on',!!pm);$('#d-mode-go').classList.toggle('on',!pm);}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
@@ -1234,7 +1232,7 @@ function renderLen(D){
 function saveDay(){dayTexts[dLv]=dText;store.set('dayTexts',dayTexts);store.set('dayLv',dLv);store.set('dayWin',dWin);const o=$('#d-lv').selectedOptions[0];if(o){const n=countAtt(dText,dLv);o.textContent=`+${dLv} → +${dLv+1}${n?` (${n} lần)`:''}`}}
 const _rd=renderDay;renderDay=function(){_rd();try{renderStage()}catch(e){}};
 $('#d-cap').value=store.get('baitCap',0)||'';$('#d-cap').addEventListener('input',e=>{store.set('baitCap',Math.max(0,Math.floor(+e.target.value||0)));renderDay()});
-$('#d-mode-probe').onclick=()=>{store.set('probeMode',true);window.__prevGo=null;renderDay()};$('#d-mode-go').onclick=()=>{store.set('probeMode',false);window.__prevGo=null;renderDay()};
+store.set('probeMode',false);
 $('#d-text').addEventListener('input',e=>{dText=e.target.value;saveDay();renderDay()});
 $('#d-lv').onchange=e=>{dayTexts[dLv]=dText;dLv=+e.target.value;dText=dayTexts[dLv]||'';$('#d-text').value=dText;dBackup=null;$('#d-undo-row').hidden=true;$('#d-clr-ask').hidden=true;saveDay();renderDay()};
 $('#d-win').onchange=e=>{dWin=+e.target.value;saveDay();renderDay()};
