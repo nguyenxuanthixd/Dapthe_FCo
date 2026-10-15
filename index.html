@@ -106,7 +106,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 /* ---- Dây layout + charts ---- */
 .daygrid>.chartpanel{grid-column:1/-1}
 @media (min-width:1500px){.wrap{max-width:1780px}.daygrid{grid-template-columns:340px minmax(0,1fr) minmax(380px,480px)}.daygrid>.chartpanel{grid-column:auto;position:sticky;top:12px}}
-.cdays{display:flex;flex-direction:column;gap:6px}
+.cdays{display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto;padding-right:6px;scrollbar-width:thin}
 .crow{display:flex;align-items:center;gap:6px}
 .crow .cn{font:600 .7rem var(--f-mono);color:var(--muted);width:2.4em;text-align:right;flex:none}
 .crow .cb{display:flex;flex-wrap:wrap;gap:3px}
@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 17:15</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 15/10 19:55</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -388,7 +388,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
   <div class="panel stack chartpanel">
     <h2>Biểu đồ</h2>
     <div>
-      <div class="lbl" style="margin-bottom:6px">Các dây gần nhất (mới nhất ở dưới)</div>
+      <div class="lbl" style="margin-bottom:6px">Tất cả dây ở mức này (mới nhất ở dưới, kéo lên để xem dây cũ)</div>
       <div id="c-days" class="cdays"></div>
       <div class="legend" style="margin-top:8px"><span><i style="background:var(--gold)"></i>Lên</span><span><i style="background:var(--bait);opacity:.35"></i>Về +3</span><span><i style="background:var(--bait);opacity:.65"></i>Về +2</span><span><i style="background:var(--bait)"></i>Về +1</span><span><i style="background:var(--warn);border-radius:50%;width:6px;height:6px"></i>Lúc app báo vô</span><span><i style="border:2px solid var(--ink)"></i>Kèo chính</span></div>
     </div>
@@ -1154,8 +1154,9 @@ $('#d-wins').addEventListener('click',e=>{const b=e.target.closest('[data-wdel]'
 $('#d-wins-copy').onclick=()=>{const txt=dWins.map(w=>`${new Date(w.t).toLocaleString('vi-VN')}\t+${w.lv}→+${w.lv+1}\t${w.name||''}\t${w.line}`).join('\n');navigator.clipboard.writeText(txt).then(()=>$('#d-wins-msg').textContent='Đã sao chép.').catch(()=>$('#d-wins-msg').textContent='Không sao chép được trên trình duyệt này.')};
 function renderCharts(D){
   // chuỗi dây gần nhất
-  const rows=D.sess.map((s,i)=>({s,i})).filter(o=>o.s.length).slice(-10);
+  const rows=D.sess.map((s,i)=>({s,i})).filter(o=>o.s.length);
   $('#c-days').innerHTML=rows.map(({s,i})=>`<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';const gap=j&&j%5===0?' style="margin-left:6px"':'';const kq=s.k&&s.k[j]?' k':'';const t=` title="Lượt ${j+1}${kq?' · lúc app báo vô':''}"`;return r==='S'?`<span class="chip s${m}${kq}"${gap}${t}>${dLv+1}</span>`:`<span class="chip d${r}${m}${kq}"${gap}${t}>${r}</span>`}).join('')}<span class="turnc">${s.length} lượt</span>${(()=>{const L=[];s.forEach((r,j)=>{if(s.m&&s.m[j])L.push(r==='S'?`<span class="kcn ok">Kèo chính lên${s.nm?' ('+escH(s.nm)+')':''}</span>`:`<span class="kcn bad">Kèo chính tạch về +${r}</span>`);else if(r==='S'&&s.k&&s.k[j])L.push(`<span class="kcn miss">App báo vô, anh mồi và lên (lượt ${j+1})</span>`)});return L.join('')})()}</span></div>`).join('')||'<p class="hint">Chưa có dây.</p>';
+  {const el=$('#c-days');if(!el.dataset.user)el.scrollTop=el.scrollHeight;if(!el.dataset.bound){el.dataset.bound=1;el.addEventListener('scroll',()=>{el.dataset.user=(el.scrollHeight-el.scrollTop-el.clientHeight>30)?1:''})}}
   // cộng dồn thực tế so với bảng
   const w=D.win;if(!w.length){$('#c-trend').innerHTML='';$('#c-trendtxt').textContent='';return}
   let a=0,e=0;const A=[0],B=[0];w.forEach(x=>{a+=x.r==='S'?1:0;e+=x.e;A.push(a);B.push(e)});
