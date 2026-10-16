@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/10 10:00</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/10 10:05</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -888,7 +888,7 @@ function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
   const R=(O.s+1)/(O.E+1),t=sigTest(K,R),ratio=((K.s+3*R)/(K.E+3))/R;
   return{K,O,P,ratio,pv:t.pv,proven:K.n>=PROVE_N&&t.pv<PROVE_P}}
 // Từ +6 trở lên: gộp dây các mức theo "rớt mấy bậc" để dò dây có đủ mẫu
-const POOL_FROM=6;
+const POOL_FROM=6; // +5→+6 dùng dây riêng của mức này (rớt 2–4 bậc, khác +6); từ +6 trở lên gộp theo số bậc rớt
 function poolAtt(D){
   if(dLv<POOL_FROM)return{att:D.allAtt,pooled:false,ctx:{p1:D.c1,p2:D.c2,p3:D.c3}};
   const out=[];let idx=0;
