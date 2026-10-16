@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/10 10:05</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/10 10:10</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -779,7 +779,7 @@ $('#cf-reset').onclick=()=>{cfg=JSON.parse(JSON.stringify(DEF_CFG));saveUp();ren
 
 /* ---------- Tính dây ---------- */
 const DEF_DAY='232332311=6 (Charlton)\n216\n111 211 221 1=6\n2=6=6\n322 321=6\n322';
-const MIN_LV=4; // chỉ tính từ +4→+5 trở lên
+const MIN_LV=5; // chỉ tính từ +5→+6 trở lên
 let dLv=Math.max(MIN_LV,store.get('dayLv',5)),dWin=store.get('dayWin',50);
 let dayTexts=store.get('dayTexts',null);
 if(!dayTexts||typeof dayTexts!=='object'){dayTexts={};if(CUR_ACC==='main'){const lg=store.get('dayText',null);if(lg)dayTexts[dLv]=lg}}
