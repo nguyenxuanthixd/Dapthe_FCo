@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/10 11:45</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/10 11:50</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -888,6 +888,7 @@ function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
   const R=(O.s+1)/(O.E+1),t=sigTest(K,R),ratio=((K.s+3*R)/(K.E+3))/R;
   return{K,O,P,ratio,pv:t.pv,proven:K.n>=PROVE_N&&t.pv<PROVE_P}}
 // Từ +6 trở lên: gộp dây các mức theo "rớt mấy bậc" để dò dây có đủ mẫu
+const CELL_N=4,MIN_ATT=20; // ô cần ≥4 lần, mức cần ≥20 lần đập mới gợi ý
 const POOL_FROM=6; // +5→+6 dùng dây riêng của mức này (rớt 2–4 bậc, khác +6); từ +6 trở lên gộp theo số bậc rớt
 function poolAtt(D){
   if(dLv<POOL_FROM)return{att:D.allAtt,pooled:false,ctx:{p1:D.c1,p2:D.c2,p3:D.c3}};
@@ -1027,14 +1028,14 @@ function renderDay(){
    const BINS=[[1,4,'1–4'],[5,9,'5–9'],[10,999,'từ 10']],bi=L=>L<1?-1:BINS.findIndex(([a,b])=>L>=a&&L<=b);
    const G={};ATT.forEach(a=>{let k=a.p1;if(k==='S')k='^';const b=k==='^'?-1:bi(a.L);const id=k+'|'+b;const g=G[id]||(G[id]={k,b,n:0,w:0,E:0});g.n++;g.w+=a.r==='S'?1:0;g.E+=a.e});
    const cells=Object.values(G).map(g=>({...g,raw:g.w/Math.max(0.01,g.E)/R,r:((g.w+2*R)/(g.E+2))/R}));
-   const good=cells.filter(g=>g.n>=8&&g.r>=1.3).sort((a,b)=>b.r-a.r);D.ruleCells=cells;D.ruleGood=good;D.ruleR=R;D.ruleBins=BINS;
+   const good=cells.filter(g=>g.n>=CELL_N&&g.r>=1.3).sort((a,b)=>b.r-a.r);D.ruleCells=cells;D.ruleGood=good;D.ruleR=R;D.ruleBins=BINS;
    const lb=k=>{if(k==='^')return 'đầu dây (vừa lên xong)';const m=String(k).match(/^r(\d+)$/);return 'về +'+(m?dLv-(+m[1]):k)};D.ruleLb=lb;const binTxt=b=>b<0?'':' khi dây thua '+BINS[b][2];
    const cur=PA.ctx.p1==='S'?'^':PA.ctx.p1,cb=cur==='^'?-1:bi(D.cL),hit=good.find(g=>g.k===cur&&g.b===cb),curCell=cells.find(g=>g.k===cur&&g.b===cb);
    if(stop){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}.`}
    else if(D.tran>=0.5){sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Mức +${dLv}→+${dLv+1} tỷ lệ cao (đầy thanh ${pct(D.tran)}): kèo chính ${vtxt(dVmain)} vạch ≈ <strong>${pct(D.pm)}</strong>. Ở mức này mồi chờ dây không lợi, có thẻ chính là vô${dVmain<5?', gom đủ 5 vạch càng tốt':''}.`}
-   else if(hit&&ATT.length>=60){sig.className='signal go';sig.innerHTML=`<b>Vô được</b><strong>${lb(cur)}</strong>${binTxt(cb)}: ${D.baitToday?'hôm nay':'các dây trước'} lần kế lên ${hit.w}/${hit.n} (${pct(hit.w/hit.n)}, ×${fmt(hit.raw,2)}). Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
-   else if(ATT.length<60){sig.className='signal';sig.innerHTML=`<b>Chưa đủ dữ liệu</b>Mức này mới có ${ATT.length} lần đập (cần ít nhất 60), app <strong>không gợi ý vô</strong>. Kèo chính ${vtxt(dVmain)} vạch theo bảng ≈ ${pct(D.pm)}, tức khoảng ${Math.round((1-D.pm)*100)}% là tạch. Dây này ${D.cL} lần thua.`}
-   else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${good.some(g=>g.k!=='^')?'Chờ: '+good.filter(g=>g.k!=='^').slice(0,3).map(g=>`<strong>${lb(g.k)}</strong>${binTxt(g.b)}`).join(' · '):'Chưa có ô nào nổi bật, app không gợi ý vô.'}${curCell&&curCell.n>=8&&curCell.raw<=0.7?` Lúc này (${lb(cur)}${binTxt(cb)}) lần kế ít lên: ${curCell.w}/${curCell.n}.`:''} Dây ${D.cL} lần thua.`}
+   else if(hit&&ATT.length>=MIN_ATT){sig.className='signal go';sig.innerHTML=`<b>Vô được</b><strong>${lb(cur)}</strong>${binTxt(cb)}: ${D.baitToday?'hôm nay':'các dây trước'} lần kế lên ${hit.w}/${hit.n} (${pct(hit.w/hit.n)}, ×${fmt(hit.raw,2)})${hit.n<10?', <strong>ít mẫu, độ tin thấp</strong>':''}. Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
+   else if(ATT.length<MIN_ATT){sig.className='signal';sig.innerHTML=`<b>Chưa đủ dữ liệu</b>Mức này mới có ${ATT.length} lần đập (cần ít nhất ${MIN_ATT}), app <strong>không gợi ý vô</strong>. Kèo chính ${vtxt(dVmain)} vạch theo bảng ≈ ${pct(D.pm)}, tức khoảng ${Math.round((1-D.pm)*100)}% là tạch. Dây này ${D.cL} lần thua.`}
+   else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${good.some(g=>g.k!=='^')?'Chờ: '+good.filter(g=>g.k!=='^').slice(0,3).map(g=>`<strong>${lb(g.k)}</strong>${binTxt(g.b)}`).join(' · '):'Chưa có ô nào nổi bật, app không gợi ý vô.'}${curCell&&curCell.n>=CELL_N&&curCell.raw<=0.7?` Lúc này (${lb(cur)}${binTxt(cb)}) lần kế ít lên: ${curCell.w}/${curCell.n}.`:''} Dây ${D.cL} lần thua.`}
    D.baitT={T:D.Lmin,src:'table',best:null,n0:0,w0:0,E0:0,R};}
   if(store.get('probeMode',false)){const stop=D.cL>=D.Lmax;sig.className='signal';sig.style.borderColor=stop?'var(--bad)':'';
     sig.innerHTML=stop?`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}. Đang ở chế độ dò dây nên app chỉ nhắc, không gợi ý vô.`:`<b>Đang dò dây</b>Dây này ${D.cL} lần thua. App chỉ ghi và tính, không báo vô. Xem bảng "Dò dây: bảng tự chấm" và "Tỷ lệ thật theo số vạch" để theo dõi. Bấm "Gợi ý vô" khi muốn app báo lại.`;}
@@ -1087,8 +1088,8 @@ function renderDay(){
    $('#d-empsum').innerHTML=`Cả mức +${dLv}→+${dLv+1}: ${T.lvl.n} lần đập, lên ${T.lvl.s}, bảng dự kiến ${fmt(T.lvl.E,1)} → <b>×${fmt(T.lvl.ratio,2)}</b>${T.lvl.n?` (khả năng chỉ là may: ${pct(Math.min(1,T.lvl.pv))})`:''}. Số vạch nào đủ ${EMP_N} lần thì app dùng tỷ lệ thật của vạch đó cho kèo chính và mồi. Chưa đủ thì nếu cả mức lệch rõ (từ 50 lần, khả năng may dưới 10%) app nhân theo mức lệch đó; không thì dùng bảng.`;}
   {const B=D.ruleBins,lb=D.ruleLb,keys=[...new Set(D.ruleCells.map(g=>g.k))].sort((a,b)=>a==='^'?-1:b==='^'?1:lb(a).localeCompare(lb(b)));
    $('#d-baittab').innerHTML=keys.map(k=>`<tr><td style="text-align:left">${lb(k)}</td>${B.map((_,b)=>{const g=D.ruleCells.find(x=>x.k===k&&(k==='^'?(b===0&&x.b===-1):x.b===b));if(k==='^'&&b>0)return '<td>–</td>';if(!g)return '<td>–</td>';const isG=D.ruleGood.some(x=>x===g),pc=PA.ctx.p1==='S'?'^':PA.ctx.p1,isCur=k===pc&&(k==='^'?b===0:B.findIndex(([a,c])=>D.cL>=a&&D.cL<=c)===b);
-     return `<td style="${isCur?'outline:2px solid var(--gold);':''}color:${isG?'var(--ok)':g.n>=8&&g.raw<=0.7?'var(--bad)':'inherit'};${isG?'font-weight:700':''}">${g.w}/${g.n} · ×${fmt(g.raw,1)}${isG?' · vô':''}</td>`}).join('')}</tr>`).join('')||'<tr><td colspan="4" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>';
-   $('#d-baitsum').innerHTML=`${D.baitToday?`<b>Dây hôm nay</b> (${D.baitTodayN} lần đập)`:`<b>Toàn bộ dây</b> (hôm nay mới ${D.baitTodayN} lần, cần 40)`}. Mỗi ô: lần sau lên / số lần, so với mức chung. Ô <b>vô</b> cần ít nhất 8 lần và cao hơn mức chung rõ. Ô viền vàng là dây đang ở đó.`;}
+     return `<td style="${isCur?'outline:2px solid var(--gold);':''}color:${isG?'var(--ok)':g.n>=CELL_N&&g.raw<=0.7?'var(--bad)':'inherit'};${isG?'font-weight:700':''}">${g.w}/${g.n} · ×${fmt(g.raw,1)}${isG?' · vô':''}</td>`}).join('')}</tr>`).join('')||'<tr><td colspan="4" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>';
+   $('#d-baitsum').innerHTML=`${D.baitToday?`<b>Dây hôm nay</b> (${D.baitTodayN} lần đập)`:`<b>Toàn bộ dây</b> (hôm nay mới ${D.baitTodayN} lần, cần 40)`}. Mỗi ô: lần sau lên / số lần, so với mức chung. Ô <b>vô</b> cần ít nhất ${CELL_N} lần và cao hơn mức chung rõ. Ô viền vàng là dây đang ở đó.`;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
