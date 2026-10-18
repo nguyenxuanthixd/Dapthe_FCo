@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/10 10:30</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/10 11:45</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -1032,9 +1032,9 @@ function renderDay(){
    const cur=PA.ctx.p1==='S'?'^':PA.ctx.p1,cb=cur==='^'?-1:bi(D.cL),hit=good.find(g=>g.k===cur&&g.b===cb),curCell=cells.find(g=>g.k===cur&&g.b===cb);
    if(stop){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}.`}
    else if(D.tran>=0.5){sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Mức +${dLv}→+${dLv+1} tỷ lệ cao (đầy thanh ${pct(D.tran)}): kèo chính ${vtxt(dVmain)} vạch ≈ <strong>${pct(D.pm)}</strong>. Ở mức này mồi chờ dây không lợi, có thẻ chính là vô${dVmain<5?', gom đủ 5 vạch càng tốt':''}.`}
-   else if(hit){sig.className='signal go';sig.innerHTML=`<b>Vô được</b><strong>${lb(cur)}</strong>${binTxt(cb)}: ${D.baitToday?'hôm nay':'các dây trước'} lần kế lên ${hit.w}/${hit.n} (${pct(hit.w/hit.n)}, ×${fmt(hit.raw,2)}). Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
-   else if(!good.some(g=>g.k!=='^')&&cur!=='^'&&D.cL>=D.Lmin&&!(curCell&&curCell.n>=8&&curCell.raw<=0.7)){sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Mức này chưa đủ dây để có quy luật riêng (cần mỗi ô ít nhất 8 lần), app tạm báo theo nhịp dây: dây đã thua <strong>${D.cL} lần</strong> (từ ${D.Lmin} lần là quá một nửa số dây thường gặp). Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
-   else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${good.some(g=>g.k!=='^')?'Chờ: '+good.filter(g=>g.k!=='^').slice(0,3).map(g=>`<strong>${lb(g.k)}</strong>${binTxt(g.b)}`).join(' · '):`Mức này chưa đủ dây để có quy luật riêng, app tạm báo vô khi dây thua từ ${D.Lmin} lần (còn ${Math.max(0,D.Lmin-D.cL)}).`}${curCell&&curCell.n>=8&&curCell.raw<=0.7?` Lúc này (${lb(cur)}${binTxt(cb)}) lần kế ít lên: ${curCell.w}/${curCell.n}.`:''} Dây ${D.cL} lần thua.`}
+   else if(hit&&ATT.length>=60){sig.className='signal go';sig.innerHTML=`<b>Vô được</b><strong>${lb(cur)}</strong>${binTxt(cb)}: ${D.baitToday?'hôm nay':'các dây trước'} lần kế lên ${hit.w}/${hit.n} (${pct(hit.w/hit.n)}, ×${fmt(hit.raw,2)}). Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
+   else if(ATT.length<60){sig.className='signal';sig.innerHTML=`<b>Chưa đủ dữ liệu</b>Mức này mới có ${ATT.length} lần đập (cần ít nhất 60), app <strong>không gợi ý vô</strong>. Kèo chính ${vtxt(dVmain)} vạch theo bảng ≈ ${pct(D.pm)}, tức khoảng ${Math.round((1-D.pm)*100)}% là tạch. Dây này ${D.cL} lần thua.`}
+   else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${good.some(g=>g.k!=='^')?'Chờ: '+good.filter(g=>g.k!=='^').slice(0,3).map(g=>`<strong>${lb(g.k)}</strong>${binTxt(g.b)}`).join(' · '):'Chưa có ô nào nổi bật, app không gợi ý vô.'}${curCell&&curCell.n>=8&&curCell.raw<=0.7?` Lúc này (${lb(cur)}${binTxt(cb)}) lần kế ít lên: ${curCell.w}/${curCell.n}.`:''} Dây ${D.cL} lần thua.`}
    D.baitT={T:D.Lmin,src:'table',best:null,n0:0,w0:0,E0:0,R};}
   if(store.get('probeMode',false)){const stop=D.cL>=D.Lmax;sig.className='signal';sig.style.borderColor=stop?'var(--bad)':'';
     sig.innerHTML=stop?`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}. Đang ở chế độ dò dây nên app chỉ nhắc, không gợi ý vô.`:`<b>Đang dò dây</b>Dây này ${D.cL} lần thua. App chỉ ghi và tính, không báo vô. Xem bảng "Dò dây: bảng tự chấm" và "Tỷ lệ thật theo số vạch" để theo dõi. Bấm "Gợi ý vô" khi muốn app báo lại.`;}
