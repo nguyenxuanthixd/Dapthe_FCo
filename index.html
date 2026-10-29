@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 26/10 15:00</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 29/10 23:10</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -338,9 +338,9 @@ td input{width:80px;padding:4px 6px;text-align:right}
       <h3>Tỷ lệ thật theo số vạch (mức này)</h3>
       <p class="note" id="d-empsum" style="margin:0 0 6px"></p>
       <div class="tblwrap" style="margin-bottom:12px"><table><thead><tr><th>Vạch</th><th>Lần đập</th><th>Lên</th><th>Thực tế</th><th>Bảng</th><th>So bảng</th><th>App dùng</th></tr></thead><tbody id="d-emptab"></tbody></table></div>
-      <h3>Quy luật vô (tính lại sau mỗi con lên)</h3>
+      <h3>Dây đẹp của acc này (học lại sau mỗi con lên)</h3>
       <p class="note" id="d-baitsum" style="margin:0 0 6px"></p>
-      <div class="tblwrap" style="margin-bottom:12px"><table><thead><tr><th style="text-align:left">Con cuối</th><th>Lần</th><th>Lần sau lên</th><th>Tỷ lệ</th><th>So chung</th></tr></thead><tbody id="d-baittab"></tbody></table></div>
+      <div class="tblwrap" style="margin-bottom:12px"><table><thead><tr><th style="text-align:left">Dây</th><th>Lần</th><th>Lần sau lên</th><th>Tỷ lệ</th><th>So chung</th><th>App</th></tr></thead><tbody id="d-baittab"></tbody></table></div>
       <h3>Phân tích từng dây</h3>
       <p class="note" id="d-dsum" style="margin:0 0 6px"></p>
       <div class="tblwrap" style="margin-bottom:12px;max-height:340px;overflow:auto"><table><thead><tr><th>#</th><th>Ngày giờ</th><th style="text-align:left">Dây</th><th>Đập</th><th>Thua</th><th>Lên bằng</th><th>Tỷ lệ lên</th><th>Bảng</th><th>So bảng</th></tr></thead><tbody id="d-dtab"></tbody></table></div>
@@ -551,7 +551,7 @@ const LS={get:k=>{if(MEM)return Object.prototype.hasOwnProperty.call(MEM,k)?MEM[
   set:(k,v)=>{if(MEM){MEM[k]=v;return}try{localStorage.setItem(k,v)}catch(e){}},
   del:k=>{if(MEM){delete MEM[k];return}try{localStorage.removeItem(k)}catch(e){}}};
 const CUR_ACC=(()=>{try{return JSON.parse(LS.get('fcolab_profile'))||'main'}catch(e){return 'main'}})();
-const kk=k=>PER_ACC.has(k)&&CUR_ACC!=='main'?'p_'+CUR_ACC+'_'+k:k;
+const kk=k=>(PER_ACC.has(k)||/^(patSnap|ruleSnap)_/.test(k))&&CUR_ACC!=='main'?'p_'+CUR_ACC+'_'+k:k;
 const store={get(k,d){try{const v=LS.get('fcolab_'+kk(k));return v?JSON.parse(v):d}catch(e){return d}},set(k,v){LS.set('fcolab_'+kk(k),JSON.stringify(v));if(!MEM&&window.__fcoSync)window.__fcoSync()}};
 if(VIEW){$('#viewbar').hidden=false;$('#viewbar-t').textContent=`Admin đang xem giao diện của ${VIEW.email||'tài khoản khác'} (chỉ xem, thao tác không được lưu).`;$('#viewbar-x').onclick=()=>{try{sessionStorage.removeItem('fco_viewas')}catch(e){}location.reload()}}
 const fmt=(x,d=1)=>Number.isFinite(x)?x.toLocaleString('vi-VN',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
@@ -889,7 +889,9 @@ function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
   return{K,O,P,ratio,pv:t.pv,proven:K.n>=PROVE_N&&t.pv<PROVE_P}}
 // Từ +6 trở lên: gộp dây các mức theo "rớt mấy bậc" để dò dây có đủ mẫu
 const CELL_N=4,MIN_ATT=20; // ô cần ≥4 lần, mức cần ≥20 lần đập mới gợi ý
-const POOL_FROM=6; // +5→+6 dùng dây riêng của mức này (rớt 2–4 bậc, khác +6); từ +6 trở lên gộp theo số bậc rớt
+const POOL_FROM=6,PAT_N=10,PAT_R=1.5,PAT_P=0.15,LONG_T=13;
+function poisTail(k,m){if(k<=0)return 1;let p=Math.exp(-m),c=p;for(let i=1;i<k;i++){p*=m/i;c+=p}return Math.max(0,1-c)}
+//; // +5→+6 dùng dây riêng của mức này (rớt 2–4 bậc, khác +6); từ +6 trở lên gộp theo số bậc rớt
 function poolAtt(D){
   if(dLv<POOL_FROM)return{att:D.allAtt,pooled:false,ctx:{p1:D.c1,p2:D.c2,p3:D.c3}};
   const out=[];let idx=0;
@@ -1022,26 +1024,35 @@ function renderDay(){
   else if(D.cL<D.Lmin&&!goodNow){sig.className='signal';sig.innerHTML=`<b>Mồi trước</b>${detTxt} Dây mới ${D.cL} lần thua; chưa có dãy đẹp rõ thì mồi tới ${D.Lmin} lần thua ${D.earlyRule?'(dây trước dài nên vô sớm, bình thường '+D.LminBase+')':''}, còn ${D.Lmin-D.cL} lần. Kèo chính ≈ ${pct(D.pm)}.`}
   else if(badNow){sig.className='signal';sig.style.borderColor='var(--warn)';sig.innerHTML=`<b>Chờ, dây đang xấu</b>${detTxt} Mồi tiếp rồi app dò lại. Dây ${D.cL} lần thua, dừng ở ${D.Lmax}.`}
   else{sig.className='signal go';sig.innerHTML=`<b>${goodNow?'Vô được, dây đẹp':'Vô được'}${D.goRounds?' (lần '+(D.goRounds+1)+')':''}</b>${detTxt}${goodNow?'':' Vô theo số lần thua.'} ${D.goRounds?`Sau ${D.goRounds} lần báo vô bị thua, app đọc dây lại và gợi ý vô. ${D.goFailNow?`Lần này đã thua ${D.goFailNow}/${GO_FAIL}. `:''}`:(D.goFailNow?`Đang báo vô, đã thua ${D.goFailNow}/${GO_FAIL} (thua đủ ${GO_FAIL} lần hoặc kèo chính tạch thì app tính lại). `:'')}Tỷ lệ thật thẻ chính ${vtxt(dVmain)} vạch: <strong>${pct(D.pm)}</strong>${PK.reliable?` (dây ${PK.by} ×${fmt(lift,2)}, đã chứng minh)`:' (bảng Garena, dây chưa chứng minh được gì nên không cộng)'}.  Trung bình ${fmt(1/Math.max(0.01,D.pm),1)} kèo lên 1 kèo.${dVmain<5?` Đủ 5 vạch ≈ ${pct(pm5)}.`:''}`}
-  // Quy luật (26/10): 1) vừa lên xong thì không vô; 2) vô khi con cuối là số tốt nhất, tránh số xấu.
-  // Quy luật chỉ tính lại MỖI KHI CÓ CON LÊN (giữ nguyên trong suốt một dây).
+  // Quy luật (29/10): app tự học "dây đẹp" của RIÊNG acc đang chọn: đuôi dây 2–4 con (và dây dài ≥ LONG_T con).
+  // Mẫu chỉ được dùng khi đã chứng minh trên dây của acc: gặp ≥ PAT_N lần, lên ≥ ×PAT_R mức chung, khả năng may < PAT_P.
+  // Chỉ tính lại MỖI KHI CÓ CON LÊN. Báo vô một lần khi đuôi dây khớp mẫu; còn lại im.
   {const ATT=PA.att,stop=D.cL>=D.Lmax;sig.style.borderColor='';
-   const W=ATT.filter(a=>a.r==='S').length,key='ruleSnap_'+dLv;let snap=store.get(key,null);
-   const lb=k=>{if(k==='^')return 'đầu dây (vừa lên xong)';const m=String(k).match(/^r(\d+)$/);return 'về +'+(m?dLv-(+m[1]):k)};D.ruleLb=lb;
-   if(!snap||snap.W!==W||snap.n>ATT.length){
+   const tk=t=>{const m=/^r(\d+)$/.exec(t);return m?String(dLv-(+m[1])):String(t)};
+   const lb=k=>k==='^'?'đầu dây (vừa lên xong)':k==='L'?`dây dài từ ${LONG_T} con`:'đuôi '+k.split(',').map(tk).join('');D.ruleLb=lb;
+   const keysOf=t=>{const o=[];for(const n of [2,3,4])if(t.length>=n)o.push(t.slice(-n).join(','));if(t.length>=LONG_T)o.push('L');return o};
+   const W=ATT.filter(a=>a.r==='S').length,key='patSnap_'+dLv;let snap=store.get(key,null);
+   if(!snap||snap.v!==2||snap.W!==W||snap.n>ATT.length){
      let tw=0,tE=0;ATT.forEach(a=>{tw+=a.r==='S'?1:0;tE+=a.e});const R=tE?tw/tE:1;
-     const G={};ATT.forEach(a=>{let k=a.p1;if(k==='S')k='^';const g=G[k]||(G[k]={k,n:0,w:0,E:0});g.n++;g.w+=a.r==='S'?1:0;g.E+=a.e});
-     const rows=Object.values(G).map(g=>({...g,raw:g.w/Math.max(0.01,g.E)/R,r:((g.w+2*R)/(g.E+2))/R}));
-     const cand=rows.filter(g=>g.k!=='^'&&g.n>=CELL_N).sort((a,b)=>b.r-a.r);
-     const best=cand[0]&&cand[0].r>=1.2?cand[0].k:null,bad=rows.filter(g=>g.k!=='^'&&g.n>=10&&g.raw<=0.8).map(g=>g.k);
-     const prev=snap;snap={W,n:ATT.length,best,bad,rows,R,t:Date.now(),prevBest:prev?prev.best:undefined,changed:!!prev&&prev.W!==W};store.set(key,snap);}
-   D.ruleSnap=snap;const cur=PA.ctx.p1==='S'?'^':PA.ctx.p1,rowOf=k=>snap.rows.find(g=>g.k===k);
-   const note=snap.changed&&D.cL<=1?`<br><span class="hint" style="color:var(--ok)">Vừa có con lên, app đã tính lại: ${snap.best?'vô khi '+lb(snap.best):'chưa có số nổi bật'}${snap.prevBest!==undefined&&snap.prevBest!==snap.best?` (trước là ${snap.prevBest?lb(snap.prevBest):'chưa có'})`:' (giữ nguyên)'}.</span>`:'';
+     const G={},g0={k:'^',n:0,w:0,E:0};let tail=[];
+     ATT.forEach(a=>{if(a.L===0)tail=[];const up=a.r==='S'?1:0;
+       if(a.L===0){g0.n++;g0.w+=up;g0.E+=a.e}
+       keysOf(tail).forEach(k=>{const g=G[k]||(G[k]={k,n:0,w:0,E:0});g.n++;g.w+=up;g.E+=a.e});
+       tail=up?[]:tail.concat(a.r)});
+     const rows=Object.values(G).map(g=>({...g,raw:g.w/Math.max(0.01,g.E)/R,p:poisTail(g.w,g.E*R)}));
+     const good=rows.filter(g=>g.n>=PAT_N&&g.raw>=PAT_R&&g.p<PAT_P).sort((x,y)=>x.p-y.p);
+     const prev=snap;snap={v:2,W,n:ATT.length,R,good,g0:{...g0,raw:g0.w/Math.max(0.01,g0.E)/R},near:rows.filter(g=>g.n>=5&&g.raw>=1.3&&!good.includes(g)).sort((x,y)=>x.p-y.p).slice(0,5),
+       t:Date.now(),prevGood:prev&&prev.good?prev.good.map(g=>g.k):undefined,changed:!!prev&&prev.W!==W};store.set(key,snap);}
+   D.ruleSnap=snap;
+   const lastT=(PA.pooled?D.last.map(r=>r==='S'?'S':'r'+(dLv-(+r))):D.last.slice()),curT=D.cL>0?lastT.slice(-D.cL):[];
+   const hit=D.cL>0?snap.good.find(g=>keysOf(curT).includes(g.k)):null;D.patHit=hit;
+   const gl=snap.good.slice(0,4).map(g=>lb(g.k)).join(', ');
+   const note=snap.changed&&D.cL<=1?`<br><span class="hint" style="color:var(--ok)">Vừa có con lên, app đã học lại dây của acc này: ${snap.good.length?'dây đẹp là '+gl:'chưa có dây đẹp nào đủ chắc'}.</span>`:'';
    if(stop){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}.`}
-   else if(ATT.length<MIN_ATT){sig.className='signal';sig.innerHTML=`<b>Chưa đủ dữ liệu</b>Mức này mới có ${ATT.length} lần đập (cần ít nhất ${MIN_ATT}), app chưa gợi ý vô.`}
-   else if(cur==='^'){const g=rowOf('^');sig.className='signal';sig.innerHTML=`<b>Mồi tiếp, đừng vô</b>Vừa lên xong${g?`: lượt kế chỉ lên ${g.w}/${g.n}`:''}.${snap.best?` Chờ con cuối <strong>${lb(snap.best)}</strong> thì vô.`:''}${note}`}
-   else if(snap.best&&cur===snap.best){const g=rowOf(cur);sig.className='signal go';sig.innerHTML=`<b>Vô được</b>Con cuối <strong>${lb(cur)}</strong>: lần kế lên ${g.w}/${g.n} (${pct(g.w/g.n)}, ×${fmt(g.raw,2)})${g.n<10?', ít mẫu':''}. Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
-   else if(snap.bad.includes(cur)){const g=rowOf(cur);sig.className='signal';sig.innerHTML=`<b>Mồi tiếp, đừng vô</b>Vừa ${lb(cur)}: lần kế chỉ lên ${g.w}/${g.n}.${snap.best?` Chờ <strong>${lb(snap.best)}</strong>.`:''}`}
-   else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${snap.best?`Chờ con cuối <strong>${lb(snap.best)}</strong> thì vô.`:'Chưa có số nào nổi bật, app chưa gợi ý vô.'} Dây ${D.cL} lần thua.`}
+   else if(ATT.length<MIN_ATT){sig.className='signal';sig.innerHTML=`<b>Chưa đủ dữ liệu</b>Acc này mới có ${ATT.length} lần đập ở mức này (cần ít nhất ${MIN_ATT}).`}
+   else if(D.cL===0){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp, đừng vô</b>Vừa lên xong${snap.g0.n?`: lượt kế chỉ lên ${snap.g0.w}/${snap.g0.n}`:''}.${note}`}
+   else if(hit){sig.className='signal go';sig.innerHTML=`<b>Dây đẹp – vô được</b>Khớp <strong>${lb(hit.k)}</strong>: trên dây của acc này lên ${hit.w}/${hit.n} (${pct(hit.w/hit.n)}, ×${fmt(hit.raw,2)} mức chung). Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
+   else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${snap.good.length?'Chưa khớp dây đẹp.':'Acc này chưa có dây đẹp nào đủ chắc, app chưa báo vô.'}`}
    D.baitT={T:D.Lmin,src:'table',best:null,n0:0,w0:0,E0:0,R:snap.R};}
   if(store.get('probeMode',false)){const stop=D.cL>=D.Lmax;sig.className='signal';sig.style.borderColor=stop?'var(--bad)':'';
     sig.innerHTML=stop?`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}. Đang ở chế độ dò dây nên app chỉ nhắc, không gợi ý vô.`:`<b>Đang dò dây</b>Dây này ${D.cL} lần thua. App chỉ ghi và tính, không báo vô. Xem bảng "Dò dây: bảng tự chấm" và "Tỷ lệ thật theo số vạch" để theo dõi. Bấm "Gợi ý vô" khi muốn app báo lại.`;}
@@ -1092,9 +1103,10 @@ function renderDay(){
   $('#d-caphint').textContent=(+store.get('baitCap',0)||0)>0?`Đang đặt: thua tới ${store.get('baitCap',0)} lần thì app báo Dừng (tự động sẽ là ${D.LmaxAuto}).`:`Đang tự động: dừng ở ${D.LmaxAuto} lần thua (chỉ 10% dây dài tới đó). Mồi ${dVach?vtxt(dVach):5} vạch trung bình ${fmt(1/Math.max(0.001,D.pbNow),1)} lần mới lên 1 lần.`;
   {const T=D.EMP;$('#d-emptab').innerHTML=T.rows.map(g=>{const b=Math.min(0.95,D.tran*g.v/5),r=T.rateAt(g.v);return `<tr${Math.abs(g.v-dVmain)<0.26||Math.abs(g.v-(dVach||5))<0.26?' style="font-weight:700"':''}><td>${vtxt(g.v)}</td><td>${g.n}</td><td>${g.s}</td><td>${pct(g.s/g.n)}</td><td>${pct(b)}</td><td style="color:${g.s/Math.max(0.01,g.E)>=1.2?'var(--ok)':g.s/Math.max(0.01,g.E)<=0.8?'var(--bad)':'var(--muted)'}">×${fmt(g.s/Math.max(0.01,g.E),2)}</td><td>${pct(r.p)}${r.src==='vach'?' (thật)':r.src==='level'?' (theo mức)':' (bảng)'}</td></tr>`}).join('')||'<tr><td colspan="7" style="text-align:left;color:var(--muted)">Chưa có dữ liệu.</td></tr>';
    $('#d-empsum').innerHTML=`Cả mức +${dLv}→+${dLv+1}: ${T.lvl.n} lần đập, lên ${T.lvl.s}, bảng dự kiến ${fmt(T.lvl.E,1)} → <b>×${fmt(T.lvl.ratio,2)}</b>${T.lvl.n?` (khả năng chỉ là may: ${pct(Math.min(1,T.lvl.pv))})`:''}. Số vạch nào đủ ${EMP_N} lần thì app dùng tỷ lệ thật của vạch đó cho kèo chính và mồi. Chưa đủ thì nếu cả mức lệch rõ (từ 50 lần, khả năng may dưới 10%) app nhân theo mức lệch đó; không thì dùng bảng.`;}
-  {const S=D.ruleSnap,lb=D.ruleLb,pc=PA.ctx.p1==='S'?'^':PA.ctx.p1;
-   $('#d-baittab').innerHTML=S.rows.slice().sort((a,b)=>a.k==='^'?-1:b.k==='^'?1:lb(a.k).localeCompare(lb(b.k))).map(g=>`<tr${g.k===pc?' style="outline:2px solid var(--gold)"':''}><td style="text-align:left">${lb(g.k)}</td><td>${g.n}</td><td>${g.w}</td><td>${pct(g.w/g.n)}</td><td style="color:${g.k===S.best?'var(--ok)':(g.k==='^'||S.bad.includes(g.k))?'var(--bad)':'var(--muted)'};font-weight:${g.k===S.best?700:400}">×${fmt(g.raw,2)}${g.k===S.best?' · vô':(g.k==='^'||S.bad.includes(g.k))?' · đừng vô':''}</td></tr>`).join('');
-   $('#d-baitsum').innerHTML=`Quy luật: <b>vừa lên xong thì đừng vô</b>; ${S.best?`<b>vô khi ${lb(S.best)}</b>`:'chưa có số nào nổi bật'}${S.bad.length?`; tránh ${S.bad.map(lb).join(', ')}`:''}. Tính trên ${S.n} lần đập, <b>tính lại sau mỗi lần có con lên</b> (lần gần nhất: ${new Date(S.t).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}).`;}
+  {const S=D.ruleSnap,lb=D.ruleLb,hk=D.patHit?D.patHit.k:null;
+   const tr=(g,st)=>`<tr${g.k===hk?' style="outline:2px solid var(--gold)"':''}><td style="text-align:left">${lb(g.k)}</td><td>${g.n}</td><td>${g.w}</td><td>${pct(g.w/Math.max(1,g.n))}</td><td>×${fmt(g.raw,2)}</td><td style="color:${st==='vô'?'var(--ok)':st==='đừng vô'?'var(--bad)':'var(--muted)'};font-weight:${st==='vô'?700:400}">${st}</td></tr>`;
+   $('#d-baittab').innerHTML=[tr(S.g0,'đừng vô'),...S.good.map(g=>tr(g,'vô')),...S.near.map(g=>tr(g,'theo dõi'))].join('');
+   $('#d-baitsum').innerHTML=`Dây đẹp <b>của acc này</b>: ${S.good.length?'<b>'+S.good.map(g=>lb(g.k)).join(', ')+'</b>':'chưa có'}. Một mẫu được tính là dây đẹp khi gặp từ ${PAT_N} lần, lên từ ×${String(PAT_R).replace('.',',')} mức chung và khả năng chỉ là may dưới ${Math.round(PAT_P*100)}%. "Theo dõi" là mẫu đang nhỉnh nhưng chưa đủ chắc. Học trên ${S.n} lần đập, <b>học lại sau mỗi lần có con lên</b> (lần gần nhất: ${new Date(S.t).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}).`;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
