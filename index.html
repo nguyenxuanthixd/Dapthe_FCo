@@ -198,7 +198,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 29/10 23:15</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 30/10 10:20</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -889,7 +889,7 @@ function skipStats(D){const z=()=>({n:0,s:0,E:0}),K=z(),O=z(),P=[];
   return{K,O,P,ratio,pv:t.pv,proven:K.n>=PROVE_N&&t.pv<PROVE_P}}
 // Từ +6 trở lên: gộp dây các mức theo "rớt mấy bậc" để dò dây có đủ mẫu
 const CELL_N=4,MIN_ATT=20; // ô cần ≥4 lần, mức cần ≥20 lần đập mới gợi ý
-const POOL_FROM=6,PAT_N=10,PAT_R=1.5,PAT_P=0.15,LONG_T=13;
+const POOL_FROM=6,WEAK_N=15,WEAK_R=1.3,PAT_N=10,PAT_R=1.5,PAT_P=0.15,LONG_T=13;
 function poisTail(k,m){if(k<=0)return 1;let p=Math.exp(-m),c=p;for(let i=1;i<k;i++){p*=m/i;c+=p}return Math.max(0,1-c)}
 //; // +5→+6 dùng dây riêng của mức này (rớt 2–4 bậc, khác +6); từ +6 trở lên gộp theo số bậc rớt
 function poolAtt(D){
@@ -1029,10 +1029,13 @@ function renderDay(){
   // Chỉ tính lại MỖI KHI CÓ CON LÊN. Báo vô một lần khi đuôi dây khớp mẫu; còn lại im.
   {const ATT=PA.att,stop=D.cL>=D.Lmax;sig.style.borderColor='';
    const tk=t=>{const m=/^r(\d+)$/.exec(t);return m?String(dLv-(+m[1])):String(t)};
-   const lb=k=>k==='^'?'đầu dây (vừa lên xong)':k==='L'?`dây dài từ ${LONG_T} con`:'đuôi '+k.split(',').map(tk).join('');D.ruleLb=lb;
-   const keysOf=t=>{const o=[];for(const n of [2,3,4])if(t.length>=n)o.push(t.slice(-n).join(','));return o};
+   const tl=k=>k.split(',').map(tk).join('');
+   const lb=k=>k==='^'?'đầu dây (vừa lên xong)':k[0]==='F'?(()=>{const [a,b]=k.slice(1).split('|');return `đầu +${tk(a)} … đuôi ${tl(b)}`})():'đuôi '+tl(k);D.ruleLb=lb;
+   // khóa: đuôi 2–4 con; và tổ hợp con đầu dây + đuôi 2–3 con (đuôi không chồng lên con đầu)
+   const tailKeys=t=>{const o=[];for(const n of [2,3,4])if(t.length>=n)o.push(t.slice(-n).join(','));return o};
+   const keysOf=t=>{const o=tailKeys(t);for(const n of [2,3])if(t.length>=n+1)o.push('F'+t[0]+'|'+t.slice(-n).join(','));return o};
    const W=ATT.filter(a=>a.r==='S').length,key='patSnap_'+dLv;let snap=store.get(key,null);
-   if(!snap||snap.v!==3||snap.W!==W||snap.n>ATT.length){
+   if(!snap||snap.v!==4||snap.W!==W||snap.n>ATT.length){
      let tw=0,tE=0;ATT.forEach(a=>{tw+=a.r==='S'?1:0;tE+=a.e});const R=tE?tw/tE:1;
      const G={},g0={k:'^',n:0,w:0,E:0};let tail=[];
      ATT.forEach(a=>{if(a.L===0)tail=[];const up=a.r==='S'?1:0;
@@ -1040,18 +1043,26 @@ function renderDay(){
        keysOf(tail).forEach(k=>{const g=G[k]||(G[k]={k,n:0,w:0,E:0});g.n++;g.w+=up;g.E+=a.e});
        tail=up?[]:tail.concat(a.r)});
      const rows=Object.values(G).map(g=>({...g,raw:g.w/Math.max(0.01,g.E)/R,p:poisTail(g.w,g.E*R)}));
-     const good=rows.filter(g=>g.n>=PAT_N&&g.raw>=PAT_R&&g.p<PAT_P).sort((x,y)=>x.p-y.p);
-     const prev=snap;snap={v:3,W,n:ATT.length,R,good,g0:{...g0,raw:g0.w/Math.max(0.01,g0.E)/R},near:rows.filter(g=>g.n>=5&&g.raw>=1.3&&!good.includes(g)).sort((x,y)=>x.p-y.p).slice(0,5),
+     const good=rows.filter(g=>g.n>=PAT_N&&g.raw>=PAT_R&&g.p<PAT_P).sort((x,y)=>x.p-y.p),gt=new Set(good.filter(g=>g.k[0]!=='F').map(g=>g.k));
+     // con đầu nào làm đuôi đẹp mất tác dụng: khi khớp đuôi đẹp mà con đầu là f, gặp ≥ WEAK_N lần và lên < ×WEAK_R mức chung
+     const FG={};tail=[];ATT.forEach(a=>{if(a.L===0)tail=[];const up=a.r==='S'?1:0;
+       if(tail.length&&tailKeys(tail).some(k=>gt.has(k))){const g=FG[tail[0]]||(FG[tail[0]]={k:tail[0],n:0,w:0,E:0});g.n++;g.w+=up;g.E+=a.e}
+       tail=up?[]:tail.concat(a.r)});
+     const firsts=Object.values(FG).map(g=>({...g,raw:g.w/Math.max(0.01,g.E)/R})),weak=firsts.filter(g=>g.n>=WEAK_N&&g.raw<WEAK_R).map(g=>g.k);
+     const prev=snap;snap={v:4,W,n:ATT.length,R,good,firsts,weak,g0:{...g0,raw:g0.w/Math.max(0.01,g0.E)/R},near:rows.filter(g=>g.n>=5&&g.raw>=1.3&&!good.includes(g)).sort((x,y)=>x.p-y.p).slice(0,5),
        t:Date.now(),prevGood:prev&&prev.good?prev.good.map(g=>g.k):undefined,changed:!!prev&&prev.W!==W};store.set(key,snap);}
    D.ruleSnap=snap;
    const lastT=(PA.pooled?D.last.map(r=>r==='S'?'S':'r'+(dLv-(+r))):D.last.slice()),curT=D.cL>0?lastT.slice(-D.cL):[];
-   const hit=D.cL>0?snap.good.find(g=>keysOf(curT).includes(g.k)):null;D.patHit=hit;
+   const ck=keysOf(curT),comboHit=D.cL>2?snap.good.find(g=>g.k[0]==='F'&&ck.includes(g.k)):null,tailHit=D.cL>1?snap.good.find(g=>g.k[0]!=='F'&&ck.includes(g.k)):null;
+   const weakNow=tailHit&&!comboHit&&snap.weak.includes(curT[0]);
+   const hit=comboHit||(weakNow?null:tailHit);D.patHit=hit;
    const gl=snap.good.slice(0,4).map(g=>lb(g.k)).join(', ');
    const note=snap.changed&&D.cL<=1?`<br><span class="hint" style="color:var(--ok)">Vừa có con lên, app đã học lại dây của acc này: ${snap.good.length?'dây đẹp là '+gl:'chưa có dây đẹp nào đủ chắc'}.</span>`:'';
    if(stop){sig.className='signal';sig.style.borderColor='var(--bad)';sig.innerHTML=`<b>Dây quá dài</b>Đã ${D.cL} lần thua, chạm mức dừng ${D.Lmax}.`}
    else if(ATT.length<MIN_ATT){sig.className='signal';sig.innerHTML=`<b>Chưa đủ dữ liệu</b>Acc này mới có ${ATT.length} lần đập ở mức này (cần ít nhất ${MIN_ATT}).`}
    else if(D.cL===0){sig.className='signal';sig.innerHTML=`<b>Mồi tiếp, đừng vô</b>Vừa lên xong${snap.g0.n?`: lượt kế chỉ lên ${snap.g0.w}/${snap.g0.n}`:''}.${note}`}
    else if(hit){sig.className='signal go';sig.innerHTML=`<b>Dây đẹp – vô được</b>Khớp <strong>${lb(hit.k)}</strong>: trên dây của acc này lên ${hit.w}/${hit.n} (${pct(hit.w/hit.n)}, ×${fmt(hit.raw,2)} mức chung). Kèo chính ${vtxt(dVmain)} vạch ≈ ${pct(D.pm)}.`}
+   else if(weakNow){const g=snap.firsts.find(x=>x.k===curT[0]);sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>Khớp ${lb(tailHit.k)} nhưng con đầu dây về <strong>+${tk(curT[0])}</strong>: dây kiểu này khớp đuôi đẹp chỉ lên ${g.w}/${g.n}, app bỏ qua.`}
    else{sig.className='signal';sig.innerHTML=`<b>Mồi tiếp</b>${snap.good.length?'Chưa khớp dây đẹp.':'Acc này chưa có dây đẹp nào đủ chắc, app chưa báo vô.'}`}
    D.baitT={T:D.Lmin,src:'table',best:null,n0:0,w0:0,E0:0,R:snap.R};}
   if(store.get('probeMode',false)){const stop=D.cL>=D.Lmax;sig.className='signal';sig.style.borderColor=stop?'var(--bad)':'';
@@ -1106,7 +1117,7 @@ function renderDay(){
   {const S=D.ruleSnap,lb=D.ruleLb,hk=D.patHit?D.patHit.k:null;
    const tr=(g,st)=>`<tr${g.k===hk?' style="outline:2px solid var(--gold)"':''}><td style="text-align:left">${lb(g.k)}</td><td>${g.n}</td><td>${g.w}</td><td>${pct(g.w/Math.max(1,g.n))}</td><td>×${fmt(g.raw,2)}</td><td style="color:${st==='vô'?'var(--ok)':st==='đừng vô'?'var(--bad)':'var(--muted)'};font-weight:${st==='vô'?700:400}">${st}</td></tr>`;
    $('#d-baittab').innerHTML=[tr(S.g0,'đừng vô'),...S.good.map(g=>tr(g,'vô')),...S.near.map(g=>tr(g,'theo dõi'))].join('');
-   $('#d-baitsum').innerHTML=`Dây đẹp <b>của acc này</b>: ${S.good.length?'<b>'+S.good.map(g=>lb(g.k)).join(', ')+'</b>':'chưa có'}. Một mẫu được tính là dây đẹp khi gặp từ ${PAT_N} lần, lên từ ×${String(PAT_R).replace('.',',')} mức chung và khả năng chỉ là may dưới ${Math.round(PAT_P*100)}%. "Theo dõi" là mẫu đang nhỉnh nhưng chưa đủ chắc. Học trên ${S.n} lần đập, <b>học lại sau mỗi lần có con lên</b> (lần gần nhất: ${new Date(S.t).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}).`;}
+   $('#d-baitsum').innerHTML=`Dây đẹp <b>của acc này</b>: ${S.good.length?'<b>'+S.good.map(g=>lb(g.k)).join(', ')+'</b>':'chưa có'}.${S.firsts&&S.firsts.length?` Khi khớp đuôi đẹp, theo con đầu dây: ${S.firsts.slice().sort((x,y)=>x.k.localeCompare(y.k)).map(g=>`đầu +${(/^r(\d+)$/.exec(g.k)?dLv-(+/^r(\d+)$/.exec(g.k)[1]):g.k)} lên ${g.w}/${g.n}${S.weak.includes(g.k)?' (<b>bỏ qua</b>)':''}`).join(' · ')}.`:''} Một mẫu được tính là dây đẹp khi gặp từ ${PAT_N} lần, lên từ ×${String(PAT_R).replace('.',',')} mức chung và khả năng chỉ là may dưới ${Math.round(PAT_P*100)}%. "Theo dõi" là mẫu đang nhỉnh nhưng chưa đủ chắc. Học trên ${S.n} lần đập, <b>học lại sau mỗi lần có con lên</b> (lần gần nhất: ${new Date(S.t).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}).`;}
   window.__lastEval={go:sig.className==='signal go',pm:D.pm,by:PK.by,lift,tail:D.last.slice(-3).map(x=>x==='S'?String(dLv+1):x).join('')};
   {const L=(store.get('sigLog',[])||[]).filter(r=>r.lv===dLv);
    const tally=A=>{const n=A.length,w=A.filter(r=>r.ok).length,pt=r=>Math.min(0.95,(rates[r.lv-1]?rates[r.lv-1][0]:0)/100*(r.vm||5)/5),pr=A.reduce((a,r)=>a+pt(r),0),va=A.reduce((a,r)=>{const p=pt(r);return a+p*(1-p)},0);return{n,w,pr,sd:Math.sqrt(va)}};
