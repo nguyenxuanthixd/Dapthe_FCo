@@ -127,6 +127,17 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .vrow .stepper .btn{display:none}
 .viewbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--bait);color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:600}
 .viewbar .btn{background:#fff;color:#1b1404;border-color:#fff}
+/* ---- Phân tích ---- */
+.stfilt{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+@media (max-width:860px){.stgrid{grid-template-columns:1fr}}
+.stcard .verdict{margin-top:0}.stcard .verdict .hint{display:block;margin-top:4px}
+.verdict.dim,tr.dim{opacity:.5}
+.stchart{position:relative;height:190px;margin-top:12px}
+.stsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.stq{border:1px solid var(--line);border-radius:9px;padding:12px}
+.stans{font-size:.95rem;margin:8px 0 6px;padding:4px 12px}
+.stans:not(.ok):not(.bad){background:var(--line);color:var(--ink)}
 /* ---- Stepper ---- */
 .stepper{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .stepper>button[data-d]{width:42px;height:38px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 1.3rem var(--f-display);cursor:pointer}
@@ -198,7 +209,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 30/10 10:20</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 05/11 01:00</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -244,6 +255,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
   <button class="tab" role="tab" data-tab="day" aria-selected="true">Tính dây</button>
   <button class="tab" role="tab" data-tab="up" aria-selected="false" hidden>Đập thẻ</button>
   <button class="tab" role="tab" data-tab="rate" aria-selected="false">Bảng tỷ lệ</button>
+  <button class="tab" role="tab" data-tab="stat" aria-selected="false">Phân tích</button>
   <button class="tab" role="tab" data-tab="admin" aria-selected="false" id="tab-admin-btn" hidden>Admin</button>
 </nav>
 
@@ -510,6 +522,25 @@ td input{width:80px;padding:4px 6px;text-align:right}
 </div>
 </section>
 
+<!-- ============ PHÂN TÍCH ============ -->
+<section id="tab-stat" hidden>
+<div class="panel stack" style="margin-bottom:18px">
+  <h2>Phân tích thống kê</h2>
+  <p class="note">Kiểm định xem kết quả ép thẻ có quy luật thật hay chỉ là ngẫu nhiên. Chỉ dùng dây anh tự nhập trong app (mọi acc), không kết nối gì tới game.</p>
+  <div class="stfilt">
+    <div class="field"><label for="st-acc">Acc</label><select id="st-acc"></select></div>
+    <div class="field"><label for="st-lv">Cấp thẻ</label><select id="st-lv"></select></div>
+    <div class="field"><label for="st-v">Số vạch</label><select id="st-v"></select></div>
+    <div class="field"><label for="st-from">Từ ngày</label><input id="st-from" type="date"></div>
+    <div class="field"><label for="st-to">Đến ngày</label><input id="st-to" type="date"></div>
+  </div>
+  <div class="btnrow"><button class="btn small" id="st-reset">Bỏ lọc</button><button class="btn small primary" id="st-csv">Xuất toàn bộ dữ liệu ra CSV</button></div>
+  <p class="hint" id="st-n"></p><p class="hint" id="st-msg"></p>
+</div>
+<div id="st-sum" style="margin-bottom:18px"></div>
+<div class="stgrid" id="st-cards"></div>
+</section>
+
 <!-- ============ RATES ============ -->
 <section id="tab-rate" hidden>
 <div class="panel" style="max-width:640px">
@@ -587,8 +618,9 @@ function dropText(lv){const r=rates[lv-1];if(!r)return'–';const a=Math.min(r[1
 /* ---------- Tabs ---------- */
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b));
-  ['day','up','rate','admin'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab);
+  ['day','up','rate','admin','stat'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab);
   if(b.dataset.tab==='admin'&&window.__fcoAdminLoad)window.__fcoAdminLoad();
+  if(b.dataset.tab==='stat'&&window.__fcoStatRender)window.__fcoStatRender();
   store.set('tab',b.dataset.tab);
 });
 const lastTab=store.get('tab2','day');store.set('tab2','day'); const tb=document.querySelector(`.tab[data-tab="${lastTab}"]`); if(tb)tb.click();
@@ -1416,6 +1448,228 @@ const FIREBASE_CONFIG={
       const th=(()=>{try{return localStorage.getItem('fcolab_theme')}catch(e){return null}})();
       await auth.signOut();applyLocal(th?{fcolab_theme:th}:{});sessionStorage.removeItem('fco_pulled');location.reload()};
   }).catch(()=>{$('#acct-btn').textContent='Không tải được đăng nhập';$('#acct-btn').disabled=true});
+})();
+
+/* ---------- Phân tích thống kê ----------
+   Chỉ dùng dữ liệu người dùng tự nhập trong app. Không đọc, không gửi gì tới game client hay server.
+   Không đổi cách lưu: bản ghi từng lần ép được chuẩn hóa lúc đọc, từ dây đã lưu của mọi acc. */
+(function(){
+const ST_MIN=30,ALPHA=0.05;
+const SLOTS=['0–6h','6–12h','12–18h','18–24h'],WD=['CN','T2','T3','T4','T5','T6','T7'],WD_ORDER=[1,2,3,4,5,6,0];
+const REC_FIELDS=['acc_id','timestamp','cap_hien_tai','cap_muc_tieu','so_vach','loai','ket_qua','ghi_chu'];
+/* ===== Toán ===== */
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffle(a,rng){for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));const t=a[i];a[i]=a[j];a[j]=t}return a}
+const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:NaN;
+const median=a=>{if(!a.length)return NaN;const s=a.slice().sort((x,y)=>x-y),m=s.length;return m%2?s[(m-1)/2]:(s[m/2-1]+s[m/2])/2};
+function lgamma(x){const c=[0.99999999999980993,676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if(x<0.5)return Math.log(Math.PI/Math.sin(Math.PI*x))-lgamma(1-x);x-=1;let a=c[0];const t=x+7.5;for(let i=1;i<9;i++)a+=c[i]/(x+i);return 0.5*Math.log(2*Math.PI)+(x+0.5)*Math.log(t)-t+Math.log(a)}
+function gammaQ(a,x){ // 1 - P(a,x), regularized upper incomplete gamma
+  if(x<=0)return 1;const lp=-x+a*Math.log(x)-lgamma(a);
+  if(x<a+1){let s=1/a,t=s;for(let n=1;n<1000;n++){t*=x/(a+n);s+=t;if(Math.abs(t)<Math.abs(s)*1e-15)break}return Math.max(0,1-s*Math.exp(lp))}
+  let b=x+1-a,c=1e300,d=1/b,h=d;for(let i=1;i<1000;i++){const an=-i*(i-a);b+=2;d=an*d+b;if(Math.abs(d)<1e-300)d=1e-300;c=b+an/c;if(Math.abs(c)<1e-300)c=1e-300;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<1e-15)break}
+  return Math.min(1,Math.exp(lp)*h)}
+const chi2sf=(x,df)=>df>0&&Number.isFinite(x)?gammaQ(df/2,Math.max(0,x)/2):NaN;
+const norm2=z=>Number.isFinite(z)?chi2sf(z*z,1):NaN; // p hai phía của phân phối chuẩn
+function binom2(k,n,p){ // binomial test chính xác, hai phía (cộng các xác suất ≤ xác suất quan sát)
+  if(!n)return NaN;if(p<=0)return k===0?1:0;if(p>=1)return k===n?1:0;
+  const lf=[0];for(let i=1;i<=n;i++)lf[i]=lf[i-1]+Math.log(i);const lp=Math.log(p),lq=Math.log1p(-p);
+  const pm=i=>Math.exp(lf[n]-lf[i]-lf[n-i]+i*lp+(n-i)*lq),p0=pm(k);let s=0;for(let i=0;i<=n;i++){const v=pm(i);if(v<=p0*(1+1e-7))s+=v}return Math.min(1,s)}
+function wilson(k,n,z=1.959963985){if(!n)return[NaN,NaN];const ph=k/n,d=1+z*z/n,c=(ph+z*z/(2*n))/d,h=z*Math.sqrt(ph*(1-ph)/n+z*z/(4*n*n))/d;return[Math.max(0,c-h),Math.min(1,c+h)]}
+function pbin2(k,ps){ // Poisson-binomial chính xác, hai phía
+  if(!ps.length)return NaN;let f=[1];for(const p of ps){const g=new Array(f.length+1).fill(0);for(let i=0;i<f.length;i++){g[i]+=f[i]*(1-p);g[i+1]+=f[i]*p}f=g}
+  const p0=f[k]||0;let s=0;for(const v of f)if(v<=p0*(1+1e-7))s+=v;return Math.min(1,s)}
+function bh(ps){const m=ps.length,ix=ps.map((p,i)=>[p,i]).sort((a,b)=>a[0]-b[0]),q=new Array(m);let mn=1;for(let r=m;r>=1;r--){const [p,i]=ix[r-1];mn=Math.min(mn,p*m/r);q[i]=Math.min(1,mn)}return q}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;if(Math.abs(M[p][c])<1e-12)return null;[M[c],M[p]]=[M[p],M[c]];
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k]}}return M.map((r,i)=>r[n]/r[i])}
+// Chi-square độc lập nhóm × kết quả, phân tầng (Cochran–Mantel–Haenszel tổng quát, K×2×H). rows: {g,h,x}
+function cmh(rows){
+  const G=[...new Set(rows.map(r=>r.g))],K=G.length;if(K<2)return null;
+  const S={};rows.forEach(r=>{const s=S[r.h]||(S[r.h]={n:0,m:0,ng:new Array(K).fill(0),xg:new Array(K).fill(0)});const i=G.indexOf(r.g);s.n++;s.m+=r.x;s.ng[i]++;s.xg[i]+=r.x});
+  const O=new Array(K).fill(0),E=new Array(K).fill(0),V=Array.from({length:K},()=>new Array(K).fill(0));
+  Object.values(S).forEach(s=>{if(s.n<2)return;const f=s.m*(s.n-s.m)/(s.n*s.n*(s.n-1));
+    for(let i=0;i<K;i++){O[i]+=s.xg[i];E[i]+=s.ng[i]*s.m/s.n;for(let j=0;j<K;j++)V[i][j]+=f*((i===j?s.n*s.ng[i]:0)-s.ng[i]*s.ng[j])}});
+  const idx=[...Array(K).keys()].filter(i=>V[i][i]>1e-9);if(idx.length<2)return null;
+  const use=idx.slice(0,-1),d=use.map(i=>O[i]-E[i]),Vm=use.map(i=>use.map(j=>V[i][j])),y=solve(Vm,d);if(!y)return null;
+  const stat=d.reduce((s,v,i)=>s+v*y[i],0),df=use.length;return{stat,df,p:chi2sf(stat,df)}}
+
+/* ===== Bản ghi ===== */
+const vEff=r=>r.so_vach!=null&&Number.isFinite(+r.so_vach)?Math.min(5,+r.so_vach):5; // không ghi vạch: app coi là 5 vạch
+const pDisp=r=>{const R=rates[r.cap_hien_tai-1];return Math.max(0,Math.min(1,(R?R[0]/100:0)*vEff(r)/5))};
+// Dữ liệu cũ thiếu trường nào thì gán null, không làm hỏng phân tích
+function normRec(r){const o=Object.assign({},r);REC_FIELDS.concat(['acc_ten','gio','ve_cap','thu_tu']).forEach(k=>{if(o[k]===undefined)o[k]=null});
+  if(o.cap_hien_tai!=null)o.cap_hien_tai=+o.cap_hien_tai;if(o.cap_muc_tieu==null&&o.cap_hien_tai!=null)o.cap_muc_tieu=o.cap_hien_tai+1;
+  if(o.ket_qua!=null)o.ket_qua=+o.ket_qua?1:0;if(o.loai!=='chinh'&&o.loai!=='moi')o.loai=o.loai==null?null:String(o.loai);
+  if(o.gio==null&&o.timestamp!=null)o.gio=new Date(o.timestamp).getHours();return o}
+function tsOf(d,h,now){if(!d)return null;const [dd,mm]=d.split('/').map(Number);if(!dd||!mm)return null;let y=now.getFullYear(),t=new Date(y,mm-1,dd,h!=null?h:0);
+  if(t.getTime()-now.getTime()>2*864e5)t=new Date(y-1,mm-1,dd,h!=null?h:0);return t.getTime()} // dây chỉ ghi ngày/tháng: lấy năm gần nhất không vượt quá hôm nay
+function accList(){let pl=[];try{pl=JSON.parse(LS.get('fcolab_profiles'))||[]}catch(e){}if(!pl.length)pl=[{id:'main',name:'Acc 1'}];return pl}
+function buildRecords(){
+  const out=[],now=new Date();
+  accList().forEach(p=>{const pf=p.id==='main'?'fcolab_':'fcolab_p_'+p.id+'_';let texts={};try{texts=JSON.parse(LS.get(pf+'dayTexts'))||{}}catch(e){}
+    if(p.id===CUR_ACC){texts=Object.assign({},texts,dayTexts);texts[dLv]=dText}
+    Object.keys(texts).forEach(ls=>{const lv=+ls,t=texts[ls]||'';if(!(lv>=1)||!t.trim())return;let seq=0;
+      parseDay(t,lv).sess.forEach((s,li)=>{const ts=tsOf(s.d,s.h,now);let lastUp=-1;s.forEach((r,i)=>{if(r==='S')lastUp=i});
+        s.forEach((r,i)=>{const up=r==='S';out.push({acc_id:p.id,acc_ten:p.name||p.id,timestamp:ts,cap_hien_tai:lv,cap_muc_tieu:lv+1,so_vach:s.v[i]!=null?s.v[i]:null,
+          loai:s.m&&s.m[i]?'chinh':'moi',ket_qua:up?1:0,ghi_chu:up&&i===lastUp&&s.nm?s.nm:null,ve_cap:up?null:+r,gio:s.h!=null?s.h:null,dong:li+1,thu_tu:seq++})})})})});
+  return out}
+// Chuỗi theo thời gian của từng acc × cấp: số lần xịt liên tiếp trước mỗi lần ép (L) và số thứ tự dây
+function annotate(R){const by={};R.forEach(r=>{const k=r.acc_id+'|'+r.cap_hien_tai;(by[k]||(by[k]=[])).push(r)});
+  Object.entries(by).forEach(([g,a])=>{a.sort((x,y)=>(x.thu_tu??0)-(y.thu_tu??0)||(x.timestamp??0)-(y.timestamp??0));let L=0,d=1;a.forEach(r=>{r._g=g;r._L=L;r._day=d;if(r.ket_qua===1){L=0;d++}else L++})});return by}
+function passF(r,f){if(!f)return true;if(f.acc&&f.acc!=='all'&&r.acc_id!==f.acc)return false;if(f.lv&&f.lv!=='all'&&r.cap_hien_tai!==+f.lv)return false;
+  if(f.v&&f.v!=='all'&&vEff(r)!==+f.v)return false;if(f.from||f.to){if(r.timestamp==null)return false;if(f.from&&r.timestamp<f.from)return false;if(f.to&&r.timestamp>=f.to+864e5)return false}return true}
+
+/* ===== Kiểm định ===== */
+function analyze(R0,f,o){
+  o=Object.assign({runsPerm:2000,longPerm:10000,seed:12345,longQ:0.75},o||{});const rng=mulberry(o.seed);
+  const R=R0.map(normRec).filter(r=>r.ket_qua!=null&&r.cap_hien_tai!=null),by=annotate(R),F=R.filter(r=>passF(r,f)),tests=[];
+  const sk=r=>r.cap_hien_tai+'|'+vEff(r),SQ={};F.forEach(r=>{const s=SQ[sk(r)]||(SQ[sk(r)]={n:0,k:0});s.n++;s.k+=r.ket_qua});const qOf=r=>{const s=SQ[sk(r)];return s.k/s.n};
+  const T=(id,q,p,n,extra)=>{const t=Object.assign({id,q,p,n,small:!(n>=ST_MIN)},extra||{});tests.push(t);return t};
+  // a) tỷ lệ thực tế so với % hiển thị, theo cấp × vạch
+  const A=Object.entries(SQ).map(([key,s])=>{const [lv,v]=key.split('|').map(Number),pd=pDisp({cap_hien_tai:lv,so_vach:v});return{key,lv,v,n:s.n,k:s.k,pd,ci:wilson(s.k,s.n)}}).sort((a,b)=>a.lv-b.lv||a.v-b.v);
+  A.forEach(a=>{a.t=T('a:'+a.key,1,binom2(a.k,a.n,a.pd),a.n)});
+  // các đoạn liên tục (sau khi lọc) của từng acc × cấp
+  const seqs=[];Object.values(by).forEach(a=>{let cur=null;a.forEach(r=>{if(passF(r,f)){if(!cur){cur=[];seqs.push(cur)}cur.push(r)}else cur=null})});
+  const SS=seqs.filter(s=>s.length>=2);
+  // b1) Wald–Wolfowitz runs test; p tính bằng hoán vị trong từng tầng cấp × vạch (để không nhầm đổi vạch thành "dây")
+  const runsOf=xs=>{let c=0;for(let i=0;i<xs.length;i++)if(i===0||xs[i]!==xs[i-1])c++;return c};
+  let Robs=0,mu=0,va=0,N=0;SS.forEach(s=>{const xs=s.map(r=>r.ket_qua),n=xs.length,n1=xs.reduce((a,b)=>a+b,0),n0=n-n1;Robs+=runsOf(xs);N+=n;if(n1&&n0){mu+=2*n1*n0/n+1;va+=2*n1*n0*(2*n1*n0-n)/(n*n*(n-1))}else mu+=1});
+  const prep=SS.map(s=>{const g={};s.forEach((r,i)=>{(g[sk(r)]||(g[sk(r)]=[])).push(i)});return{xs:s.map(r=>r.ket_qua),groups:Object.values(g)}});
+  const permR=[];if(SS.length)for(let it=0;it<o.runsPerm;it++){let tot=0;prep.forEach(P=>{const y=P.xs.slice();P.groups.forEach(ix=>{const vals=shuffle(ix.map(i=>P.xs[i]),rng);ix.forEach((i,j)=>y[i]=vals[j])});tot+=runsOf(y)});permR.push(tot)}
+  const pm=mean(permR),dev=Math.abs(Robs-pm),zWW=va>0?(Robs-mu)/Math.sqrt(va):NaN;
+  const runs={n:N,Robs,mu,pm,zWW,pWW:norm2(zWW)};runs.t=T('runs',2,permR.length?(1+permR.filter(x=>Math.abs(x-pm)>=dev-1e-9).length)/(1+permR.length):NaN,N);
+  // b2) tự tương quan lag 1–5 (trên phần dư sau khi trừ tỷ lệ của tầng cấp × vạch)
+  const res=SS.map(s=>s.map(r=>r.ket_qua-qOf(r)));let den=0,Ne=0;res.forEach(e=>e.forEach(x=>{den+=x*x;Ne++}));
+  const ac=[1,2,3,4,5].map(k=>{let num=0,nk=0;res.forEach(e=>{for(let i=0;i+k<e.length;i++){num+=e[i]*e[i+k];nk++}});const r=nk&&den?(num/nk)/(den/Ne):NaN,z=r*Math.sqrt(nk);const a={k,r,n:nk,z,band:nk?1.96/Math.sqrt(nk):NaN};a.t=T('ac'+k,2,norm2(z),nk);return a});
+  // b3) P(lên | đúng k lần xịt liên tiếp trước đó), so với tỷ lệ nền của chính các lần đó (Poisson-binomial chính xác)
+  const cond=[];for(let k=0;k<=10;k++){const G=F.filter(r=>r._L===k),ps=G.map(qOf),O=G.reduce((a,r)=>a+r.ket_qua,0),E=ps.reduce((a,b)=>a+b,0);
+    const c={k,n:G.length,O,E,rate:G.length?O/G.length:NaN,base:G.length?E/G.length:NaN};const p=G.length?pbin2(O,ps):NaN;
+    if(k>0)c.t=T('k'+k,2,p,G.length);else c.p0=p;cond.push(c)}
+  // b4) "sau 1–2 dây dài thì dây kế ngắn": permutation test 10.000 lần, xáo thứ tự dây trong từng acc × cấp
+  const dg={};Object.values(by).forEach(a=>{let len=0;a.forEach(r=>{len++;if(r.ket_qua===1){if(passF(r,f))(dg[r._g]||(dg[r._g]=[])).push(len);len=0}})});
+  const qtl=(a,q)=>{const s=a.slice().sort((x,y)=>x-y),i=(s.length-1)*q,lo=Math.floor(i);return s[lo]+(s[Math.ceil(i)]-s[lo])*(i-lo)};
+  const meta=Object.values(dg).filter(L=>L.length>=3).map(L=>({L,m:o.longQ===0.5?median(L):qtl(L,o.longQ),mean:mean(L)}));
+  const statOf=ord=>{let s1=0,n1=0,s2=0,n2=0;meta.forEach((g,gi)=>{const L=ord[gi];for(let i=1;i<L.length;i++){if(L[i-1]>g.m){s1+=L[i]-g.mean;n1++;if(i>=2&&L[i-2]>g.m){s2+=L[i]-g.mean;n2++}}}});return[n1?s1/n1:NaN,n1,n2?s2/n2:NaN,n2]};
+  const obs=statOf(meta.map(g=>g.L));let c1=0,c2=0,v1=0,v2=0;
+  if(meta.length)for(let it=0;it<o.longPerm;it++){const s=statOf(meta.map(g=>shuffle(g.L.slice(),rng)));if(Number.isFinite(s[0])){v1++;if(Math.abs(s[0])>=Math.abs(obs[0])-1e-9)c1++}if(Number.isFinite(s[2])){v2++;if(Math.abs(s[2])>=Math.abs(obs[2])-1e-9)c2++}}
+  const allL=meta.flatMap(g=>g.L),after=k=>meta.flatMap(g=>g.L.filter((x,i)=>i>=k&&g.L.slice(i-k,i).every(y=>y>g.m)));
+  const long={thr:meta.length?meta.map(g=>fmt(g.m,1)).join(' / '):'–',nDay:allL.length,meanAll:mean(allL),medAll:median(allL),a1:after(1),a2:after(2),d1:obs[0],d2:obs[2]};
+  long.t1=T('long1',2,Number.isFinite(obs[0])&&v1?(1+c1)/(1+v1):NaN,obs[1]);long.t2=T('long2',2,Number.isFinite(obs[2])&&v2?(1+c2)/(1+v2):NaN,obs[3]);
+  // c, d) so giữa các nhóm (acc / khung giờ / thứ), chi-square phân tầng theo cấp × vạch; nhóm dưới 30 lần không đưa vào kiểm định
+  const grp=(id,gf,lab,order)=>{const rows=[];F.forEach(r=>{const g=gf(r);if(g==null)return;rows.push({g,h:sk(r),x:r.ket_qua,e:qOf(r)})});
+    const G={};rows.forEach(r=>{const a=G[r.g]||(G[r.g]={g:r.g,lab:lab(r.g),n:0,O:0,E:0});a.n++;a.O+=r.x;a.E+=r.e});
+    let list=Object.values(G);list=order?list.sort((a,b)=>order.indexOf(a.g)-order.indexOf(b.g)):list.sort((a,b)=>String(a.lab).localeCompare(String(b.lab)));
+    const ok=new Set(list.filter(a=>a.n>=ST_MIN).map(a=>a.g)),res=ok.size>=2?cmh(rows.filter(r=>ok.has(r.g))):null,nUse=rows.filter(r=>ok.has(r.g)).length;
+    const out={list,res,nAll:rows.length,nUse,ok};out.t=T(id,3,res?res.p:NaN,res?nUse:0);return out};
+  const names={};accList().forEach(p=>names[p.id]=p.name||p.id);R.forEach(r=>{if(r.acc_ten&&!names[r.acc_id])names[r.acc_id]=r.acc_ten});
+  const acc=grp('acc',r=>r.acc_id,g=>names[g]||g);
+  const slot=grp('slot',r=>r.gio!=null?Math.min(3,Math.floor(r.gio/6)):null,g=>SLOTS[g],[0,1,2,3]);
+  const wd=grp('wd',r=>r.timestamp!=null?new Date(r.timestamp).getDay():null,g=>WD[g],WD_ORDER);
+  // Benjamini–Hochberg trên mọi kiểm định tính được
+  const valid=tests.filter(t=>Number.isFinite(t.p)),qs=bh(valid.map(t=>t.p));valid.forEach((t,i)=>t.qa=qs[i]);tests.forEach(t=>{if(t.qa===undefined)t.qa=NaN;t.sig=!t.small&&t.qa<ALPHA});
+  const summary=[1,2,3].map(Q=>{const ev=tests.filter(t=>t.q===Q&&Number.isFinite(t.p)&&!t.small);return !ev.length?'Chưa đủ dữ liệu':ev.some(t=>t.qa<ALPHA)?'Có bằng chứng':'Không có bằng chứng'});
+  return{n:F.length,nAll:R.length,noTs:F.filter(r=>r.timestamp==null).length,A,runs,ac,cond,long,acc,slot,wd,tests,summary,mTests:valid.length}}
+
+/* ===== Giả lập để kiểm thử ===== */
+// Ngẫu nhiên thuần: mỗi lần ép độc lập, lên đúng theo % hiển thị. dayFx=true: cài dây nhân tạo (vừa lên thì khó lên, xịt lâu thì dễ lên)
+// longFx=true: cài hiệu ứng "sau dây dài thì dây kế ngắn" (dây trước dài hơn 10 lần thì dây kế tỷ lệ ×3)
+function simulate(o){o=Object.assign({seed:1,accs:3,lvs:[6,5],n:300,dayFx:false,longFx:false},o||{});const rng=mulberry(o.seed),out=[];const t0=new Date(2026,8,1,8).getTime();
+  for(let a=0;a<o.accs;a++)o.lvs.forEach(lv=>{let L=0,prevLen=0,t=t0+Math.floor(rng()*24)*36e5,v=3,seq=0;
+    for(let i=0;i<o.n;i++){if(i%25===0){t+=Math.floor(6+rng()*40)*36e5;v=[3,3.5,4,5][Math.floor(rng()*4)]}t+=6e4;
+      let p=pDisp({cap_hien_tai:lv,so_vach:v});if(o.dayFx)p=L===0?p*0.15:L>=8?Math.min(1,p*2.5):p*0.8;if(o.longFx&&prevLen>10)p=Math.min(1,p*3);
+      const up=rng()<p?1:0;out.push({acc_id:'sim'+(a+1),acc_ten:'Acc giả lập '+(a+1),timestamp:t,cap_hien_tai:lv,cap_muc_tieu:lv+1,so_vach:v,loai:rng()<0.1?'chinh':'moi',ket_qua:up,ghi_chu:null,gio:new Date(t).getHours(),thu_tu:seq++});if(up)prevLen=L+1;L=up?0:L+1}});
+  return out}
+function selfTest(o){o=Object.assign({nullRuns:200,altRuns:50,runsPerm:500,longPerm:1000},o||{});const res={null:{runs:o.nullRuns,allNo:0,q:[0,0,0],tests:0,fp:0},alt:{runs:o.altRuns,q2:0,which:{}},alt2:{runs:o.altRuns,q2:0,long1:0,which:{}}};
+  for(let i=0;i<o.nullRuns;i++){const S=analyze(simulate({seed:1000+i}),null,{runsPerm:o.runsPerm,longPerm:o.longPerm,seed:7+i});
+    if(S.summary.every(s=>s==='Không có bằng chứng'))res.null.allNo++;S.summary.forEach((s,j)=>{if(s==='Không có bằng chứng')res.null.q[j]++});res.null.tests+=S.tests.filter(t=>!t.small&&Number.isFinite(t.p)).length;res.null.fp+=S.tests.filter(t=>t.sig).length}
+  for(let i=0;i<o.altRuns;i++){const S=analyze(simulate({seed:5000+i,dayFx:true}),null,{runsPerm:o.runsPerm,longPerm:o.longPerm,seed:9+i});
+    if(S.summary[1]==='Có bằng chứng')res.alt.q2++;S.tests.filter(t=>t.sig&&t.q===2).forEach(t=>{res.alt.which[t.id]=(res.alt.which[t.id]||0)+1})}
+  for(let i=0;i<o.altRuns;i++){const S=analyze(simulate({seed:8000+i,longFx:true}),null,{runsPerm:o.runsPerm,longPerm:o.longPerm,seed:11+i});
+    if(S.summary[1]==='Có bằng chứng')res.alt2.q2++;if(S.long.t1.sig)res.alt2.long1++;S.tests.filter(t=>t.sig&&t.q===2).forEach(t=>{res.alt2.which[t.id]=(res.alt2.which[t.id]||0)+1})}
+  return res}
+
+/* ===== Giao diện ===== */
+const pf=p=>!Number.isFinite(p)?'–':p<0.001?'< 0,001':fmt(p,3);
+const SMALL='Chưa đủ dữ liệu, kết quả chưa tin cậy';
+const vc=(t,ev)=>!t||!Number.isFinite(t.p)||t.small?'verdict dim':ev?'verdict bad':'verdict ok';
+const pq=t=>`<td>${pf(t.p)}</td><td>${pf(t.qa)}</td>`;
+const cv=s=>getComputedStyle(document.documentElement).getPropertyValue(s).trim()||'#888';
+let CJ=null,charts=[],lastS=null,lastR=null;
+function loadChart(){if(window.Chart)return Promise.resolve(window.Chart);if(CJ)return CJ;
+  CJ=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';s.onload=()=>ok(window.Chart);s.onerror=()=>{CJ=null;no(new Error('cdn'))};document.head.appendChild(s)});return CJ}
+const filt=()=>{const g=id=>$(id).value;const d=id=>{const v=g(id);if(!v)return null;const [y,m,dd]=v.split('-').map(Number);return new Date(y,m-1,dd).getTime()};return{acc:g('#st-acc'),lv:g('#st-lv'),v:g('#st-v'),from:d('#st-from'),to:d('#st-to')}};
+function fillSel(R){const keep=id=>$(id).value;const set=(id,opts)=>{const k=keep(id);$(id).innerHTML=opts.map(([v,l])=>`<option value="${v}">${escH(l)}</option>`).join('');if([...$(id).options].some(x=>x.value===k))$(id).value=k};
+  const accs=accList().filter(p=>R.some(r=>r.acc_id===p.id));set('#st-acc',[['all','Tất cả acc'],...accs.map(p=>[p.id,p.name||p.id])]);
+  const lvs=[...new Set(R.map(r=>r.cap_hien_tai))].sort((a,b)=>a-b);set('#st-lv',[['all','Tất cả cấp'],...lvs.map(l=>[l,`+${l} → +${l+1}`])]);
+  const vs=[...new Set(R.map(vEff))].sort((a,b)=>a-b);set('#st-v',[['all','Tất cả vạch'],...vs.map(v=>[v,vtxt(v)+' vạch'])])}
+function card(title,cls,concl,body,cid,note){return `<div class="panel stcard"><h2>${title}</h2><div class="${cls}"><b>${concl}</b>${note?`<span class="hint">${note}</span>`:''}</div>${body}${cid?`<div class="stchart"><canvas id="${cid}" aria-label="${escH(title)}"></canvas></div>`:''}</div>`}
+const tbl=(head,rows)=>`<div class="tblwrap" style="margin-top:10px"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+const dimTr=(t,html)=>`<tr${t&&t.small?' class="dim"':''}>${html}</tr>`;
+function render(){
+  const R=buildRecords();lastR=R;fillSel(R);const f=filt(),S=analyze(R,f);lastS=S;
+  $('#st-n').innerHTML=`Đang phân tích <b>${S.n}</b> lần ép (tổng ${S.nAll} lần của mọi acc)${S.noTs?` · ${S.noTs} lần không có ngày giờ (dòng @ngày giờ bị thiếu)`:''} · ${S.mTests} kiểm định, p đã hiệu chỉnh Benjamini–Hochberg, mức 5%.`;
+  const lab=['Có bằng chứng','Không có bằng chứng','Chưa đủ dữ liệu'],pc={'Có bằng chứng':'bad','Không có bằng chứng':'ok','Chưa đủ dữ liệu':''};
+  const Q=[['Game có trả đúng % hiển thị không?','"Có bằng chứng" nghĩa là tỷ lệ lên thật lệch khỏi % hiển thị ở ít nhất một nhóm cấp × vạch.'],
+           ['Dây có thật không?','"Có bằng chứng" nghĩa là kết quả lần ép phụ thuộc vào các lần trước (runs, tự tương quan, số lần xịt liên tiếp, dây dài/ngắn).'],
+           ['Acc hoặc giờ có ảnh hưởng không?','"Có bằng chứng" nghĩa là tỷ lệ lên khác nhau giữa các acc, khung giờ hoặc thứ trong tuần, sau khi đã tính đến cấp và số vạch.']];
+  $('#st-sum').innerHTML=`<div class="panel"><h2>Tóm tắt</h2><div class="stsum">${Q.map((q,i)=>`<div class="stq"><div class="lbl">${i+1}. ${q[0]}</div><div class="stans pill ${pc[S.summary[i]]}">${S.summary[i]}</div><p class="hint">${q[1]}</p></div>`).join('')}</div>
+    <p class="hint" style="margin-top:10px">Chỉ tính các kiểm định có từ ${ST_MIN} mẫu trở lên. "Không có bằng chứng" không có nghĩa là chắc chắn ngẫu nhiên, chỉ là dữ liệu hiện có chưa cho thấy điều ngược lại.</p></div>`;
+  const C=[];
+  // a
+  {const big=S.A.filter(a=>!a.t.small),sig=big.filter(a=>a.t.sig);
+   const concl=!S.A.length?'Chưa có dữ liệu.':!big.length?SMALL:sig.length?`Có ${sig.length} nhóm lệch % hiển thị: ${sig.map(a=>`+${a.lv} ${vtxt(a.v)} vạch ${a.k/a.n<a.pd?'thấp hơn':'cao hơn'}`).join(', ')}.`:`Các nhóm đủ mẫu đều khớp % hiển thị.`;
+   const rows=S.A.map(a=>dimTr(a.t,`<td>+${a.lv}→+${a.lv+1}</td><td>${vtxt(a.v)}</td><td>${a.n}</td><td>${a.k}</td><td>${pct(a.k/a.n)}</td><td>${pct(a.ci[0])}–${pct(a.ci[1])}</td><td>${pct(a.pd)}</td>${pq(a.t)}<td style="font-family:var(--f-body)">${a.t.small?SMALL:a.t.sig?(a.k/a.n<a.pd?'Thấp hơn có ý nghĩa':'Cao hơn có ý nghĩa'):'Khớp'}</td>`));
+   C.push(card('a) Tỷ lệ thực tế so với % hiển thị',big.length?(sig.length?'verdict bad':'verdict ok'):'verdict dim',concl,tbl(['Cấp','Vạch','n','Lên','Thực tế','Wilson 95%','Hiển thị','p gốc','p hiệu chỉnh','Kết luận'],rows),'stc-a','Binomial test hai phía so với % hiển thị (tỷ lệ trần × vạch/5). Lần ép không ghi vạch được tính là 5 vạch.'))}
+  // b1
+  {const r=S.runs,t=r.t;const concl=!Number.isFinite(t.p)?'Chưa có dữ liệu.':t.small?SMALL:t.sig?(r.Robs<r.pm?'Kết quả dồn cục hơn ngẫu nhiên (ít đoạn hơn kỳ vọng).':'Kết quả xen kẽ hơn ngẫu nhiên (nhiều đoạn hơn kỳ vọng).'):'Số đoạn lên/xịt đúng như ngẫu nhiên.';
+   C.push(card('b) Runs test (Wald–Wolfowitz)',vc(t,t.sig),concl,`<dl class="kv"><dt>Số lần ép (n)</dt><dd>${r.n}</dd><dt>Số đoạn thực tế</dt><dd>${r.Robs}</dd><dt>Kỳ vọng (hoán vị trong cấp × vạch)</dt><dd>${fmt(r.pm,1)}</dd><dt>z Wald–Wolfowitz / p</dt><dd>${fmt(r.zWW,2)} / ${pf(r.pWW)}</dd><dt>p gốc (hoán vị ${2000})</dt><dd>${pf(t.p)}</dd><dt>p hiệu chỉnh</dt><dd>${pf(t.qa)}</dd></dl>`,null,'Đoạn = chuỗi liền nhau cùng kết quả. p dùng để kết luận là p hoán vị trong từng tầng cấp × vạch, vì tỷ lệ mỗi tầng khác nhau.'))}
+  // b2
+  {const sig=S.ac.filter(a=>a.t.sig),big=S.ac.filter(a=>!a.t.small&&Number.isFinite(a.t.p));const concl=!big.length?SMALL:sig.length?`Có tương quan ở lag ${sig.map(a=>a.k).join(', ')}: kết quả lần này liên quan tới ${sig.length>1?'các':''} lần trước đó.`:'Không có tương quan giữa các lần ép gần nhau (lag 1–5).';
+   C.push(card('b) Tự tương quan lag 1–5',big.length?(sig.length?'verdict bad':'verdict ok'):'verdict dim',concl,tbl(['Lag','n cặp','r','p gốc','p hiệu chỉnh'],S.ac.map(a=>dimTr(a.t,`<td>${a.k}</td><td>${a.n}</td><td>${fmt(a.r,3)}</td>${pq(a.t)}`))),'stc-ac','Tính trên phần dư sau khi trừ tỷ lệ của tầng cấp × vạch. Vạch đứt là ngưỡng ±1,96/√n.'))}
+  // b3
+  {const rows=S.cond.filter(c=>c.k>0),sig=rows.filter(c=>c.t.sig),big=rows.filter(c=>!c.t.small);const concl=!big.length?SMALL:sig.length?`Tỷ lệ lên khác nền sau ${sig.map(c=>c.k).join(', ')} lần xịt liên tiếp.`:'Tỷ lệ lên không phụ thuộc số lần xịt liên tiếp trước đó.';
+   const c0=S.cond[0];
+   C.push(card('b) P(lên | k lần xịt liên tiếp)',big.length?(sig.length?'verdict bad':'verdict ok'):'verdict dim',concl,tbl(['k','n','Lên','Thực tế','Nền','×','p gốc','p hiệu chỉnh'],
+     [`<tr class="dim"><td>0 (vừa lên)</td><td>${c0.n}</td><td>${c0.O}</td><td>${pct(c0.rate)}</td><td>${pct(c0.base)}</td><td>${fmt(c0.O/c0.E,2)}</td><td>${pf(c0.p0)}</td><td>tham khảo</td></tr>`,
+      ...rows.map(c=>dimTr(c.t,`<td>${c.k}</td><td>${c.n}</td><td>${c.O}</td><td>${pct(c.rate)}</td><td>${pct(c.base)}</td><td>${c.E?fmt(c.O/c.E,2):'–'}</td>${pq(c.t)}`))]),'stc-k','k = số lần xịt liền trước trong cùng acc × cấp. Nền = tỷ lệ trung bình của tầng cấp × vạch tại đúng các lần đó. Dòng k = 0 chỉ để tham khảo, không nằm trong kiểm định.'))}
+  // b4
+  {const L=S.long,t1=L.t1,t2=L.t2,big=[t1,t2].filter(t=>!t.small&&Number.isFinite(t.p)),sig=big.filter(t=>t.sig);
+   const concl=!big.length?SMALL:sig.length?`Sau dây dài, dây kế ${((sig[0]===t1?L.d1:L.d2)<0)?'ngắn hơn':'dài hơn'} có ý nghĩa.`:'Sau 1–2 dây dài, dây kế không ngắn hơn (cũng không dài hơn) có ý nghĩa.';
+   C.push(card('b) Sau dây dài thì dây kế ngắn?',big.length?(sig.length?'verdict bad':'verdict ok'):'verdict dim',concl,tbl(['Nhóm dây','Số dây','Dài TB (lần ép)','Chênh so TB','p gốc','p hiệu chỉnh'],
+     [`<tr><td>Tất cả dây đã lên</td><td>${L.nDay}</td><td>${fmt(L.meanAll,1)}</td><td>–</td><td>–</td><td>–</td></tr>`,
+      dimTr(t1,`<td>Sau 1 dây dài</td><td>${L.a1.length}</td><td>${fmt(mean(L.a1),1)}</td><td>${fmt(L.d1,1)}</td>${pq(t1)}`),dimTr(t2,`<td>Sau 2 dây dài liền</td><td>${L.a2.length}</td><td>${fmt(mean(L.a2),1)}</td><td>${fmt(L.d2,1)}</td>${pq(t2)}`)]),'stc-long',`Dây dài = thuộc 25% dây dài nhất của cùng acc × cấp (từ ${S.long.thr} lần ép trở lên với lựa chọn hiện tại). Permutation test 10.000 lần: xáo ngẫu nhiên thứ tự các dây rồi so.`))}
+  // c, d
+  [[S.acc,'c) So sánh giữa các acc','các acc'],[S.slot,'d) Theo khung giờ (giờ bắt đầu phiên)','các khung giờ'],[S.wd,'d) Theo thứ trong tuần','các thứ']].forEach(([G,title,who],i)=>{const t=G.t;
+    const concl=!G.res?`${SMALL} (cần ít nhất 2 nhóm, mỗi nhóm từ ${ST_MIN} lần).`:t.sig?`Tỷ lệ lên khác nhau giữa ${who}, sau khi đã tính đến cấp và vạch.`:`Không khác nhau giữa ${who}.`;
+    const rows=G.list.map(a=>`<tr${a.n<ST_MIN?' class="dim"':''}><td style="font-family:var(--f-body)">${escH(a.lab)}</td><td>${a.n}</td><td>${a.O}</td><td>${pct(a.O/a.n)}</td><td>${fmt(a.E,1)}</td><td>${a.E?fmt(a.O/a.E,2):'–'}</td><td style="font-family:var(--f-body)">${a.n<ST_MIN?SMALL:''}</td></tr>`);
+    C.push(card(title,G.res?(t.sig?'verdict bad':'verdict ok'):'verdict dim',concl,`<dl class="kv"><dt>n đưa vào kiểm định</dt><dd>${G.nUse} / ${G.nAll}</dd><dt>Chi-square phân tầng (df)</dt><dd>${G.res?fmt(G.res.stat,2)+' ('+G.res.df+')':'–'}</dd><dt>p gốc / p hiệu chỉnh</dt><dd>${pf(t.p)} / ${pf(t.qa)}</dd></dl>`+tbl(['Nhóm','n','Lên','Thực tế','Kỳ vọng','× kỳ vọng',''],rows),'stc-g'+i,i===2?'Thứ lấy theo ngày ở dòng @ngày giờ; lần ép không có ngày bị bỏ qua.':'Chi-square Cochran–Mantel–Haenszel: so nhóm trong từng tầng cấp × vạch rồi gộp lại. Kỳ vọng = số lần lên nếu nhóm này lên đúng như trung bình tầng.'))});
+  $('#st-cards').innerHTML=C.join('');
+  drawCharts(S)}
+function drawCharts(S){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];
+  loadChart().then(Ch=>{if(lastS!==S)return;const ink=cv('--muted'),line=cv('--line'),gold=cv('--gold'),navy=cv('--navy'),bad=cv('--bad'),bait=cv('--bait');
+    Ch.defaults.color=ink;Ch.defaults.font.family=getComputedStyle(document.body).fontFamily;Ch.defaults.font.size=11;
+    const base={responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{boxWidth:10}}},scales:{x:{grid:{color:line}},y:{grid:{color:line},beginAtZero:true}}};
+    const mk=(id,cfg)=>{const el=document.getElementById(id);if(el)charts.push(new Ch(el,Object.assign({options:base},cfg)))};
+    const P=v=>Number.isFinite(v)?+(v*100).toFixed(2):null;
+    mk('stc-a',{type:'bar',data:{labels:S.A.map(a=>`+${a.lv} · ${vtxt(a.v)}v`),datasets:[{label:'Thực tế %',data:S.A.map(a=>P(a.k/a.n)),backgroundColor:bait},{type:'line',label:'Hiển thị %',data:S.A.map(a=>P(a.pd)),borderColor:gold,backgroundColor:gold,pointRadius:3}]}});
+    mk('stc-ac',{type:'bar',data:{labels:S.ac.map(a=>'lag '+a.k),datasets:[{label:'r',data:S.ac.map(a=>Number.isFinite(a.r)?+a.r.toFixed(4):null),backgroundColor:navy},{type:'line',label:'+ngưỡng',data:S.ac.map(a=>a.band),borderColor:bad,borderDash:[4,4],pointRadius:0},{type:'line',label:'−ngưỡng',data:S.ac.map(a=>-a.band),borderColor:bad,borderDash:[4,4],pointRadius:0}]},options:Object.assign({},base,{scales:{x:base.scales.x,y:{grid:{color:line}}}})});
+    mk('stc-k',{type:'line',data:{labels:S.cond.map(c=>String(c.k)),datasets:[{label:'Thực tế %',data:S.cond.map(c=>P(c.rate)),borderColor:bait,backgroundColor:bait},{label:'Nền %',data:S.cond.map(c=>P(c.base)),borderColor:gold,backgroundColor:gold,borderDash:[4,4]}]}});
+    mk('stc-long',{type:'bar',data:{labels:['Tất cả','Sau 1 dài','Sau 2 dài'],datasets:[{label:'Dài TB (lần ép)',data:[S.long.meanAll,mean(S.long.a1),mean(S.long.a2)].map(v=>Number.isFinite(v)?+v.toFixed(2):null),backgroundColor:[navy,bait,bait]}]}});
+    [S.acc,S.slot,S.wd].forEach((G,i)=>mk('stc-g'+i,{type:'bar',data:{labels:G.list.map(a=>a.lab),datasets:[{label:'× kỳ vọng',data:G.list.map(a=>a.E?+(a.O/a.E).toFixed(3):null),backgroundColor:G.list.map(a=>a.n<ST_MIN?line:bait)}]}}));
+  }).catch(()=>{document.querySelectorAll('.stchart').forEach(el=>el.innerHTML='<p class="hint">Không tải được thư viện biểu đồ (cần mạng), số liệu ở trên vẫn đầy đủ.</p>')})}
+function exportCSV(){const R=(lastR||buildRecords()).map(normRec),by=annotate(R);
+  const cols=['acc_id','acc_ten','timestamp','cap_hien_tai','cap_muc_tieu','so_vach','loai','ket_qua','ghi_chu','ve_cap','gio','ty_le_hien_thi','so_lan_xit_truoc','day_so'];
+  const ts=t=>{if(t==null)return'';const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`};
+  const q=v=>{if(v==null)return'';const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const lines=[cols.join(',')].concat(Object.values(by).flat().map(r=>[r.acc_id,r.acc_ten,ts(r.timestamp),r.cap_hien_tai,r.cap_muc_tieu,r.so_vach,r.loai,r.ket_qua,r.ghi_chu,r.ve_cap,r.gio,pDisp(r).toFixed(4),r._L,r._day].map(q).join(',')));
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a'),d=new Date();
+  a.href=URL.createObjectURL(blob);a.download=`fco_du_lieu_ep_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+  $('#st-msg').textContent=`Đã xuất ${lines.length-1} lần ép.`}
+['#st-acc','#st-lv','#st-v','#st-from','#st-to'].forEach(id=>$(id).addEventListener('change',render));
+$('#st-reset').onclick=()=>{['#st-acc','#st-lv','#st-v'].forEach(id=>$(id).value='all');$('#st-from').value='';$('#st-to').value='';render()};
+$('#st-csv').onclick=exportCSV;
+window.__fcoStatRender=render;
+window.FCOStats={buildRecords,analyze,simulate,selfTest,normRec,_m:{binom2,wilson,chi2sf,pbin2,bh,cmh,gammaQ}};
 })();
 
 document.querySelectorAll('#d-slotmode button').forEach(b=>b.onclick=()=>{dSlotMode=b.dataset.v;store.set('daySlotMode',dSlotMode);renderSlotCtl();renderDay()});
