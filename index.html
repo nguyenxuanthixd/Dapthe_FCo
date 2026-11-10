@@ -209,7 +209,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 05/11 01:00</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 10/11 17:15</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -1515,7 +1515,7 @@ function buildRecords(){
   return out}
 // Chuỗi theo thời gian của từng acc × cấp: số lần xịt liên tiếp trước mỗi lần ép (L) và số thứ tự dây
 function annotate(R){const by={};R.forEach(r=>{const k=r.acc_id+'|'+r.cap_hien_tai;(by[k]||(by[k]=[])).push(r)});
-  Object.entries(by).forEach(([g,a])=>{a.sort((x,y)=>(x.thu_tu??0)-(y.thu_tu??0)||(x.timestamp??0)-(y.timestamp??0));let L=0,d=1;a.forEach(r=>{r._g=g;r._L=L;r._day=d;if(r.ket_qua===1){L=0;d++}else L++})});return by}
+  Object.entries(by).forEach(([g,a])=>{a.sort((x,y)=>(x.thu_tu??0)-(y.thu_tu??0)||(x.timestamp??0)-(y.timestamp??0));let L=0,d=1,pv=null;a.forEach(r=>{r._g=g;r._L=L;r._day=d;r._prev=pv;pv=r.ket_qua===1?'up':(r.ve_cap!=null&&r.cap_hien_tai!=null?'d'+(r.cap_hien_tai-r.ve_cap):null);if(r.ket_qua===1){L=0;d++}else L++})});return by}
 function passF(r,f){if(!f)return true;if(f.acc&&f.acc!=='all'&&r.acc_id!==f.acc)return false;if(f.lv&&f.lv!=='all'&&r.cap_hien_tai!==+f.lv)return false;
   if(f.v&&f.v!=='all'&&vEff(r)!==+f.v)return false;if(f.from||f.to){if(r.timestamp==null)return false;if(f.from&&r.timestamp<f.from)return false;if(f.to&&r.timestamp>=f.to+864e5)return false}return true}
 
@@ -1544,7 +1544,7 @@ function analyze(R0,f,o){
   // b3) P(lên | đúng k lần xịt liên tiếp trước đó), so với tỷ lệ nền của chính các lần đó (Poisson-binomial chính xác)
   const cond=[];for(let k=0;k<=10;k++){const G=F.filter(r=>r._L===k),ps=G.map(qOf),O=G.reduce((a,r)=>a+r.ket_qua,0),E=ps.reduce((a,b)=>a+b,0);
     const c={k,n:G.length,O,E,rate:G.length?O/G.length:NaN,base:G.length?E/G.length:NaN};const p=G.length?pbin2(O,ps):NaN;
-    if(k>0)c.t=T('k'+k,2,p,G.length);else c.p0=p;cond.push(c)}
+    c.t=T('k'+k,2,p,G.length);cond.push(c)}
   // b4) "sau 1–2 dây dài thì dây kế ngắn": permutation test 10.000 lần, xáo thứ tự dây trong từng acc × cấp
   const dg={};Object.values(by).forEach(a=>{let len=0;a.forEach(r=>{len++;if(r.ket_qua===1){if(passF(r,f))(dg[r._g]||(dg[r._g]=[])).push(len);len=0}})});
   const qtl=(a,q)=>{const s=a.slice().sort((x,y)=>x-y),i=(s.length-1)*q,lo=Math.floor(i);return s[lo]+(s[Math.ceil(i)]-s[lo])*(i-lo)};
@@ -1562,13 +1562,15 @@ function analyze(R0,f,o){
     const ok=new Set(list.filter(a=>a.n>=ST_MIN).map(a=>a.g)),res=ok.size>=2?cmh(rows.filter(r=>ok.has(r.g))):null,nUse=rows.filter(r=>ok.has(r.g)).length;
     const out={list,res,nAll:rows.length,nUse,ok};out.t=T(id,3,res?res.p:NaN,res?nUse:0);return out};
   const names={};accList().forEach(p=>names[p.id]=p.name||p.id);R.forEach(r=>{if(r.acc_ten&&!names[r.acc_id])names[r.acc_id]=r.acc_ten});
+  const oneLv=new Set(F.map(r=>r.cap_hien_tai)).size===1?(F[0]||{}).cap_hien_tai:null;
+  const prev=grp('prev',r=>r._prev,g=>g==='up'?'Vừa lên xong':oneLv?`Vừa về +${oneLv-(+g.slice(1))}`:`Vừa tụt ${g.slice(1)} bậc`,['up','d1','d2','d3','d4','d5','d6','d7','d8','d9','d10','d11']);prev.t.q=2;
   const acc=grp('acc',r=>r.acc_id,g=>names[g]||g);
   const slot=grp('slot',r=>r.gio!=null?Math.min(3,Math.floor(r.gio/6)):null,g=>SLOTS[g],[0,1,2,3]);
   const wd=grp('wd',r=>r.timestamp!=null?new Date(r.timestamp).getDay():null,g=>WD[g],WD_ORDER);
   // Benjamini–Hochberg trên mọi kiểm định tính được
   const valid=tests.filter(t=>Number.isFinite(t.p)),qs=bh(valid.map(t=>t.p));valid.forEach((t,i)=>t.qa=qs[i]);tests.forEach(t=>{if(t.qa===undefined)t.qa=NaN;t.sig=!t.small&&t.qa<ALPHA});
   const summary=[1,2,3].map(Q=>{const ev=tests.filter(t=>t.q===Q&&Number.isFinite(t.p)&&!t.small);return !ev.length?'Chưa đủ dữ liệu':ev.some(t=>t.qa<ALPHA)?'Có bằng chứng':'Không có bằng chứng'});
-  return{n:F.length,nAll:R.length,noTs:F.filter(r=>r.timestamp==null).length,A,runs,ac,cond,long,acc,slot,wd,tests,summary,mTests:valid.length}}
+  return{n:F.length,nAll:R.length,noTs:F.filter(r=>r.timestamp==null).length,A,runs,ac,cond,long,prev,acc,slot,wd,tests,summary,mTests:valid.length}}
 
 /* ===== Giả lập để kiểm thử ===== */
 // Ngẫu nhiên thuần: mỗi lần ép độc lập, lên đúng theo % hiển thị. dayFx=true: cài dây nhân tạo (vừa lên thì khó lên, xịt lâu thì dễ lên)
@@ -1627,11 +1629,9 @@ function render(){
   {const sig=S.ac.filter(a=>a.t.sig),big=S.ac.filter(a=>!a.t.small&&Number.isFinite(a.t.p));const concl=!big.length?SMALL:sig.length?`Có tương quan ở lag ${sig.map(a=>a.k).join(', ')}: kết quả lần này liên quan tới ${sig.length>1?'các':''} lần trước đó.`:'Không có tương quan giữa các lần ép gần nhau (lag 1–5).';
    C.push(card('b) Tự tương quan lag 1–5',big.length?(sig.length?'verdict bad':'verdict ok'):'verdict dim',concl,tbl(['Lag','n cặp','r','p gốc','p hiệu chỉnh'],S.ac.map(a=>dimTr(a.t,`<td>${a.k}</td><td>${a.n}</td><td>${fmt(a.r,3)}</td>${pq(a.t)}`))),'stc-ac','Tính trên phần dư sau khi trừ tỷ lệ của tầng cấp × vạch. Vạch đứt là ngưỡng ±1,96/√n.'))}
   // b3
-  {const rows=S.cond.filter(c=>c.k>0),sig=rows.filter(c=>c.t.sig),big=rows.filter(c=>!c.t.small);const concl=!big.length?SMALL:sig.length?`Tỷ lệ lên khác nền sau ${sig.map(c=>c.k).join(', ')} lần xịt liên tiếp.`:'Tỷ lệ lên không phụ thuộc số lần xịt liên tiếp trước đó.';
-   const c0=S.cond[0];
+  {const rows=S.cond,sig=rows.filter(c=>c.t.sig),big=rows.filter(c=>!c.t.small);const concl=!big.length?SMALL:sig.length?`Tỷ lệ lên khác nền khi trước đó có ${sig.map(c=>c.k).join(', ')} lần xịt liên tiếp.`:'Tỷ lệ lên không phụ thuộc số lần xịt liên tiếp trước đó.';
    C.push(card('b) P(lên | k lần xịt liên tiếp)',big.length?(sig.length?'verdict bad':'verdict ok'):'verdict dim',concl,tbl(['k','n','Lên','Thực tế','Nền','×','p gốc','p hiệu chỉnh'],
-     [`<tr class="dim"><td>0 (vừa lên)</td><td>${c0.n}</td><td>${c0.O}</td><td>${pct(c0.rate)}</td><td>${pct(c0.base)}</td><td>${fmt(c0.O/c0.E,2)}</td><td>${pf(c0.p0)}</td><td>tham khảo</td></tr>`,
-      ...rows.map(c=>dimTr(c.t,`<td>${c.k}</td><td>${c.n}</td><td>${c.O}</td><td>${pct(c.rate)}</td><td>${pct(c.base)}</td><td>${c.E?fmt(c.O/c.E,2):'–'}</td>${pq(c.t)}`))]),'stc-k','k = số lần xịt liền trước trong cùng acc × cấp. Nền = tỷ lệ trung bình của tầng cấp × vạch tại đúng các lần đó. Dòng k = 0 chỉ để tham khảo, không nằm trong kiểm định.'))}
+     [...rows.map(c=>dimTr(c.t,`<td>${c.k===0?'0 (vừa lên)':c.k}</td><td>${c.n}</td><td>${c.O}</td><td>${pct(c.rate)}</td><td>${pct(c.base)}</td><td>${c.E?fmt(c.O/c.E,2):'–'}</td>${pq(c.t)}`))]),'stc-k','k = số lần xịt liền trước trong cùng acc × cấp. Nền = tỷ lệ trung bình của tầng cấp × vạch tại đúng các lần đó. k = 0 là lượt ngay sau khi vừa lên.'))}
   // b4
   {const L=S.long,t1=L.t1,t2=L.t2,big=[t1,t2].filter(t=>!t.small&&Number.isFinite(t.p)),sig=big.filter(t=>t.sig);
    const concl=!big.length?SMALL:sig.length?`Sau dây dài, dây kế ${((sig[0]===t1?L.d1:L.d2)<0)?'ngắn hơn':'dài hơn'} có ý nghĩa.`:'Sau 1–2 dây dài, dây kế không ngắn hơn (cũng không dài hơn) có ý nghĩa.';
@@ -1639,10 +1639,10 @@ function render(){
      [`<tr><td>Tất cả dây đã lên</td><td>${L.nDay}</td><td>${fmt(L.meanAll,1)}</td><td>–</td><td>–</td><td>–</td></tr>`,
       dimTr(t1,`<td>Sau 1 dây dài</td><td>${L.a1.length}</td><td>${fmt(mean(L.a1),1)}</td><td>${fmt(L.d1,1)}</td>${pq(t1)}`),dimTr(t2,`<td>Sau 2 dây dài liền</td><td>${L.a2.length}</td><td>${fmt(mean(L.a2),1)}</td><td>${fmt(L.d2,1)}</td>${pq(t2)}`)]),'stc-long',`Dây dài = thuộc 25% dây dài nhất của cùng acc × cấp (từ ${S.long.thr} lần ép trở lên với lựa chọn hiện tại). Permutation test 10.000 lần: xáo ngẫu nhiên thứ tự các dây rồi so.`))}
   // c, d
-  [[S.acc,'c) So sánh giữa các acc','các acc'],[S.slot,'d) Theo khung giờ (giờ bắt đầu phiên)','các khung giờ'],[S.wd,'d) Theo thứ trong tuần','các thứ']].forEach(([G,title,who],i)=>{const t=G.t;
+  [[S.prev,'b) Theo kết quả lần ép liền trước','các nhóm "lần trước về mấy"'],[S.acc,'c) So sánh giữa các acc','các acc'],[S.slot,'d) Theo khung giờ (giờ bắt đầu phiên)','các khung giờ'],[S.wd,'d) Theo thứ trong tuần','các thứ']].forEach(([G,title,who],i)=>{const t=G.t;
     const concl=!G.res?`${SMALL} (cần ít nhất 2 nhóm, mỗi nhóm từ ${ST_MIN} lần).`:t.sig?`Tỷ lệ lên khác nhau giữa ${who}, sau khi đã tính đến cấp và vạch.`:`Không khác nhau giữa ${who}.`;
     const rows=G.list.map(a=>`<tr${a.n<ST_MIN?' class="dim"':''}><td style="font-family:var(--f-body)">${escH(a.lab)}</td><td>${a.n}</td><td>${a.O}</td><td>${pct(a.O/a.n)}</td><td>${fmt(a.E,1)}</td><td>${a.E?fmt(a.O/a.E,2):'–'}</td><td style="font-family:var(--f-body)">${a.n<ST_MIN?SMALL:''}</td></tr>`);
-    C.push(card(title,G.res?(t.sig?'verdict bad':'verdict ok'):'verdict dim',concl,`<dl class="kv"><dt>n đưa vào kiểm định</dt><dd>${G.nUse} / ${G.nAll}</dd><dt>Chi-square phân tầng (df)</dt><dd>${G.res?fmt(G.res.stat,2)+' ('+G.res.df+')':'–'}</dd><dt>p gốc / p hiệu chỉnh</dt><dd>${pf(t.p)} / ${pf(t.qa)}</dd></dl>`+tbl(['Nhóm','n','Lên','Thực tế','Kỳ vọng','× kỳ vọng',''],rows),'stc-g'+i,i===2?'Thứ lấy theo ngày ở dòng @ngày giờ; lần ép không có ngày bị bỏ qua.':'Chi-square Cochran–Mantel–Haenszel: so nhóm trong từng tầng cấp × vạch rồi gộp lại. Kỳ vọng = số lần lên nếu nhóm này lên đúng như trung bình tầng.'))});
+    C.push(card(title,G.res?(t.sig?'verdict bad':'verdict ok'):'verdict dim',concl,`<dl class="kv"><dt>n đưa vào kiểm định</dt><dd>${G.nUse} / ${G.nAll}</dd><dt>Chi-square phân tầng (df)</dt><dd>${G.res?fmt(G.res.stat,2)+' ('+G.res.df+')':'–'}</dd><dt>p gốc / p hiệu chỉnh</dt><dd>${pf(t.p)} / ${pf(t.qa)}</dd></dl>`+tbl(['Nhóm','n','Lên','Thực tế','Kỳ vọng','× kỳ vọng',''],rows),'stc-g'+i,i===3?'Thứ lấy theo ngày ở dòng @ngày giờ; lần ép không có ngày bị bỏ qua.':i===0?'Lần ép liền trước trong cùng acc × cấp: vừa lên, hay vừa xịt về mấy. Chọn một cấp ở bộ lọc để xem theo "về +mấy". Chi-square phân tầng theo cấp × vạch.':'Chi-square Cochran–Mantel–Haenszel: so nhóm trong từng tầng cấp × vạch rồi gộp lại. Kỳ vọng = số lần lên nếu nhóm này lên đúng như trung bình tầng.'))});
   $('#st-cards').innerHTML=C.join('');
   drawCharts(S)}
 function drawCharts(S){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];
@@ -1655,7 +1655,7 @@ function drawCharts(S){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[]
     mk('stc-ac',{type:'bar',data:{labels:S.ac.map(a=>'lag '+a.k),datasets:[{label:'r',data:S.ac.map(a=>Number.isFinite(a.r)?+a.r.toFixed(4):null),backgroundColor:navy},{type:'line',label:'+ngưỡng',data:S.ac.map(a=>a.band),borderColor:bad,borderDash:[4,4],pointRadius:0},{type:'line',label:'−ngưỡng',data:S.ac.map(a=>-a.band),borderColor:bad,borderDash:[4,4],pointRadius:0}]},options:Object.assign({},base,{scales:{x:base.scales.x,y:{grid:{color:line}}}})});
     mk('stc-k',{type:'line',data:{labels:S.cond.map(c=>String(c.k)),datasets:[{label:'Thực tế %',data:S.cond.map(c=>P(c.rate)),borderColor:bait,backgroundColor:bait},{label:'Nền %',data:S.cond.map(c=>P(c.base)),borderColor:gold,backgroundColor:gold,borderDash:[4,4]}]}});
     mk('stc-long',{type:'bar',data:{labels:['Tất cả','Sau 1 dài','Sau 2 dài'],datasets:[{label:'Dài TB (lần ép)',data:[S.long.meanAll,mean(S.long.a1),mean(S.long.a2)].map(v=>Number.isFinite(v)?+v.toFixed(2):null),backgroundColor:[navy,bait,bait]}]}});
-    [S.acc,S.slot,S.wd].forEach((G,i)=>mk('stc-g'+i,{type:'bar',data:{labels:G.list.map(a=>a.lab),datasets:[{label:'× kỳ vọng',data:G.list.map(a=>a.E?+(a.O/a.E).toFixed(3):null),backgroundColor:G.list.map(a=>a.n<ST_MIN?line:bait)}]}}));
+    [S.prev,S.acc,S.slot,S.wd].forEach((G,i)=>mk('stc-g'+i,{type:'bar',data:{labels:G.list.map(a=>a.lab),datasets:[{label:'× kỳ vọng',data:G.list.map(a=>a.E?+(a.O/a.E).toFixed(3):null),backgroundColor:G.list.map(a=>a.n<ST_MIN?line:bait)}]}}));
   }).catch(()=>{document.querySelectorAll('.stchart').forEach(el=>el.innerHTML='<p class="hint">Không tải được thư viện biểu đồ (cần mạng), số liệu ở trên vẫn đầy đủ.</p>')})}
 function exportCSV(){const R=(lastR||buildRecords()).map(normRec),by=annotate(R);
   const cols=['acc_id','acc_ten','timestamp','cap_hien_tai','cap_muc_tieu','so_vach','loai','ket_qua','ghi_chu','ve_cap','gio','ty_le_hien_thi','so_lan_xit_truoc','day_so'];
