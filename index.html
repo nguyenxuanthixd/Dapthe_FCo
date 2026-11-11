@@ -127,6 +127,14 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .vrow .stepper .btn{display:none}
 .viewbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--bait);color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:600}
 .viewbar .btn{background:#fff;color:#1b1404;border-color:#fff}
+/* ---- Dây dễ đọc ---- */
+.dread{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--bg);scrollbar-width:thin}
+.rrow{padding:6px 8px;border-radius:7px;border-left:3px solid transparent}.rrow.cur{border-left-color:var(--gold);background:color-mix(in srgb,var(--gold) 8%,transparent)}
+.rh{font:500 .72rem var(--f-body);color:var(--muted);margin-bottom:4px}.rh b{color:var(--ink)}
+.rcs{display:flex;flex-wrap:wrap;gap:3px}
+.rc{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 4px;border-radius:5px;font:700 .7rem var(--f-mono);font-style:normal;background:var(--line);color:var(--ink)}
+.rc.up{background:var(--gold);color:#1b1404}.rc.mn{box-shadow:0 0 0 2px var(--ink) inset}.rc.dn.mn{background:var(--bad);color:#fff}
+.rc sup{position:absolute;top:-7px;right:-3px;font-size:.7rem;color:var(--ok);line-height:1}.rc sub{position:absolute;bottom:-6px;left:50%;margin-left:-3px;font-size:.5rem;color:var(--warn);line-height:1}
 /* ---- Phân tích ---- */
 details.more>summary{padding:10px 12px;border:1px solid var(--line);border-radius:9px}
 details.more[open]>summary{margin-bottom:2px}
@@ -211,7 +219,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 11/11 16:10</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 11/11 16:30</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -303,9 +311,15 @@ details.more[open]>summary{margin-bottom:2px}
     </div>
     <div class="field"><span class="lbl">Dừng mồi khi dây thua tới (tự đặt theo phôi mang theo)</span>
       <input id="d-cap" type="number" min="0" step="1" placeholder="Tự động" style="max-width:140px" aria-label="Giới hạn số lần thua mỗi dây"><p class="hint" id="d-caphint" style="margin-top:4px"></p></div>
-    <div class="field"><label for="d-text">Dây (dòng trên cùng là cũ nhất)</label>
-      <textarea id="d-text" rows="9" spellcheck="false"></textarea>
-      <p class="hint">Mỗi chữ số là cấp mồi tụt về khi thua. Số bằng cấp đích (ví dụ 6, có hoặc không có dấu =) là vô. Mỗi dòng là một dây: dây kết thúc khi có thẻ lên (bấm Lên hoặc Kèo chính thành công là app tự xuống dòng). Mỗi mức đập có dây riêng, đổi mức là chuyển sang dây của mức đó. Chữ trong ngoặc như (Charlton) được bỏ qua.</p>
+    <div class="field"><div class="lbl">Dây gần đây (mới nhất ở dưới)</div>
+      <div id="d-read" class="dread"></div>
+      <div class="legend" style="margin-top:6px"><span><i class="rc dn" style="width:auto;height:auto;padding:0 4px">+3</i>mồi xịt, thẻ về +3</span><span><i class="rc up" style="width:auto;height:auto;padding:0 4px">LÊN</i>thẻ lên</span><span><i class="rc dn mn" style="width:auto;height:auto;padding:0 4px">+2</i>kèo chính</span><span>★ lúc anh thấy đẹp</span><span>● lúc app báo vô</span></div>
+      <details class="settings" id="d-rawbox" style="margin-top:8px">
+        <summary class="lbl" style="cursor:pointer">Sửa dây bằng tay (dạng chữ)</summary>
+        <label for="d-text" class="hint" style="display:block;margin:8px 0 4px">Dòng trên cùng là cũ nhất. Ký hiệu: <b>v3</b> = mồi 3 vạch · <b>c3.5</b> = kèo chính 3,5 vạch · <b>=7</b> = lên +7 · <b>*</b> = lúc app báo vô · <b>!</b> = lúc anh thấy đẹp · <b>@ngày giờ</b> = bắt đầu phiên.</label>
+        <textarea id="d-text" rows="9" spellcheck="false"></textarea>
+        <p class="hint">Mỗi chữ số là cấp mồi tụt về khi thua. Số bằng cấp đích (ví dụ 6, có hoặc không có dấu =) là vô. Mỗi dòng là một dây: dây kết thúc khi có thẻ lên (bấm Lên hoặc Kèo chính thành công là app tự xuống dòng). Mỗi mức đập có dây riêng, đổi mức là chuyển sang dây của mức đó. Chữ trong ngoặc như (Charlton) được bỏ qua.</p>
+      </details>
     </div>
     <p class="hint" id="d-parse"></p>
     <details class="settings">
@@ -999,7 +1013,21 @@ function empTable(D){const B={};D.allAtt.forEach(a=>{const v=Math.round((a.v!=nu
     if(lvl.use)return{p:Math.min(0.95,base*Math.max(0.7,Math.min(1.5,lvl.ratio))),src:'level',base};
     return{p:base,src:'table',base}};
   return{rows,lvl,rateAt}}
-function renderDay(){
+function renderRead(){
+  const box=$('#d-read');if(!box)return;const all=parseDay(dText,dLv).sess.map((s,i)=>({s,i})).filter(x=>x.s.length),show=all.slice(-8);
+  if(!show.length){box.innerHTML='<p class="hint" style="margin:0">Chưa có dây. Bấm các nút ở trên để ghi từng lần đập.</p>';return}
+  const endsNl=/\n\s*$/.test(dText);let prevKey=show.length<all.length?null:'';
+  box.innerHTML=(all.length>show.length?`<p class="hint" style="margin:0 0 4px">… ${all.length-show.length} dây cũ hơn (xem ở Biểu đồ bên dưới)</p>`:'')+show.map(({s},n)=>{
+    const no=all.length-show.length+n+1,last=n===show.length-1,done=s[s.length-1]==='S',key=(s.d||'')+' '+(s.h!=null?s.h+'h':'');
+    const bv=s.v.filter((v,i)=>v!=null&&!(s.m&&s.m[i])),vv=bv.length?bv[bv.length-1]:null;
+    const head=`<div class="rh"><b>Dây ${no}</b>${key.trim()&&key!==prevKey?' · '+escH(key.trim()):''}${vv!=null?' · mồi '+vtxt(vv)+' vạch':''} · ${s.length} lượt${last&&!done?' · <span style="color:var(--gold)">đang đập</span>':''}</div>`;prevKey=key;
+    const chips=s.map((r,i)=>{const m=s.m&&s.m[i],f=s.f&&s.f[i],k=s.k&&s.k[i],up=r==='S';
+      const tip=`Lượt ${i+1}: ${m?'kèo chính'+(s.v[i]!=null?' '+vtxt(s.v[i])+' vạch':''):'mồi'}${up?' lên +'+(dLv+1):' xịt, về +'+r}${f?' · lúc anh thấy đẹp':''}${k?' · lúc app báo vô':''}`;
+      return `<span class="rc ${up?'up':'dn'}${m?' mn':''}" title="${tip}">${f?'<sup>★</sup>':''}${k?'<sub>●</sub>':''}${up?'LÊN':'+'+r}</span>`}).join('');
+    const tags=s.map((r,i)=>s.m&&s.m[i]?`<span class="kcn ${r==='S'?'ok':'bad'}" style="margin-left:0">Kèo chính${s.v[i]!=null?' '+vtxt(s.v[i])+' vạch':''} ${r==='S'?'lên'+(s.nm?' ('+escH(s.nm)+')':''):'tạch về +'+r}</span>`:'').filter(Boolean).join(' ');
+    return `<div class="rrow${last&&!done?' cur':''}">${head}<div class="rcs">${chips}</div>${tags?`<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${tags}</div>`:''}</div>`}).join('');
+  box.scrollTop=box.scrollHeight}
+function renderDay(){renderRead();
   const D=buildDay();
   $('#d-keys').innerHTML=D.keys.slice(1).map(k=>`<button class="btn" data-k="${k}">+${k}</button>`).join('')+`<button class="btn ok" data-k="${dLv+1}">Lên +${dLv+1}</button>`+`<button class="btn primary" data-main="1" style="flex:1 1 60%">Kèo chính thành công → nhập cầu thủ</button>`+`<button class="btn bad" data-mainfail="1" style="flex:1 1 30%">Kèo chính tạch</button>`;
   $('#d-parse').textContent=`Dùng toàn bộ dây ở mức này: ${D.nToday+D.nHist} lần đập (hôm nay ${D.td}: ${D.nToday} lần, xong ${D.doneN} dây; ngày trước: ${D.nHist} lần), mọi ngày tính như nhau.`+(D.bad?` Bỏ qua ${D.bad} số không hợp lệ ở mức này.`:'');
