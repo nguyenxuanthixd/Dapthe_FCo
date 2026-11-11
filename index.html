@@ -209,7 +209,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 10/11 17:15</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 11/11 15:45</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -1562,6 +1562,9 @@ function analyze(R0,f,o){
     const ok=new Set(list.filter(a=>a.n>=ST_MIN).map(a=>a.g)),res=ok.size>=2?cmh(rows.filter(r=>ok.has(r.g))):null,nUse=rows.filter(r=>ok.has(r.g)).length;
     const out={list,res,nAll:rows.length,nUse,ok};out.t=T(id,3,res?res.p:NaN,res?nUse:0);return out};
   const names={};accList().forEach(p=>names[p.id]=p.name||p.id);R.forEach(r=>{if(r.acc_ten&&!names[r.acc_id])names[r.acc_id]=r.acc_ten});
+  // kèo chính so với % hiển thị và so với mồi (Poisson-binomial chính xác), kèm bối cảnh từng kèo
+  const mains=F.filter(r=>r.loai==='chinh'),baits=F.filter(r=>r.loai!=='chinh'),sumP=a=>a.reduce((x,r)=>x+pDisp(r),0),sumK=a=>a.reduce((x,r)=>x+r.ket_qua,0);
+  const main={list:mains,n:mains.length,O:sumK(mains),E:sumP(mains),bn:baits.length,bO:sumK(baits),bE:sumP(baits)};main.t=T('main',1,mains.length?pbin2(main.O,mains.map(pDisp)):NaN,mains.length);
   const oneLv=new Set(F.map(r=>r.cap_hien_tai)).size===1?(F[0]||{}).cap_hien_tai:null;
   const prev=grp('prev',r=>r._prev,g=>g==='up'?'Vừa lên xong':oneLv?`Vừa về +${oneLv-(+g.slice(1))}`:`Vừa tụt ${g.slice(1)} bậc`,['up','d1','d2','d3','d4','d5','d6','d7','d8','d9','d10','d11']);prev.t.q=2;
   const acc=grp('acc',r=>r.acc_id,g=>names[g]||g);
@@ -1570,7 +1573,7 @@ function analyze(R0,f,o){
   // Benjamini–Hochberg trên mọi kiểm định tính được
   const valid=tests.filter(t=>Number.isFinite(t.p)),qs=bh(valid.map(t=>t.p));valid.forEach((t,i)=>t.qa=qs[i]);tests.forEach(t=>{if(t.qa===undefined)t.qa=NaN;t.sig=!t.small&&t.qa<ALPHA});
   const summary=[1,2,3].map(Q=>{const ev=tests.filter(t=>t.q===Q&&Number.isFinite(t.p)&&!t.small);return !ev.length?'Chưa đủ dữ liệu':ev.some(t=>t.qa<ALPHA)?'Có bằng chứng':'Không có bằng chứng'});
-  return{n:F.length,nAll:R.length,noTs:F.filter(r=>r.timestamp==null).length,A,runs,ac,cond,long,prev,acc,slot,wd,tests,summary,mTests:valid.length}}
+  return{n:F.length,nAll:R.length,noTs:F.filter(r=>r.timestamp==null).length,A,main,runs,ac,cond,long,prev,acc,slot,wd,tests,summary,mTests:valid.length}}
 
 /* ===== Giả lập để kiểm thử ===== */
 // Ngẫu nhiên thuần: mỗi lần ép độc lập, lên đúng theo % hiển thị. dayFx=true: cài dây nhân tạo (vừa lên thì khó lên, xịt lâu thì dễ lên)
@@ -1622,6 +1625,12 @@ function render(){
    const concl=!S.A.length?'Chưa có dữ liệu.':!big.length?SMALL:sig.length?`Có ${sig.length} nhóm lệch % hiển thị: ${sig.map(a=>`+${a.lv} ${vtxt(a.v)} vạch ${a.k/a.n<a.pd?'thấp hơn':'cao hơn'}`).join(', ')}.`:`Các nhóm đủ mẫu đều khớp % hiển thị.`;
    const rows=S.A.map(a=>dimTr(a.t,`<td>+${a.lv}→+${a.lv+1}</td><td>${vtxt(a.v)}</td><td>${a.n}</td><td>${a.k}</td><td>${pct(a.k/a.n)}</td><td>${pct(a.ci[0])}–${pct(a.ci[1])}</td><td>${pct(a.pd)}</td>${pq(a.t)}<td style="font-family:var(--f-body)">${a.t.small?SMALL:a.t.sig?(a.k/a.n<a.pd?'Thấp hơn có ý nghĩa':'Cao hơn có ý nghĩa'):'Khớp'}</td>`));
    C.push(card('a) Tỷ lệ thực tế so với % hiển thị',big.length?(sig.length?'verdict bad':'verdict ok'):'verdict dim',concl,tbl(['Cấp','Vạch','n','Lên','Thực tế','Wilson 95%','Hiển thị','p gốc','p hiệu chỉnh','Kết luận'],rows),'stc-a','Binomial test hai phía so với % hiển thị (tỷ lệ trần × vạch/5). Lần ép không ghi vạch được tính là 5 vạch.'))}
+  // a2: kèo chính
+  {const m=S.main,t=m.t,nm={};accList().forEach(p=>nm[p.id]=p.name||p.id);
+   const concl=!m.n?'Chưa có kèo chính nào được ghi.':t.small?SMALL+` (mới ${m.n} kèo chính, cần từ ${ST_MIN}).`:t.sig?(m.O>m.E?'Kèo chính lên nhiều hơn % hiển thị, có ý nghĩa.':'Kèo chính lên ít hơn % hiển thị, có ý nghĩa.'):'Kèo chính lên đúng như % hiển thị.';
+   const dts=x=>{if(x==null)return'–';const d=new Date(x);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')};
+   const rows=m.list.map(r=>`<tr><td style="font-family:var(--f-body)">${escH(nm[r.acc_id]||r.acc_ten||r.acc_id)}</td><td>${dts(r.timestamp)}</td><td>+${r.cap_hien_tai}→+${r.cap_hien_tai+1}</td><td>${vtxt(vEff(r))}</td><td>${pct(pDisp(r))}</td><td>${r._L}</td><td>${r._prev==null?'–':r._prev==='up'?'lên':'về +'+(r.cap_hien_tai-(+r._prev.slice(1)))}</td><td style="font-family:var(--f-body);color:${r.ket_qua?'var(--ok)':'var(--bad)'}">${r.ket_qua?'Lên'+(r.ghi_chu?' · '+escH(r.ghi_chu):''):'Tạch'+(r.ve_cap!=null?' về +'+r.ve_cap:'')}</td></tr>`);
+   C.push(card('a) Kèo chính so với % hiển thị và so với mồi',!m.n||t.small?'verdict dim':t.sig?'verdict bad':'verdict ok',concl,`<dl class="kv"><dt>Kèo chính: lên / số kèo</dt><dd>${m.O} / ${m.n} (${m.n?pct(m.O/m.n):'–'})</dd><dt>Bảng dự kiến lên</dt><dd>${fmt(m.E,1)} (${m.n?pct(m.E/m.n):'–'})</dd><dt>Mồi: lên / số lần (bảng dự kiến)</dt><dd>${m.bO} / ${m.bn} (${fmt(m.bE,1)})</dd><dt>p gốc / p hiệu chỉnh</dt><dd>${pf(t.p)} / ${pf(t.qa)}</dd></dl>`+(rows.length?tbl(['Acc','Ngày','Cấp','Vạch','Bảng','Xịt trước','Liền trước','Kết quả'],rows):''),'stc-main','Chỉ đúng khi MỌI kèo chính đều được ghi là kèo chính, kể cả lúc tạch (nút "Kèo chính tạch" hoặc chữ c trước kết quả). Kèo chính tạch mà ghi như con mồi sẽ làm tỷ lệ kèo chính trông cao hơn thật.'))}
   // b1
   {const r=S.runs,t=r.t;const concl=!Number.isFinite(t.p)?'Chưa có dữ liệu.':t.small?SMALL:t.sig?(r.Robs<r.pm?'Kết quả dồn cục hơn ngẫu nhiên (ít đoạn hơn kỳ vọng).':'Kết quả xen kẽ hơn ngẫu nhiên (nhiều đoạn hơn kỳ vọng).'):'Số đoạn lên/xịt đúng như ngẫu nhiên.';
    C.push(card('b) Runs test (Wald–Wolfowitz)',vc(t,t.sig),concl,`<dl class="kv"><dt>Số lần ép (n)</dt><dd>${r.n}</dd><dt>Số đoạn thực tế</dt><dd>${r.Robs}</dd><dt>Kỳ vọng (hoán vị trong cấp × vạch)</dt><dd>${fmt(r.pm,1)}</dd><dt>z Wald–Wolfowitz / p</dt><dd>${fmt(r.zWW,2)} / ${pf(r.pWW)}</dd><dt>p gốc (hoán vị ${2000})</dt><dd>${pf(t.p)}</dd><dt>p hiệu chỉnh</dt><dd>${pf(t.qa)}</dd></dl>`,null,'Đoạn = chuỗi liền nhau cùng kết quả. p dùng để kết luận là p hoán vị trong từng tầng cấp × vạch, vì tỷ lệ mỗi tầng khác nhau.'))}
@@ -1652,6 +1661,7 @@ function drawCharts(S){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[]
     const mk=(id,cfg)=>{const el=document.getElementById(id);if(el)charts.push(new Ch(el,Object.assign({options:base},cfg)))};
     const P=v=>Number.isFinite(v)?+(v*100).toFixed(2):null;
     mk('stc-a',{type:'bar',data:{labels:S.A.map(a=>`+${a.lv} · ${vtxt(a.v)}v`),datasets:[{label:'Thực tế %',data:S.A.map(a=>P(a.k/a.n)),backgroundColor:bait},{type:'line',label:'Hiển thị %',data:S.A.map(a=>P(a.pd)),borderColor:gold,backgroundColor:gold,pointRadius:3}]}});
+    mk('stc-main',{type:'bar',data:{labels:['Kèo chính','Mồi'],datasets:[{label:'Thực tế %',data:[S.main.n?P(S.main.O/S.main.n):null,S.main.bn?P(S.main.bO/S.main.bn):null],backgroundColor:bait},{label:'Bảng %',data:[S.main.n?P(S.main.E/S.main.n):null,S.main.bn?P(S.main.bE/S.main.bn):null],backgroundColor:gold}]}});
     mk('stc-ac',{type:'bar',data:{labels:S.ac.map(a=>'lag '+a.k),datasets:[{label:'r',data:S.ac.map(a=>Number.isFinite(a.r)?+a.r.toFixed(4):null),backgroundColor:navy},{type:'line',label:'+ngưỡng',data:S.ac.map(a=>a.band),borderColor:bad,borderDash:[4,4],pointRadius:0},{type:'line',label:'−ngưỡng',data:S.ac.map(a=>-a.band),borderColor:bad,borderDash:[4,4],pointRadius:0}]},options:Object.assign({},base,{scales:{x:base.scales.x,y:{grid:{color:line}}}})});
     mk('stc-k',{type:'line',data:{labels:S.cond.map(c=>String(c.k)),datasets:[{label:'Thực tế %',data:S.cond.map(c=>P(c.rate)),borderColor:bait,backgroundColor:bait},{label:'Nền %',data:S.cond.map(c=>P(c.base)),borderColor:gold,backgroundColor:gold,borderDash:[4,4]}]}});
     mk('stc-long',{type:'bar',data:{labels:['Tất cả','Sau 1 dài','Sau 2 dài'],datasets:[{label:'Dài TB (lần ép)',data:[S.long.meanAll,mean(S.long.a1),mean(S.long.a2)].map(v=>Number.isFinite(v)?+v.toFixed(2):null),backgroundColor:[navy,bait,bait]}]}});
