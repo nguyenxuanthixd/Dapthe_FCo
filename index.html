@@ -112,6 +112,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .crow .cb{display:flex;flex-wrap:wrap;gap:3px}
 .chip{min-width:22px;height:22px;padding:0 4px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font:700 .72rem var(--f-mono);color:#fff;background:var(--bait)}
 .kcn{margin-left:6px;padding:1px 7px;border-radius:999px;font:700 .7rem var(--f-body);align-self:center;white-space:nowrap}.kcn.ok{background:var(--ok);color:#06210f}.kcn.bad{background:var(--bad);color:#fff}.kcn.bait{background:var(--line);color:var(--ink)}.kcn.miss{background:var(--warn);color:#1b1404}
+.chip.hl{outline:2px solid var(--gold);outline-offset:1px;opacity:1!important}
 .chip.k{position:relative}.chip.k::after{content:'';position:absolute;left:50%;bottom:-5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--warn)}
 .turnc{margin-left:8px;font:700 .72rem var(--f-mono);color:var(--muted);align-self:center;white-space:nowrap}
 .chip.d3{opacity:.4}.chip.d2{opacity:.7}.chip.s{background:var(--gold);color:#1b1404}.chip.m{box-shadow:0 0 0 2px var(--ink) inset}
@@ -219,7 +220,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/11 16:00</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/11 16:10</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -425,6 +426,7 @@ details.more[open]>summary{margin-bottom:2px}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <h2 style="margin:0">Biểu đồ</h2>
       <div style="display:flex;align-items:center;gap:8px"><span class="hint" id="c-fcount" style="margin:0"></span>
+        <input id="c-find" type="text" inputmode="numeric" placeholder="Tìm dãy, vd 233" aria-label="Tìm dãy số trong dây" style="width:130px">
         <select id="c-filter" aria-label="Lọc dây" style="width:auto;min-width:170px">
           <option value="all">Tất cả dây</option>
           <option value="today">Dây hôm nay</option>
@@ -440,6 +442,7 @@ details.more[open]>summary{margin-bottom:2px}
     </div>
     <div>
       <div class="lbl" style="margin-bottom:6px">Dây ở mức này (mới nhất ở dưới, kéo lên để xem dây cũ)</div>
+      <p class="note" id="c-findsum" style="margin:0 0 8px" hidden></p>
       <div id="c-days" class="cdays"></div>
       <div class="legend" style="margin-top:8px"><span><i style="background:var(--gold)"></i>Lên</span><span><i style="background:var(--bait);opacity:.35"></i>Về +3</span><span><i style="background:var(--bait);opacity:.65"></i>Về +2</span><span><i style="background:var(--bait)"></i>Về +1</span><span><i style="background:var(--warn);border-radius:50%;width:6px;height:6px"></i>Lúc app báo vô</span><span><i style="border:2px solid var(--ink)"></i>Kèo chính</span></div>
     </div>
@@ -1301,9 +1304,16 @@ function renderCharts(D){
   const rowsAll=D.sess.map((s,i)=>({s,i})).filter(o=>o.s.length),cf=$('#c-filter').value,td=curDayStr();
   const FT={all:()=>true,today:s=>s.d===td,main:s=>!!(s.m&&s.m.some(Boolean)),mainup:s=>s.some((r,j)=>r==='S'&&s.m&&s.m[j]),mainfail:s=>s.some((r,j)=>r!=='S'&&s.m&&s.m[j]),
     short:s=>s.length<=3,mid:s=>s.length>=4&&s.length<=9,long:s=>s.length>=10,sig:s=>!!(s.k&&s.k.some(Boolean)),feel:s=>!!(s.f&&s.f.some(Boolean))};
-  const rows=rowsAll.filter(o=>(FT[cf]||FT.all)(o.s));
-  $('#c-fcount').textContent=cf==='all'?`${rowsAll.length} dây`:`${rows.length}/${rowsAll.length} dây`;
-  $('#c-days').innerHTML=rows.map(({s,i})=>`<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';const gap=j&&j%5===0?' style="margin-left:6px"':'';const kq=s.k&&s.k[j]?' k':'';const t=` title="Lượt ${j+1}${kq?' · lúc app báo vô':''}"`;return r==='S'?`<span class="chip s${m}${kq}"${gap}${t}>${dLv+1}</span>`:`<span class="chip d${r}${m}${kq}"${gap}${t}>${r}</span>`}).join('')}<span class="turnc">${s.length} lượt</span>${(()=>{const L=[];s.forEach((r,j)=>{if(s.m&&s.m[j])L.push(r==='S'?`<span class="kcn ok">Kèo chính lên${s.nm?' ('+escH(s.nm)+')':''}</span>`:`<span class="kcn bad">Kèo chính tạch về +${r}</span>`);else if(r==='S'&&s.k&&s.k[j])L.push(`<span class="kcn miss">App báo vô, anh mồi và lên (lượt ${j+1})</span>`)});return L.join('')})()}</span></div>`).join('')||`<p class="hint">${rowsAll.length?'Không có dây nào khớp bộ lọc.':'Chưa có dây.'}</p>`;
+  // tìm dãy: các số liền nhau trong cùng một dây; L hoặc số cấp đích = lên
+  const pat=(($('#c-find').value||'').match(/1[0-3]|\d|l/gi)||[]).map(t=>/l/i.test(t)||+t===dLv+1?'S':String(+t));
+  const hitsOf=s=>{const H=[];if(!pat.length)return H;for(let a=0;a+pat.length<=s.length;a++){let ok=true;for(let b=0;b<pat.length;b++)if(String(s[a+b])!==pat[b]){ok=false;break}if(ok)H.push(a)}return H};
+  const hlOf=s=>{const H=new Set();hitsOf(s).forEach(a=>{for(let b=0;b<pat.length;b++)H.add(a+b)});return H};
+  const rows=rowsAll.filter(o=>(FT[cf]||FT.all)(o.s)&&(!pat.length||hitsOf(o.s).length));
+  {const el=$('#c-findsum');if(!pat.length)el.hidden=true;else{let n=0,nx=0,w=0,tot=0,up=0;rowsAll.forEach(({s})=>{tot+=s.length;up+=s.filter(r=>r==='S').length;hitsOf(s).forEach(a=>{n++;const j=a+pat.length;if(pat[pat.length-1]!=='S'&&j<s.length){nx++;if(s[j]==='S')w++}})});
+    const nd=rowsAll.filter(o=>hitsOf(o.s).length).length,lab=pat.map(t=>t==='S'?'L':t).join('');
+    el.hidden=false;el.innerHTML=n?`Dãy <b>${lab}</b> xuất hiện <b>${n} lần</b> trong ${nd} dây.${nx?` Lượt ngay sau dãy này: lên <b>${w}/${nx}</b> (${pct(w/nx)}); mức chung của các dây đang xem là ${pct(up/Math.max(1,tot))}.`:''}${nx&&nx<30?' Dưới 30 lần nên con số này chưa nói lên điều gì.':''}`:`Dãy <b>${lab}</b> chưa xuất hiện lần nào ở mức này.`}}
+  $('#c-fcount').textContent=cf==='all'&&!pat.length?`${rowsAll.length} dây`:`${rows.length}/${rowsAll.length} dây`;
+  $('#c-days').innerHTML=rows.map(({s,i})=>{const HL=hlOf(s);return `<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';const gap=j&&j%5===0?' style="margin-left:6px"':'';const kq=s.k&&s.k[j]?' k':'';const t=` title="Lượt ${j+1}${kq?' · lúc app báo vô':''}"`;return r==='S'?`<span class="chip s${m}${kq}${HL.has(j)?' hl':''}"${gap}${t}>${dLv+1}</span>`:`<span class="chip d${r}${m}${kq}${HL.has(j)?' hl':''}"${gap}${t}>${r}</span>`}).join('')}<span class="turnc">${s.length} lượt</span>${(()=>{const L=[];s.forEach((r,j)=>{if(s.m&&s.m[j])L.push(r==='S'?`<span class="kcn ok">Kèo chính lên${s.nm?' ('+escH(s.nm)+')':''}</span>`:`<span class="kcn bad">Kèo chính tạch về +${r}</span>`);else if(r==='S'&&s.k&&s.k[j])L.push(`<span class="kcn miss">App báo vô, anh mồi và lên (lượt ${j+1})</span>`)});return L.join('')})()}</span></div>`}).join('')||`<p class="hint">${rowsAll.length?'Không có dây nào khớp bộ lọc.':'Chưa có dây.'}</p>`;
   {const el=$('#c-days');if(!el.dataset.user)el.scrollTop=el.scrollHeight;if(!el.dataset.bound){el.dataset.bound=1;el.addEventListener('scroll',()=>{el.dataset.user=(el.scrollHeight-el.scrollTop-el.clientHeight>30)?1:''})}}
   // cộng dồn thực tế so với bảng
   const w=D.win;if(!w.length){$('#c-trend').innerHTML='';$('#c-trendtxt').textContent='';return}
@@ -1750,7 +1760,7 @@ function exportCSV(){const R=(lastR||buildRecords()).map(normRec),by=annotate(R)
 $('#st-reset').onclick=()=>{['#st-acc','#st-lv','#st-v'].forEach(id=>$(id).value='all');$('#st-from').value='';$('#st-to').value='';render()};
 $('#st-csv').onclick=exportCSV;
 window.__fcoStatRender=render;
-{const cf=$('#c-filter'),sv=store.get('cFilter','all');if([...cf.options].some(o=>o.value===sv))cf.value=sv;cf.onchange=()=>{store.set('cFilter',cf.value);renderDay()}}
+{const cf=$('#c-filter'),sv=store.get('cFilter','all');if([...cf.options].some(o=>o.value===sv))cf.value=sv;cf.onchange=()=>{store.set('cFilter',cf.value);renderDay()};let ft=null;$('#c-find').addEventListener('input',()=>{clearTimeout(ft);ft=setTimeout(renderDay,150)})}
 ['#d-more','#c-more'].forEach(id=>{const el=$(id);if(el)el.addEventListener('toggle',()=>{if(el.open)renderDay()})});
 window.FCOStats={buildRecords,analyze,simulate,selfTest,normRec,_m:{binom2,wilson,chi2sf,pbin2,bh,cmh,gammaQ}};
 })();
