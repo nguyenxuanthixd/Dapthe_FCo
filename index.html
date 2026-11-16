@@ -219,7 +219,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 11/11 16:30</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/11 16:00</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -422,9 +422,24 @@ details.more[open]>summary{margin-bottom:2px}
     </div></details>
   </div>
   <div class="panel stack chartpanel">
-    <h2>Biểu đồ</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0">Biểu đồ</h2>
+      <div style="display:flex;align-items:center;gap:8px"><span class="hint" id="c-fcount" style="margin:0"></span>
+        <select id="c-filter" aria-label="Lọc dây" style="width:auto;min-width:170px">
+          <option value="all">Tất cả dây</option>
+          <option value="today">Dây hôm nay</option>
+          <option value="main">Có kèo chính</option>
+          <option value="mainup">Kèo chính lên</option>
+          <option value="mainfail">Kèo chính tạch</option>
+          <option value="short">Dây ngắn (1–3 lượt)</option>
+          <option value="mid">Dây vừa (4–9 lượt)</option>
+          <option value="long">Dây dài (từ 10 lượt)</option>
+          <option value="sig">Có lúc app báo vô</option>
+          <option value="feel">Có đánh dấu Thấy đẹp</option>
+        </select></div>
+    </div>
     <div>
-      <div class="lbl" style="margin-bottom:6px">Tất cả dây ở mức này (mới nhất ở dưới, kéo lên để xem dây cũ)</div>
+      <div class="lbl" style="margin-bottom:6px">Dây ở mức này (mới nhất ở dưới, kéo lên để xem dây cũ)</div>
       <div id="c-days" class="cdays"></div>
       <div class="legend" style="margin-top:8px"><span><i style="background:var(--gold)"></i>Lên</span><span><i style="background:var(--bait);opacity:.35"></i>Về +3</span><span><i style="background:var(--bait);opacity:.65"></i>Về +2</span><span><i style="background:var(--bait)"></i>Về +1</span><span><i style="background:var(--warn);border-radius:50%;width:6px;height:6px"></i>Lúc app báo vô</span><span><i style="border:2px solid var(--ink)"></i>Kèo chính</span></div>
     </div>
@@ -1283,8 +1298,12 @@ $('#d-wins').addEventListener('click',e=>{const b=e.target.closest('[data-wdel]'
 $('#d-wins-copy').onclick=()=>{const txt=dWins.map(w=>`${new Date(w.t).toLocaleString('vi-VN')}\t+${w.lv}→+${w.lv+1}\t${w.name||''}\t${w.line}`).join('\n');navigator.clipboard.writeText(txt).then(()=>$('#d-wins-msg').textContent='Đã sao chép.').catch(()=>$('#d-wins-msg').textContent='Không sao chép được trên trình duyệt này.')};
 function renderCharts(D){
   // chuỗi dây gần nhất
-  const rows=D.sess.map((s,i)=>({s,i})).filter(o=>o.s.length);
-  $('#c-days').innerHTML=rows.map(({s,i})=>`<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';const gap=j&&j%5===0?' style="margin-left:6px"':'';const kq=s.k&&s.k[j]?' k':'';const t=` title="Lượt ${j+1}${kq?' · lúc app báo vô':''}"`;return r==='S'?`<span class="chip s${m}${kq}"${gap}${t}>${dLv+1}</span>`:`<span class="chip d${r}${m}${kq}"${gap}${t}>${r}</span>`}).join('')}<span class="turnc">${s.length} lượt</span>${(()=>{const L=[];s.forEach((r,j)=>{if(s.m&&s.m[j])L.push(r==='S'?`<span class="kcn ok">Kèo chính lên${s.nm?' ('+escH(s.nm)+')':''}</span>`:`<span class="kcn bad">Kèo chính tạch về +${r}</span>`);else if(r==='S'&&s.k&&s.k[j])L.push(`<span class="kcn miss">App báo vô, anh mồi và lên (lượt ${j+1})</span>`)});return L.join('')})()}</span></div>`).join('')||'<p class="hint">Chưa có dây.</p>';
+  const rowsAll=D.sess.map((s,i)=>({s,i})).filter(o=>o.s.length),cf=$('#c-filter').value,td=curDayStr();
+  const FT={all:()=>true,today:s=>s.d===td,main:s=>!!(s.m&&s.m.some(Boolean)),mainup:s=>s.some((r,j)=>r==='S'&&s.m&&s.m[j]),mainfail:s=>s.some((r,j)=>r!=='S'&&s.m&&s.m[j]),
+    short:s=>s.length<=3,mid:s=>s.length>=4&&s.length<=9,long:s=>s.length>=10,sig:s=>!!(s.k&&s.k.some(Boolean)),feel:s=>!!(s.f&&s.f.some(Boolean))};
+  const rows=rowsAll.filter(o=>(FT[cf]||FT.all)(o.s));
+  $('#c-fcount').textContent=cf==='all'?`${rowsAll.length} dây`:`${rows.length}/${rowsAll.length} dây`;
+  $('#c-days').innerHTML=rows.map(({s,i})=>`<div class="crow"><span class="cn">${i+1}</span><span class="cb">${s.map((r,j)=>{const m=s.m&&s.m[j]?' m':'';const gap=j&&j%5===0?' style="margin-left:6px"':'';const kq=s.k&&s.k[j]?' k':'';const t=` title="Lượt ${j+1}${kq?' · lúc app báo vô':''}"`;return r==='S'?`<span class="chip s${m}${kq}"${gap}${t}>${dLv+1}</span>`:`<span class="chip d${r}${m}${kq}"${gap}${t}>${r}</span>`}).join('')}<span class="turnc">${s.length} lượt</span>${(()=>{const L=[];s.forEach((r,j)=>{if(s.m&&s.m[j])L.push(r==='S'?`<span class="kcn ok">Kèo chính lên${s.nm?' ('+escH(s.nm)+')':''}</span>`:`<span class="kcn bad">Kèo chính tạch về +${r}</span>`);else if(r==='S'&&s.k&&s.k[j])L.push(`<span class="kcn miss">App báo vô, anh mồi và lên (lượt ${j+1})</span>`)});return L.join('')})()}</span></div>`).join('')||`<p class="hint">${rowsAll.length?'Không có dây nào khớp bộ lọc.':'Chưa có dây.'}</p>`;
   {const el=$('#c-days');if(!el.dataset.user)el.scrollTop=el.scrollHeight;if(!el.dataset.bound){el.dataset.bound=1;el.addEventListener('scroll',()=>{el.dataset.user=(el.scrollHeight-el.scrollTop-el.clientHeight>30)?1:''})}}
   // cộng dồn thực tế so với bảng
   const w=D.win;if(!w.length){$('#c-trend').innerHTML='';$('#c-trendtxt').textContent='';return}
@@ -1731,6 +1750,7 @@ function exportCSV(){const R=(lastR||buildRecords()).map(normRec),by=annotate(R)
 $('#st-reset').onclick=()=>{['#st-acc','#st-lv','#st-v'].forEach(id=>$(id).value='all');$('#st-from').value='';$('#st-to').value='';render()};
 $('#st-csv').onclick=exportCSV;
 window.__fcoStatRender=render;
+{const cf=$('#c-filter'),sv=store.get('cFilter','all');if([...cf.options].some(o=>o.value===sv))cf.value=sv;cf.onchange=()=>{store.set('cFilter',cf.value);renderDay()}}
 ['#d-more','#c-more'].forEach(id=>{const el=$(id);if(el)el.addEventListener('toggle',()=>{if(el.open)renderDay()})});
 window.FCOStats={buildRecords,analyze,simulate,selfTest,normRec,_m:{binom2,wilson,chi2sf,pbin2,bh,cmh,gammaQ}};
 })();
