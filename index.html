@@ -137,6 +137,11 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .rc{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 4px;border-radius:5px;font:700 .7rem var(--f-mono);font-style:normal;background:var(--line);color:var(--ink)}
 .rc.up{background:var(--gold);color:#1b1404}.rc.mn{box-shadow:0 0 0 2px var(--ink) inset}.rc.dn.mn{background:var(--bad);color:#fff}
 .rc sup{position:absolute;top:-7px;right:-3px;font-size:.7rem;color:var(--ok);line-height:1}.rc sub{position:absolute;bottom:-6px;left:50%;margin-left:-3px;font-size:.5rem;color:var(--warn);line-height:1}
+/* ---- Lưu dây mô phỏng ---- */
+.simsave{display:flex;gap:8px;flex-wrap:wrap}.simsave input{flex:1 1 160px;min-width:0}
+.svrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.svrow:last-child{border-bottom:0}.svrow b{display:block;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.svrow span{font-size:.78rem;color:var(--muted)}
+.svbtns{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 /* ---- Đầu khối biểu đồ ---- */
 .chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 .chead #c-find{width:130px}.chead #c-filter{width:auto;min-width:170px}
@@ -293,7 +298,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 21:30</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 21:45</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -691,6 +696,14 @@ details.more[open]>summary{margin-bottom:2px}
       <dl class="kv" id="sm-stat"></dl>
       <div class="lbl">Dây mô phỏng (mới nhất ở dưới)</div>
       <div class="dread" id="sm-log"></div>
+      <div class="simsave"><input id="sm-sname" type="text" maxlength="40" placeholder="Tên (để trống thì tự đặt)" aria-label="Tên dây lưu"><button class="btn small primary" id="sm-save">Lưu dây này</button></div>
+      <p class="hint" id="sm-smsg" style="margin:0" aria-live="polite"></p>
+    </div>
+    <div class="panel stack">
+      <h2>Dây đã lưu</h2>
+      <div id="sm-saved"></div>
+      <textarea id="sm-txt" rows="6" readonly hidden aria-label="Dây dạng chữ"></textarea>
+      <p class="hint" style="margin:0">Lưu trên trình duyệt của máy này, tách riêng với dây thật nên không ảnh hưởng tab Tính dây và Phân tích. Phiên đang đập cũng được tự lưu, tải lại trang không mất.</p>
     </div>
     <div class="panel stack">
       <h2>Chạy thử 10.000 người</h2>
@@ -1935,9 +1948,17 @@ function attempt(l,v,keep){const p=pOf(l,v),r=rnd()*100,up=r<p*100;let to=l;if(u
 
 let cfg=Object.assign({name:'Thẻ chính',lv:6,ovr:129,v:4,keep:false,fx:true,mode:'moi',speed:300,stopUp:false},store.get('simCfg',{}));
 let auto=null,autoN=0;
+// lưu riêng (không dùng store để không đồng bộ dữ liệu lớn lên tài khoản)
+const KC='fcosim_cur_'+(typeof CUR_ACC!=='undefined'?CUR_ACC:'main'),KS='fcosim_saved';
+const lsG=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
+const lsS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+const pack=L=>L.map(a=>[a.from,a.to,a.up?1:0,Math.round(a.r*100)/100,Math.round(a.p*1e4)/1e4,a.v]);
+const unpack=P=>(Array.isArray(P)?P:[]).filter(x=>Array.isArray(x)&&x.length>=6).map(x=>({from:+x[0],to:+x[1],up:!!x[2],r:+x[3],p:+x[4],v:+x[5]}));
+let curT=null;const saveCur=()=>{clearTimeout(curT);curT=setTimeout(()=>lsS(KC,{lv:st.lv,base:st.base,log:pack(st.log)}),400)};
 let st={lv:cfg.lv,base:cfg.ovr-cumOvr(cfg.lv),log:[],last:null,busy:false};
 const saveCfg=()=>store.set('simCfg',cfg);
-function resetRun(){st={lv:cfg.lv,base:cfg.ovr-cumOvr(cfg.lv),log:[],last:null,busy:false};draw()}
+function resetRun(){st={lv:cfg.lv,base:cfg.ovr-cumOvr(cfg.lv),log:[],last:null,busy:false};try{localStorage.removeItem(KC)}catch(e){}draw()}
+{const c=lsG(KC);if(c&&Array.isArray(c.log)&&c.log.length){st.log=unpack(c.log);st.last=st.log[st.log.length-1]||null;if(c.lv>=1&&c.lv<=MAXLV)st.lv=c.lv;if(Number.isFinite(c.base))st.base=c.base}}
 
 function draw(){
   const l=st.lv,v=cfg.v,p=pOf(l,v),ovr=st.base+cumOvr(l),canUp=l<MAXLV&&R(l);
@@ -1966,7 +1987,7 @@ function draw(){
     return `<div class="rrow${!done?' cur':''}"><div class="rh"><b>Dây ${off+k+1}</b> · ${r.length} lượt${!done?' · <span style="color:var(--gold)">đang đập</span>':''}</div><div class="rcs">${r.map(([x,i])=>`<span class="rc ${x.up?'up':'dn'}" title="Lần ${i+1}: đập +${x.from}, rút ${fmt(x.r,2)} / cần < ${fmt(x.p*100,2)} → ${x.up?'lên +'+x.to:'về +'+x.to}">${x.up?'+'+x.to:'+'+x.to}</span>`).join('')}</div></div>`}).join('')):'<p class="hint" style="margin:0">Chưa đập lần nào.</p>';
   $('#sm-log').scrollTop=$('#sm-log').scrollHeight;
 }
-function push(a){st.log.push(a);st.last=a;st.lv=cfg.mode==='moi'?cfg.lv:a.to;if(st.log.length>20000)st.log.shift()}
+function push(a){saveCur();st.log.push(a);st.last=a;st.lv=cfg.mode==='moi'?cfg.lv:a.to;if(st.log.length>20000)st.log.shift()}
 const baseLv=()=>cfg.mode==='moi'?cfg.lv:st.lv;
 const keepNow=()=>cfg.mode==='moi'?false:cfg.keep;
 function showRes(a){const box=$('#sm-res'),ovr=st.base+cumOvr(a.to),d=a.up?(OVR_UP[a.to]||0):-(cumOvr(a.from)-cumOvr(a.to));
@@ -2008,6 +2029,25 @@ function batch(){const l=cfg.lv,N=10000;if(!(l<MAXLV&&R(l)))return;const s=runMa
   $('#sm-vcmp').innerHTML=tblV(VS.map(v=>{const t=runMany(l,v,cfg.keep,4000),mm=t.reduce((a,b)=>a+b,0)/t.length;return `<tr${v===cfg.v?' style="outline:2px solid var(--gold)"':''}><td>${vtxt(v)}</td><td>${pct(pOf(l,v))}</td><td>${fmt(mm,1)}</td><td>${q(t,.9)}</td><td>${fmt(mm*v,1)}</td></tr>`}));}
 const tblV=rows=>`<div class="tblwrap" style="margin-top:8px"><table><thead><tr><th>Vạch</th><th>Mỗi kèo</th><th>TB số kèo</th><th>90% lên trong</th><th>TB tổng vạch</th></tr></thead><tbody>${rows.join('')}</tbody></table></div><p class="hint" style="margin-top:6px">"Tổng vạch" = số kèo × vạch mỗi kèo, để so lượng phôi bỏ ra nếu mỗi vạch tốn phôi như nhau. Bảng chưa tính công kéo thẻ lại sau khi tạch: đập ít vạch thì tạch nhiều lần hơn nên tốn công kéo lại nhiều hơn.</p>`;
 
+// dây đã lưu
+const fmtT=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${z(d.getDate())}/${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`};
+function toText(sv){const L=unpack(sv.log);const lines=[`@${fmtT(sv.t)} (mô phỏng${sv.mode==='moi'?' mồi':' một thẻ'} +${sv.lv}, ${vtxt(sv.v)} vạch)`];let row=[];
+  const one=L.every(a=>a.from===L[0].from)&&L.every(a=>a.to<=9);
+  L.forEach(a=>{row.push(one?String(a.to)+(a.up?'':''):(a.up?`${a.from}→${a.to}`:`${a.from}→${a.to}`));if(a.up){lines.push((one?'v'+String(sv.v).replace('.','.')+' '+row.slice(0,-1).join('')+'='+a.to:row.join(' ')));row=[]}});
+  if(row.length)lines.push(one?'v'+sv.v+' '+row.join(''):row.join(' '));return lines.join('\n')}
+function drawSaved(){const S=lsG(KS)||[],box=$('#sm-saved');
+  box.innerHTML=S.length?S.slice().reverse().map(sv=>{const L=unpack(sv.log),w=L.filter(a=>a.up).length;return `<div class="svrow"><div><b>${escH(sv.name)}</b><span>${fmtT(sv.t)} · ${L.length} lần · lên ${w} (${L.length?pct(w/L.length):'–'})</span></div><div class="svbtns"><button class="btn small" data-a="open" data-id="${sv.id}">Mở</button><button class="btn small" data-a="txt" data-id="${sv.id}">Chép chữ</button><button class="btn small" data-a="del" data-id="${sv.id}">Xóa</button></div></div>`}).join(''):'<p class="hint" style="margin:0">Chưa lưu dây nào.</p>'}
+function saveSnap(){if(!st.log.length){$('#sm-smsg').textContent='Chưa có lần đập nào để lưu.';return}
+  const S=lsG(KS)||[],nm=($('#sm-sname').value||'').trim()||`${cfg.mode==='moi'?'Mồi':'Một thẻ'} +${cfg.lv} · ${vtxt(cfg.v)} vạch · ${st.log.length} lần`;
+  S.push({id:Date.now().toString(36),name:nm.slice(0,40),t:Date.now(),mode:cfg.mode,lv:cfg.lv,v:cfg.v,base:st.base,log:pack(st.log)});while(S.length>30)S.shift();
+  if(lsS(KS,S)){$('#sm-smsg').textContent=`Đã lưu "${nm}".`;$('#sm-sname').value='';drawSaved()}else $('#sm-smsg').textContent='Không lưu được: bộ nhớ trình duyệt đã đầy, anh xóa bớt dây đã lưu.'}
+$('#sm-save').onclick=saveSnap;
+$('#sm-saved').onclick=e=>{const b=e.target.closest('button[data-a]');if(!b)return;const S=lsG(KS)||[],sv=S.find(x=>x.id===b.dataset.id);if(!sv)return;
+  if(b.dataset.a==='del'){lsS(KS,S.filter(x=>x!==sv));drawSaved();$('#sm-txt').hidden=true;return}
+  if(b.dataset.a==='txt'){const t=toText(sv),ta=$('#sm-txt');ta.value=t;ta.hidden=false;ta.select();try{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>{$('#sm-smsg').textContent='Đã chép dây dạng chữ.'},()=>{})}catch(err){}return}
+  if(b.dataset.a==='open'){if(auto)stopAuto();cfg.mode=sv.mode;cfg.lv=sv.lv;cfg.v=sv.v;if(Number.isFinite(sv.base)){st.base=sv.base;cfg.ovr=sv.base+cumOvr(sv.lv)}saveCfg();st.log=unpack(sv.log);st.last=st.log[st.log.length-1]||null;st.lv=sv.mode==='moi'?sv.lv:(st.last?st.last.to:sv.lv);saveCur();
+    $('#sm-msg').textContent=`Đang xem "${sv.name}". Bấm Nâng cấp hoặc Tự đập để đập tiếp từ đây.`;draw();document.querySelector('#sm-log').scrollIntoView({block:'nearest'})}};
+drawSaved();
 // tự đập liên tục
 function autoStep(){const l=baseLv();if(!(l<MAXLV&&R(l))){stopAuto('Thẻ đã ở cấp tối đa, dừng.');return}
   st.lv=l;const a=attempt(l,cfg.v,keepNow());push(a);autoN++;
