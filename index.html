@@ -298,7 +298,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 22:35</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 22:50</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -669,7 +669,7 @@ details.more[open]>summary{margin-bottom:2px}
       <div class="simbtns"><button class="btn small" id="sm-10">Đập 10 lần</button><button class="btn small" id="sm-until">Vô tới khi lên</button><button class="btn small" id="sm-back" hidden>Về lại cấp cũ</button><button class="btn small" id="sm-reset">Đặt lại</button></div>
       <div class="simauto">
         <button class="btn small primary" id="sm-auto">▶ Tự đập liên tục</button>
-        <select id="sm-speed" aria-label="Tốc độ"><option value="1000">Chậm · 1 lần/giây</option><option value="300">Vừa · 3 lần/giây</option><option value="60">Nhanh · 15 lần/giây</option><option value="10">Rất nhanh</option></select>
+        <select id="sm-speed" aria-label="Tốc độ"><option value="real">Như chơi thật · nghỉ 3–8 giây</option><option value="real2">Như chơi thật · nghỉ 10–30 giây</option><option value="1000">Chậm · 1 lần/giây</option><option value="300">Vừa · 3 lần/giây</option><option value="60">Nhanh · 15 lần/giây</option><option value="10">Rất nhanh</option></select>
         <label class="simsw"><input type="checkbox" id="sm-stopup"> Dừng khi lên</label>
       </div>
       <p class="simnote" id="sm-msg" aria-live="polite"></p>
@@ -2009,11 +2009,13 @@ function showRes(a){const box=$('#sm-res'),ovr=st.base+cumOvr(a.to),d=a.up?(OVR_
   box.hidden=false;box.focus()}
 function go(){if(st.busy||auto)return;const l=baseLv();st.lv=l;if(!(l<MAXLV&&R(l)))return;const a=attempt(l,cfg.v,keepNow());
   if(!cfg.fx){push(a);draw();return}
+  animateRes(l,a)}
+function animateRes(l,a,cb){
   st.busy=true;draw();const box=$('#sm-res'),ovr0=st.base+cumOvr(l),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   // trình tự như game: thẻ hiện giữa màn → sáng thành khối trắng → chớp trắng → hiện kết quả
   box.className='simres ok charge';box.innerHTML=`<div class="srbox"><div class="simcard sm glow"><div class="sc-ovr">${ovr0}</div><div class="sc-lv">${l}</div><div class="sc-name">${escH(cfg.name||'Thẻ chính')}</div></div></div>`;box.hidden=false;
   box.insertAdjacentHTML('beforeend','<button class="srskip" id="sm-skip">Bỏ qua</button>');
-  let done=false;const T=[];const fin=()=>{if(done)return;done=true;T.forEach(clearTimeout);st.busy=false;push(a);draw();showRes(a)};
+  let done=false;const T=[];const fin=()=>{if(done)return;done=true;T.forEach(clearTimeout);st.busy=false;push(a);draw();showRes(a);if(cb)cb()};
   $('#sm-skip').onclick=e=>{e.stopPropagation();fin()};
   if(rm){T.push(setTimeout(fin,300));return}
   T.push(setTimeout(()=>box.classList.add('lit'),500));T.push(setTimeout(()=>box.classList.add('flash'),1250));T.push(setTimeout(fin,1450))}
@@ -2061,15 +2063,22 @@ drawSaved();
 // tự đập liên tục
 function autoStep(){const l=baseLv();if(!(l<MAXLV&&R(l))){stopAuto('Thẻ đã ở cấp tối đa, dừng.');return}
   st.lv=l;const a=attempt(l,cfg.v,keepNow());push(a);autoN++;
-  const c=document.querySelector('.simstage>.simtop .simcard');if(c){c.classList.remove('pu','pd');void c.offsetWidth;c.classList.add(a.up?'pu':'pd');clearTimeout(c._t);c._t=setTimeout(()=>c.classList.remove('pu','pd'),Math.min(400,cfg.speed*0.8))}
+  const c=document.querySelector('.simstage>.simtop .simcard');if(c){c.classList.remove('pu','pd');void c.offsetWidth;c.classList.add(a.up?'pu':'pd');clearTimeout(c._t);c._t=setTimeout(()=>c.classList.remove('pu','pd'),Math.min(400,(+cfg.speed||400)*0.8))}
   if(cfg.mode==='the'&&!a.up&&a.to<l&&!(st.lv<MAXLV&&R(st.lv))){stopAuto();return}
   $('#sm-msg').textContent=`Đang tự đập: ${autoN} lần trong lượt chạy này.`;draw();
   if(cfg.stopUp&&a.up)stopAuto(`Lên +${a.to} sau ${autoN} lần trong lượt chạy này. Đã dừng.`)}
-function startAuto(){if(auto)return;autoN=0;auto=setInterval(autoStep,cfg.speed);$('#sm-auto').textContent='■ Dừng';$('#sm-auto').classList.add('on');draw()}
-function stopAuto(msg){if(auto){clearInterval(auto);auto=null}$('#sm-auto').textContent='▶ Tự đập liên tục';$('#sm-auto').classList.remove('on');if(msg)$('#sm-msg').textContent=msg;else if(autoN)$('#sm-msg').textContent=`Đã dừng sau ${autoN} lần.`;draw()}
+let autoTO=null;const isReal=()=>cfg.speed==='real'||cfg.speed==='real2';
+const later=(fn,ms)=>{clearTimeout(autoTO);autoTO=setTimeout(fn,ms)};
+function tick(){if(!auto)return;if(isReal()){realStep();return}autoStep();if(auto)later(tick,+cfg.speed||300)}
+function realStep(){const l=baseLv();if(!(l<MAXLV&&R(l))){stopAuto('Thẻ đã ở cấp tối đa, dừng.');return}st.lv=l;const a=attempt(l,cfg.v,keepNow());$('#sm-msg').textContent=`Lần ${autoN+1}: đang nâng cấp…`;
+  animateRes(l,a,()=>{autoN++;if(cfg.stopUp&&a.up){stopAuto(`Lên +${a.to} ở lần thứ ${autoN} của lượt chạy này. Đã dừng.`);return}
+    later(()=>{if(!auto)return;$('#sm-res').hidden=true;const [lo,hi]=cfg.speed==='real2'?[10,30]:[3,8];let left=lo+Math.floor(rnd()*(hi-lo+1));
+      const cd=()=>{if(!auto)return;if(left<=0){tick();return}$('#sm-msg').textContent=`Lần ${autoN} xong. Đang mua phôi, chuẩn bị kèo tiếp… còn ${left} giây.`;left--;later(cd,1000)};cd()},1500)})}
+function startAuto(){if(auto)return;autoN=0;auto=1;tick();$('#sm-auto').textContent='■ Dừng';$('#sm-auto').classList.add('on');draw()}
+function stopAuto(msg){clearTimeout(autoTO);auto=null;$('#sm-auto').textContent='▶ Tự đập liên tục';$('#sm-auto').classList.remove('on');if(msg)$('#sm-msg').textContent=msg;else if(autoN)$('#sm-msg').textContent=`Đã dừng sau ${autoN} lần.`;draw()}
 $('#sm-auto').onclick=()=>auto?stopAuto():startAuto();
 $('#sm-speed').value=String(cfg.speed);if($('#sm-speed').selectedIndex<0)$('#sm-speed').value='300';
-$('#sm-speed').onchange=e=>{cfg.speed=+e.target.value;saveCfg();if(auto){clearInterval(auto);auto=setInterval(autoStep,cfg.speed)}};
+$('#sm-speed').onchange=e=>{const v=e.target.value;cfg.speed=/^real/.test(v)?v:+v;saveCfg();if(auto&&!st.busy)later(tick,50)};
 $('#sm-zone').value=cfg.zone in ZN?cfg.zone:'still';$('#sm-zone').onchange=e=>{cfg.zone=e.target.value;saveCfg();draw()};
 $('#sm-stopup').checked=!!cfg.stopUp;$('#sm-stopup').onchange=e=>{cfg.stopUp=e.target.checked;saveCfg()};
 $('#sm-mode').onchange=e=>{cfg.mode=e.target.value;saveCfg();st.lv=cfg.mode==='moi'?cfg.lv:st.lv;draw()};
