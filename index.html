@@ -34,7 +34,8 @@ header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-be
 h1{font-family:var(--f-display);font-weight:800;font-size:2.3rem;line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase}
 h1 span{color:var(--gold)}
 .sub{color:var(--muted);margin:4px 0 0;max-width:62ch}
-.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:18px;overflow-x:auto}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:18px;overflow-x:auto;max-width:100%;min-width:0}
+@media (max-width:520px){.tab{padding:8px 8px;font-size:.92rem;letter-spacing:.02em}}
 .tab{font-family:var(--f-display);font-weight:700;font-size:1.1rem;letter-spacing:.04em;text-transform:uppercase;background:none;border:0;color:var(--muted);padding:8px 14px;border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap}
 .tab[aria-selected="true"]{color:var(--ink);border-color:var(--gold)}
 .tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -136,6 +137,68 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .rc{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 4px;border-radius:5px;font:700 .7rem var(--f-mono);font-style:normal;background:var(--line);color:var(--ink)}
 .rc.up{background:var(--gold);color:#1b1404}.rc.mn{box-shadow:0 0 0 2px var(--ink) inset}.rc.dn.mn{background:var(--bad);color:#fff}
 .rc sup{position:absolute;top:-7px;right:-3px;font-size:.7rem;color:var(--ok);line-height:1}.rc sub{position:absolute;bottom:-6px;left:50%;margin-left:-3px;font-size:.5rem;color:var(--warn);line-height:1}
+/* ---- Đầu khối biểu đồ ---- */
+.chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.chead #c-find{width:130px}.chead #c-filter{width:auto;min-width:170px}
+@media (max-width:520px){.chead{width:100%}.chead #c-find,.chead #c-filter{flex:1 1 0;min-width:0;width:auto}}
+/* ---- Mô phỏng ---- */
+.simgrid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.simgrid{grid-template-columns:minmax(0,1fr)}}
+.simgrid>*{min-width:0}
+.simstage{position:relative;border-radius:14px;overflow:hidden;padding:16px 16px 0;color:#e9eef8;background:radial-gradient(120% 70% at 50% 0%,#1f6cc0 0%,#0d2a52 45%,#081428 100%);box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.simhead{font:700 1.15rem var(--f-display);letter-spacing:.02em;margin-bottom:12px}.simhead span{font-weight:400;opacity:.6;font-size:.85rem}
+.simtop{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
+.simcard{position:relative;width:118px;height:160px;border-radius:12px 12px 22px 22px;background:linear-gradient(160deg,#fffaf0 0%,#f1dfae 45%,#c99a3c 100%);color:#3b2a08;box-shadow:0 0 0 3px #d9b45e inset,0 6px 18px rgba(0,0,0,.35)}
+.simcard.sm{width:96px;height:130px;margin:0 auto}
+.sc-ovr{position:absolute;left:10px;top:10px;font:800 1.7rem/1 var(--f-mono,monospace)}
+.simcard.sm .sc-ovr{font-size:1.4rem}
+.sc-lv{position:absolute;left:10px;bottom:38px;min-width:30px;padding:2px 6px;border-radius:4px;background:linear-gradient(#f3f5fa,#b9c0cf);color:#1b2235;font:800 1.05rem/1.2 var(--f-mono,monospace);text-align:center}
+.sc-name{position:absolute;left:6px;right:6px;bottom:12px;font:700 .78rem var(--f-body,inherit);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.simrows{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;margin:0;font-size:.95rem}
+.simrows dt{opacity:.75}.simrows dd{margin:0;text-align:right}
+.simrows .lvb{display:inline-block;min-width:26px;padding:1px 6px;border-radius:4px;background:linear-gradient(#f3f5fa,#b9c0cf);color:#1b2235;font:800 .95rem var(--f-mono,monospace);text-align:center}
+.simstage .plus{color:#3ee07d;font-weight:700}.simstage .minus{color:#ff7a66;font-weight:700}
+.simbox{margin-top:16px;padding:14px;border-radius:10px;background:rgba(10,16,30,.55)}
+.simopt{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;font-size:.92rem}
+.simsw{display:flex;align-items:center;gap:6px;opacity:.85;cursor:pointer;white-space:nowrap}
+.simbar{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.simbar .sb{position:relative;height:34px;border:0;border-radius:3px;background:#3a4252;overflow:hidden;cursor:pointer;padding:0}
+.simbar .sb i{position:absolute;left:0;top:0;bottom:0;background:repeating-linear-gradient(135deg,#1e90ff 0 6px,#1a7fe6 6px 12px)}
+.simbar .sb span{position:relative;display:block;padding-left:8px;text-align:left;font:700 1.1rem var(--f-mono,monospace);color:#fff}
+#sm-v{width:100%;margin:10px 0 4px;accent-color:#1e90ff}
+.simnote{font-size:.78rem;opacity:.7;margin:4px 0}
+.simbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.simbtns .btn{background:rgba(255,255,255,.08);color:#e9eef8;border-color:rgba(255,255,255,.2)}
+.simgo{display:block;width:calc(100% + 32px);margin:16px -16px 0;padding:14px;border:0;background:#00e676;color:#06210f;font:800 1.5rem var(--f-display);letter-spacing:.04em;cursor:pointer}
+.simgo:disabled{background:#3a4252;color:#9aa3b5;cursor:default}
+.simgo.spin{background:repeating-linear-gradient(90deg,#00e676 0 20px,#3df59a 20px 40px);background-size:80px 100%;animation:simspin .5s linear infinite}
+@keyframes simspin{to{background-position:80px 0}}
+@media (prefers-reduced-motion:reduce){.simgo.spin{animation:none}}
+.simres{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(90% 60% at 50% 30%,#1f6cc0 0%,#0a1b36 70%);cursor:pointer;z-index:3}
+.simres.bad{background:radial-gradient(90% 60% at 50% 30%,#6b1f2a 0%,#1a0a10 75%)}
+.srbox{width:100%;max-width:340px;text-align:center}
+.simres.charge{cursor:default}
+.srskip{position:absolute;right:14px;bottom:14px;border:0;background:none;color:#3ee07d;font:700 .95rem var(--f-body,inherit);cursor:pointer;padding:6px 8px}
+.simres.flash .srskip{color:#1f8a4c}
+.simres.charge .simcard{transition:filter .7s ease,box-shadow .7s ease,transform .7s ease}
+.simres.lit .simcard{filter:brightness(2.6) saturate(0);transform:scale(1.06);box-shadow:0 0 0 3px #fff inset,0 0 40px 12px rgba(160,210,255,.9),0 0 90px 30px rgba(120,90,255,.45)}
+.simres.lit .simcard>*{opacity:0;transition:opacity .4s}
+.simres.flash{background:#fff!important}.simres.flash .simcard{opacity:0}
+.srt{font:800 2.4rem var(--f-display);letter-spacing:.02em;margin:14px 0}
+.simres.ok .srt{color:#fff}.simres.bad .srt{color:#ffb4a8}
+.srbox .simrows{padding:12px 14px;border-radius:10px;background:rgba(0,0,0,.3);text-align:left}
+.srx{margin-top:14px;opacity:.6;font-size:.9rem}
+.simf{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.nline{position:relative;height:30px;border-radius:6px;background:var(--line);margin:4px 0 18px}
+.nlz{position:absolute;left:0;top:0;bottom:0;border-radius:6px 0 0 6px;background:var(--ok);opacity:.85}
+.nlm{position:absolute;top:-6px;bottom:-6px;width:3px;margin-left:-1px;background:var(--ink)}
+.nlm::after{content:"";position:absolute;left:-5px;top:-8px;border:6px solid transparent;border-top-color:var(--ink)}
+.nlm.up{background:var(--gold)}.nlm.up::after{border-top-color:var(--gold)}
+.nlt{position:absolute;bottom:-18px;font:500 .7rem var(--f-mono,monospace);color:var(--muted)}.nl0{left:0}.nl1{right:0}
+.hist{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.hr{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center;font:500 .78rem var(--f-mono,monospace)}
+.hl{color:var(--muted);text-align:right}.hv{text-align:right}
+.hb{height:14px;border-radius:3px;background:var(--line);overflow:hidden}.hb i{display:block;height:100%;background:var(--bait)}
 /* ---- Phân tích ---- */
 details.more>summary{padding:10px 12px;border:1px solid var(--line);border-radius:9px}
 details.more[open]>summary{margin-bottom:2px}
@@ -220,7 +283,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 16/11 16:25</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 17:10</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -266,6 +329,7 @@ details.more[open]>summary{margin-bottom:2px}
   <button class="tab" role="tab" data-tab="day" aria-selected="true">Tính dây</button>
   <button class="tab" role="tab" data-tab="up" aria-selected="false" hidden>Đập thẻ</button>
   <button class="tab" role="tab" data-tab="rate" aria-selected="false">Bảng tỷ lệ</button>
+  <button class="tab" role="tab" data-tab="sim" aria-selected="false">Mô phỏng</button>
   <button class="tab" role="tab" data-tab="stat" aria-selected="false">Phân tích</button>
   <button class="tab" role="tab" data-tab="admin" aria-selected="false" id="tab-admin-btn" hidden>Admin</button>
 </nav>
@@ -425,9 +489,9 @@ details.more[open]>summary{margin-bottom:2px}
   <div class="panel stack chartpanel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <h2 style="margin:0">Biểu đồ</h2>
-      <div style="display:flex;align-items:center;gap:8px"><span class="hint" id="c-fcount" style="margin:0"></span>
-        <input id="c-find" type="text" inputmode="numeric" placeholder="Tìm dãy, vd 233" aria-label="Tìm dãy số trong dây" style="width:130px">
-        <select id="c-filter" aria-label="Lọc dây" style="width:auto;min-width:170px">
+      <div class="chead"><span class="hint" id="c-fcount" style="margin:0"></span>
+        <input id="c-find" type="text" inputmode="numeric" placeholder="Tìm dãy, vd 233" aria-label="Tìm dãy số trong dây">
+        <select id="c-filter" aria-label="Lọc dây">
           <option value="all">Tất cả dây</option>
           <option value="today">Dây hôm nay</option>
           <option value="main">Có kèo chính</option>
@@ -565,6 +629,64 @@ details.more[open]>summary{margin-bottom:2px}
 </div>
 </section>
 
+<!-- ============ MÔ PHỎNG ============ -->
+<section id="tab-sim" hidden>
+<div class="simgrid">
+  <div class="simstage">
+    <div class="simhead">Nâng cấp <span>· mô phỏng</span></div>
+    <div class="simtop">
+      <div class="simcard"><div class="sc-ovr" id="sm-ovr">0</div><div class="sc-lv" id="sm-lvb">0</div><div class="sc-name" id="sm-name"></div></div>
+      <dl class="simrows">
+        <dt>Cấp thẻ</dt><dd><span class="lvb" id="sm-lv">0</span> <span class="plus">+1</span></dd>
+        <dt>OVR</dt><dd><b id="sm-ovr2">0</b> <span class="plus" id="sm-ovrup"></span></dd>
+        <dt>Tỷ lệ lên</dt><dd><b class="plus" id="sm-p">–</b></dd>
+        <dt>Nếu tạch</dt><dd id="sm-drop"></dd>
+      </dl>
+    </div>
+    <div class="simbox">
+      <div class="simopt"><span>Bảo vệ cấp độ nâng cấp</span><label class="simsw"><input type="checkbox" id="sm-keep"><span id="sm-keepl">Không sử dụng</span></label></div>
+      <div class="simopt"><span>Tăng tỉ lệ nâng cấp</span><b id="sm-vtxt"></b></div>
+      <div class="simbar" id="sm-bar"></div>
+      <input type="range" id="sm-v" min="0" max="5" step="0.1" aria-label="Số vạch">
+      <p class="simnote">Bấm một ô để chọn số vạch, kéo thanh bên dưới để chỉnh lẻ (3,5 vạch…). Tỷ lệ lên = tỷ lệ công bố × vạch/5 (game không hiện số này, đây là cách app ước tính).</p>
+      <div class="simbtns"><button class="btn small" id="sm-10">Đập 10 lần</button><button class="btn small" id="sm-until">Vô tới khi lên</button><button class="btn small" id="sm-reset">Đặt lại</button></div>
+      <p class="simnote" id="sm-msg" aria-live="polite"></p>
+    </div>
+    <button class="simgo" id="sm-go">Nâng cấp</button>
+    <div class="simres" id="sm-res" tabindex="-1" role="dialog" aria-label="Kết quả nâng cấp" hidden></div>
+  </div>
+  <div class="stack">
+    <div class="panel stack">
+      <h2>Thẻ mô phỏng</h2>
+      <div class="simf">
+        <div class="field"><label for="sm-iname">Tên thẻ</label><input id="sm-iname" type="text" maxlength="24"></div>
+        <div class="field"><label for="sm-ilv">Cấp bắt đầu</label><select id="sm-ilv"></select></div>
+        <div class="field"><label for="sm-iovr">OVR hiện tại</label><input id="sm-iovr" type="number" min="1" max="250"></div>
+      </div>
+      <label class="hint" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="sm-fx"> Hiện màn hình kết quả sau mỗi lần bấm Nâng cấp</label>
+    </div>
+    <div class="panel stack">
+      <h2>Con số vừa rút</h2>
+      <div class="nline" id="sm-nline"></div>
+      <p class="note" id="sm-ntxt" style="margin:0"></p>
+    </div>
+    <div class="panel stack">
+      <h2>Phiên mô phỏng</h2>
+      <dl class="kv" id="sm-stat"></dl>
+      <div class="lbl">Dây mô phỏng (mới nhất ở dưới)</div>
+      <div class="dread" id="sm-log"></div>
+    </div>
+    <div class="panel stack">
+      <h2>Chạy thử 10.000 người</h2>
+      <p class="note" style="margin:0">Cho 10.000 người cùng vô kèo ở cấp bắt đầu và số vạch đang chọn tới khi lên, để thấy may rủi phân bố thế nào và so các mức vạch.</p>
+      <div class="btnrow"><button class="btn small primary" id="sm-batch">Chạy</button></div>
+      <div id="sm-bres"></div><div id="sm-vcmp"></div>
+    </div>
+  </div>
+</div>
+<p class="hint" style="margin-top:14px">Rớt về mấy khi tạch: ở +4, +5, +6 dùng phân bố đo từ dây thật trong app (ví dụ +6 tạch thì về +3 nhiều nhất); các cấp khác chia đều trong khoảng của Bảng tỷ lệ. Mỗi lần đập dùng bộ sinh số ngẫu nhiên của trình duyệt, không liên quan tới game.</p>
+</section>
+
 <!-- ============ PHÂN TÍCH ============ -->
 <section id="tab-stat" hidden>
 <div class="panel stack" style="margin-bottom:18px">
@@ -665,7 +787,8 @@ function dropText(lv){const r=rates[lv-1];if(!r)return'–';const a=Math.min(r[1
 /* ---------- Tabs ---------- */
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b));
-  ['day','up','rate','admin','stat'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab);
+  ['day','up','rate','admin','stat','sim'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab);
+  if(b.dataset.tab==='sim'&&window.__fcoSimRender)window.__fcoSimRender();
   if(b.dataset.tab==='admin'&&window.__fcoAdminLoad)window.__fcoAdminLoad();
   if(b.dataset.tab==='stat'&&window.__fcoStatRender)window.__fcoStatRender();
   store.set('tab',b.dataset.tab);
@@ -1771,6 +1894,115 @@ window.__fcoStatRender=render;
 {const cf=$('#c-filter'),sv=store.get('cFilter','all');if([...cf.options].some(o=>o.value===sv))cf.value=sv;cf.onchange=()=>{store.set('cFilter',cf.value);renderDay()};let ft=null;$('#c-find').addEventListener('input',()=>{clearTimeout(ft);ft=setTimeout(renderDay,150)})}
 ['#d-more','#c-more'].forEach(id=>{const el=$(id);if(el)el.addEventListener('toggle',()=>{if(el.open)renderDay()})});
 window.FCOStats={buildRecords,analyze,simulate,selfTest,normRec,_m:{binom2,wilson,chi2sf,pbin2,bh,cmh,gammaQ}};
+})();
+
+/* ---------- Mô phỏng nâng cấp ----------
+   Rút số ngẫu nhiên theo tỷ lệ công bố (bảng tỷ lệ của app) × số vạch/5.
+   Không liên quan tới game; chỉ là mô phỏng trong trình duyệt. */
+(function(){
+const OVR_UP=[0,0,1,1,2,2,2,3,4,2,2,2,3,3]; // OVR tăng khi đạt cấp n (bảng Garena 03/11/2025)
+const cumOvr=l=>{let s=0;for(let i=2;i<=l;i++)s+=OVR_UP[i]||0;return s};
+// Phân bố rớt cấp khi tạch, đo từ dây người dùng (cấp → {số bậc rớt: số lần}); cấp khác chia đều trong khoảng của bảng
+const DROPW={4:{2:22,3:20},5:{2:89,3:143,4:151},6:{2:86,3:176,4:140,5:64}};
+const MAXLV=13;
+let buf=new Uint32Array(4096),bi=4096;
+function rnd(){if(bi>=buf.length){(window.crypto||window.msCrypto).getRandomValues(buf);bi=0}return buf[bi++]/4294967296}
+const R=l=>{const t=(rates&&rates[l-1])||DEF_RATES[l-1];return t?{p:(+t[0])/100,mn:+t[1],mx:+t[2]}:null};
+const pOf=(l,v)=>{const r=R(l);return r?Math.max(0,Math.min(1,r.p*Math.max(0,Math.min(5,v))/5)):0};
+function dropOf(l){const r=R(l);if(!r)return 0;const w=DROPW[l];let opts=[];
+  if(w){opts=Object.entries(w).map(([d,c])=>[+d,c])}else{for(let d=r.mn;d<=r.mx;d++)opts.push([d,1])}
+  opts=opts.filter(([d])=>l-d>=1);if(!opts.length)return Math.max(0,l-1);const tot=opts.reduce((s,o)=>s+o[1],0);let x=rnd()*tot;for(const [d,c] of opts){if((x-=c)<0)return d}return opts[opts.length-1][0]}
+function dropRange(l){const r=R(l);if(!r)return'';const w=DROPW[l];const ds=(w?Object.keys(w).map(Number):[...Array(r.mx-r.mn+1)].map((_,i)=>r.mn+i)).filter(d=>l-d>=1);
+  if(!ds.length)return'';const lo=l-Math.max(...ds),hi=l-Math.min(...ds);return lo===hi?`về +${lo}`:`về +${lo} … +${hi}`}
+// một lần đập: trả về {up, r (0–100), p, from, to}
+function attempt(l,v,keep){const p=pOf(l,v),r=rnd()*100,up=r<p*100;let to=l;if(up)to=l+1;else if(!keep)to=l-dropOf(l);return{up,r,p,from:l,to,v}}
+
+let cfg=Object.assign({name:'Thẻ chính',lv:6,ovr:129,v:4,keep:false,fx:true},store.get('simCfg',{}));
+let st={lv:cfg.lv,base:cfg.ovr-cumOvr(cfg.lv),log:[],last:null,busy:false};
+const saveCfg=()=>store.set('simCfg',cfg);
+function resetRun(){st={lv:cfg.lv,base:cfg.ovr-cumOvr(cfg.lv),log:[],last:null,busy:false};draw()}
+
+function draw(){
+  const l=st.lv,v=cfg.v,p=pOf(l,v),ovr=st.base+cumOvr(l),canUp=l<MAXLV&&R(l);
+  $('#sm-name').textContent=cfg.name||'Thẻ chính';$('#sm-ovr').textContent=ovr;$('#sm-lvb').textContent=l;
+  $('#sm-lv').textContent=l;$('#sm-ovr2').textContent=ovr;$('#sm-ovrup').textContent=canUp?'+'+(OVR_UP[l+1]||0):'';
+  $('#sm-p').textContent=canUp?pct(p):'–';$('#sm-drop').textContent=canUp?(cfg.keep?'giữ nguyên +'+l:dropRange(l)):'Đã tối đa';
+  $('#sm-vtxt').textContent=vtxt(v)+' vạch';$('#sm-v').value=v;
+  $('#sm-bar').innerHTML=[1,2,3,4,5].map(i=>{const f=Math.max(0,Math.min(1,v-(i-1)));return `<button class="sb" data-i="${i}" aria-label="${i} vạch"><i style="width:${f*100}%"></i><span>${i}</span></button>`}).join('');
+  $('#sm-keep').checked=cfg.keep;$('#sm-keepl').textContent=cfg.keep?'Đang dùng':'Không sử dụng';
+  $('#sm-go').disabled=!canUp||st.busy;$('#sm-10').disabled=!canUp||st.busy;$('#sm-until').disabled=!canUp||st.busy;
+  // con số vừa rút
+  const a=st.last,nl=$('#sm-nline');
+  if(!a){nl.innerHTML=`<div class="nlz" style="width:${p*100}%"></div><span class="nlt nl0">0</span><span class="nlt nl1">100</span>`;$('#sm-ntxt').innerHTML=canUp?`Mỗi lần bấm, máy rút một số từ 0 đến 100. Số rơi vào vùng xanh (dưới <b>${fmt(p*100,2)}</b>) thì lên.`:'Thẻ đã ở cấp tối đa.'}
+  else{nl.innerHTML=`<div class="nlz" style="width:${a.p*100}%"></div><div class="nlm ${a.up?'up':'dn'}" style="left:${a.r}%"></div><span class="nlt nl0">0</span><span class="nlt nl1">100</span>`;
+    $('#sm-ntxt').innerHTML=`Lần ${st.log.length}: đập +${a.from} → rút được <b>${fmt(a.r,2)}</b>, cần dưới <b>${fmt(a.p*100,2)}</b> để lên → <b style="color:${a.up?'var(--ok)':'var(--bad)'}">${a.up?'LÊN +'+a.to:a.to===a.from?'tạch, giữ +'+a.to:'tạch, về +'+a.to}</b>.${!a.up&&a.to!==a.from?' Mức rớt được rút bằng một số ngẫu nhiên thứ hai.':''}`}
+  // thống kê phiên
+  const L=st.log,n=L.length,w=L.filter(x=>x.up).length,E=L.reduce((s,x)=>s+x.p,0);let cur=0,mx=0;L.forEach(x=>{cur=x.up?0:cur+1;mx=Math.max(mx,cur)});
+  const vs=L.reduce((s,x)=>s+x.v,0),top=L.reduce((m,x)=>Math.max(m,x.to),cfg.lv);
+  $('#sm-stat').innerHTML=`<dt>Số lần đập</dt><dd>${n}</dd><dt>Lên / tạch</dt><dd>${w} / ${n-w}</dd><dt>Tỷ lệ thực tế / kỳ vọng</dt><dd>${n?pct(w/n):'–'} / ${n?pct(E/n):'–'}</dd><dt>Chuỗi tạch dài nhất</dt><dd>${mx}</dd><dt>Đang tạch liền</dt><dd>${cur}</dd><dt>Cấp cao nhất đạt</dt><dd>+${top}</dd><dt>Tổng vạch đã dùng</dt><dd>${fmt(vs,1)}</dd>`;
+  // dây mô phỏng
+  const rows=[];let row=[];L.forEach((x,i)=>{row.push([x,i]);if(x.up){rows.push(row);row=[]}});if(row.length)rows.push(row);
+  const show=rows.slice(-10),off=rows.length-show.length;
+  $('#sm-log').innerHTML=n?((off?`<p class="hint" style="margin:0 0 4px">… ${off} dây cũ hơn</p>`:'')+show.map((r,k)=>{const done=r[r.length-1][0].up;
+    return `<div class="rrow${!done?' cur':''}"><div class="rh"><b>Dây ${off+k+1}</b> · ${r.length} lượt${!done?' · <span style="color:var(--gold)">đang đập</span>':''}</div><div class="rcs">${r.map(([x,i])=>`<span class="rc ${x.up?'up':'dn'}" title="Lần ${i+1}: đập +${x.from}, rút ${fmt(x.r,2)} / cần < ${fmt(x.p*100,2)} → ${x.up?'lên +'+x.to:'về +'+x.to}">${x.up?'+'+x.to:'+'+x.to}</span>`).join('')}</div></div>`}).join('')):'<p class="hint" style="margin:0">Chưa đập lần nào.</p>';
+  $('#sm-log').scrollTop=$('#sm-log').scrollHeight;
+}
+function push(a){st.log.push(a);st.last=a;st.lv=a.to;if(st.log.length>5000)st.log.shift()}
+function showRes(a){const box=$('#sm-res'),ovr=st.base+cumOvr(a.to),d=a.up?(OVR_UP[a.to]||0):-(cumOvr(a.from)-cumOvr(a.to));
+  box.className='simres '+(a.up?'ok':'bad');
+  box.innerHTML=`<div class="srbox"><div class="simcard sm"><div class="sc-ovr">${ovr}</div><div class="sc-lv">${a.to}</div><div class="sc-name">${escH(cfg.name||'Thẻ chính')}</div></div>
+    <div class="srt">${a.up?'Thành công':'Thất bại'}</div>
+    <dl class="simrows"><dt>Cấp thẻ</dt><dd><span class="lvb">${a.to}</span> <span class="${a.up?'plus':'minus'}">${a.up?'+1':a.to===a.from?'±0':'−'+(a.from-a.to)}</span></dd><dt>OVR</dt><dd><b>${ovr}</b> <span class="${d>0?'plus':d<0?'minus':'plus'}">${d>0?'+'+d:d<0?'−'+(-d):'+0'}</span></dd><dt>Số rút / cần</dt><dd>${fmt(a.r,2)} / dưới ${fmt(a.p*100,2)}</dd></dl>
+    <div class="srx">Chạm để thoát</div></div>`;
+  box.hidden=false;box.focus()}
+function go(){if(st.busy)return;const l=st.lv;if(!(l<MAXLV&&R(l)))return;const a=attempt(l,cfg.v,cfg.keep);
+  if(!cfg.fx){push(a);draw();return}
+  st.busy=true;draw();const box=$('#sm-res'),ovr0=st.base+cumOvr(l),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // trình tự như game: thẻ hiện giữa màn → sáng thành khối trắng → chớp trắng → hiện kết quả
+  box.className='simres ok charge';box.innerHTML=`<div class="srbox"><div class="simcard sm glow"><div class="sc-ovr">${ovr0}</div><div class="sc-lv">${l}</div><div class="sc-name">${escH(cfg.name||'Thẻ chính')}</div></div></div>`;box.hidden=false;
+  box.insertAdjacentHTML('beforeend','<button class="srskip" id="sm-skip">Bỏ qua</button>');
+  let done=false;const T=[];const fin=()=>{if(done)return;done=true;T.forEach(clearTimeout);st.busy=false;push(a);draw();showRes(a)};
+  $('#sm-skip').onclick=e=>{e.stopPropagation();fin()};
+  if(rm){T.push(setTimeout(fin,300));return}
+  T.push(setTimeout(()=>box.classList.add('lit'),500));T.push(setTimeout(()=>box.classList.add('flash'),1250));T.push(setTimeout(fin,1450))}
+function many(k,until){let c=0;
+  if(!until){while(c<k){const l=st.lv;if(!(l<MAXLV&&R(l)))break;push(attempt(l,cfg.v,cfg.keep));c++}draw();$('#sm-msg').textContent=`Đã đập ${c} lần.`;return}
+  // vô kèo ở cấp đang có; tạch thì coi như kéo thẻ về lại cấp đó rồi vô tiếp
+  const L0=st.lv;if(!(L0<MAXLV&&R(L0)))return;let a;
+  do{st.lv=L0;a=attempt(L0,cfg.v,cfg.keep);push(a);c++}while(!a.up&&c<10000);
+  draw();$('#sm-msg').textContent=a.up?`Lên +${L0+1} ở kèo thứ ${c}. Mỗi lần tạch, app coi như anh kéo thẻ về lại +${L0} rồi vô tiếp.`:`Đã vô ${c} kèo mà chưa lên.`}
+
+// chạy 10.000 người chơi: đập từ cấp hiện tại tới cấp kế tiếp (rớt thì đập lại lên), đếm số lần
+// số kèo ở đúng cấp l cho tới khi lên (tạch thì kéo thẻ về lại cấp l, không tính công kéo lại)
+function runMany(l,v,keep,N){const p=pOf(l,v),out=new Array(N);for(let i=0;i<N;i++){let c=1;while(rnd()*100>=p*100&&c<100000)c++;out[i]=c}return out.sort((a,b)=>a-b)}
+const q=(s,x)=>s[Math.min(s.length-1,Math.floor(x*s.length))];
+function batch(){const l=cfg.lv,N=10000;if(!(l<MAXLV&&R(l)))return;const s=runMany(l,cfg.v,cfg.keep,N),m=s.reduce((a,b)=>a+b,0)/N;
+  const B=[[1,1],[2,2],[3,3],[4,5],[6,10],[11,15],[16,20],[21,30],[31,50],[51,1e9]],cnt=B.map(([a,b])=>s.filter(x=>x>=a&&x<=b).length),mxc=Math.max(...cnt);
+  const over=k=>s.filter(x=>x>k).length/N;
+  $('#sm-bres').innerHTML=`<p class="note" style="margin:0 0 10px">10.000 người cùng đập thẻ <b>+${l}</b> với <b>${vtxt(cfg.v)} vạch</b> (${pct(pOf(l,cfg.v))} mỗi kèo) tới khi lên <b>+${l+1}</b>. Đếm số kèo ở đúng +${l}; tạch thì coi như kéo thẻ về lại +${l} rồi vô tiếp, không tính công kéo lại.</p>
+    <dl class="kv"><dt>Trung bình</dt><dd>${fmt(m,1)} kèo</dd><dt>Một nửa số người lên trong</dt><dd>${q(s,.5)} kèo</dd><dt>90% số người lên trong</dt><dd>${q(s,.9)} kèo</dd><dt>99% số người lên trong</dt><dd>${q(s,.99)} kèo</dd><dt>Người xui nhất</dt><dd>${s[N-1]} kèo</dd><dt>Phải vô trên 20 kèo</dt><dd>${pct(over(20))} số người</dd></dl>
+    <div class="hist">${B.map(([a,b],i)=>`<div class="hr"><span class="hl">${b>=1e9?a+'+':a===b?a:a+'–'+b}</span><span class="hb"><i style="width:${cnt[i]/mxc*100}%"></i></span><span class="hv">${pct(cnt[i]/N)}</span></div>`).join('')}</div>
+    <p class="hint" style="margin-top:6px">Trục trái: số kèo cần để lên. Thanh: phần trăm số người rơi vào nhóm đó.</p>`;
+  const VS=[2,3,3.5,4,4.5,5];
+  $('#sm-vcmp').innerHTML=tblV(VS.map(v=>{const t=runMany(l,v,cfg.keep,4000),mm=t.reduce((a,b)=>a+b,0)/t.length;return `<tr${v===cfg.v?' style="outline:2px solid var(--gold)"':''}><td>${vtxt(v)}</td><td>${pct(pOf(l,v))}</td><td>${fmt(mm,1)}</td><td>${q(t,.9)}</td><td>${fmt(mm*v,1)}</td></tr>`}));}
+const tblV=rows=>`<div class="tblwrap" style="margin-top:8px"><table><thead><tr><th>Vạch</th><th>Mỗi kèo</th><th>TB số kèo</th><th>90% lên trong</th><th>TB tổng vạch</th></tr></thead><tbody>${rows.join('')}</tbody></table></div><p class="hint" style="margin-top:6px">"Tổng vạch" = số kèo × vạch mỗi kèo, để so lượng phôi bỏ ra nếu mỗi vạch tốn phôi như nhau. Bảng chưa tính công kéo thẻ lại sau khi tạch: đập ít vạch thì tạch nhiều lần hơn nên tốn công kéo lại nhiều hơn.</p>`;
+
+// sự kiện
+$('#sm-go').onclick=go;$('#sm-10').onclick=()=>many(10,false);$('#sm-until').onclick=()=>many(0,true);
+$('#sm-reset').onclick=()=>{resetRun();$('#sm-msg').textContent='';$('#sm-bres').innerHTML='';$('#sm-vcmp').innerHTML=''};
+$('#sm-res').onclick=()=>{if(!st.busy)$('#sm-res').hidden=true};$('#sm-res').onkeydown=e=>{if(e.key==='Escape'||e.key==='Enter'||e.key===' '){e.preventDefault();$('#sm-res').hidden=true}};
+$('#sm-bar').onclick=e=>{const b=e.target.closest('.sb');if(!b)return;cfg.v=+b.dataset.i;saveCfg();draw()};
+$('#sm-v').oninput=e=>{cfg.v=Math.round(+e.target.value*10)/10;saveCfg();draw()};
+$('#sm-keep').onchange=e=>{cfg.keep=e.target.checked;saveCfg();draw()};
+$('#sm-fx').checked=cfg.fx;$('#sm-fx').onchange=e=>{cfg.fx=e.target.checked;saveCfg()};
+$('#sm-iname').value=cfg.name;$('#sm-iname').oninput=e=>{cfg.name=e.target.value.slice(0,24);saveCfg();draw()};
+$('#sm-ilv').innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}">+${i+1} → +${i+2}</option>`).join('');$('#sm-ilv').value=cfg.lv;
+$('#sm-ilv').onchange=e=>{const ovrNow=st.base+cumOvr(st.lv);cfg.lv=+e.target.value;cfg.ovr=ovrNow-cumOvr(st.lv)+cumOvr(cfg.lv);$('#sm-iovr').value=cfg.ovr;saveCfg();resetRun()};
+$('#sm-iovr').value=cfg.ovr;$('#sm-iovr').onchange=e=>{const v=Math.round(+e.target.value);if(v>0){cfg.ovr=v;cfg.lv=st.lv;$('#sm-ilv').value=st.lv;st.base=v-cumOvr(st.lv);saveCfg();draw()}};
+$('#sm-batch').onclick=()=>{$('#sm-bres').innerHTML='<p class="hint">Đang chạy…</p>';setTimeout(batch,30)};
+window.__fcoSimRender=draw;
+window.FCOSim={attempt,pOf,runMany,dropOf};
+draw();
 })();
 
 document.querySelectorAll('#d-slotmode button').forEach(b=>b.onclick=()=>{dSlotMode=b.dataset.v;store.set('daySlotMode',dSlotMode);renderSlotCtl();renderDay()});
