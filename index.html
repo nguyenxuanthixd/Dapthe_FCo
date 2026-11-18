@@ -205,7 +205,7 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .srx{margin-top:14px;opacity:.6;font-size:.9rem}
 .simf{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .nline{position:relative;height:30px;border-radius:6px;background:var(--line);margin:4px 0 18px}
-.nlz{position:absolute;left:0;top:0;bottom:0;border-radius:6px 0 0 6px;background:var(--ok);opacity:.85}
+.nlz{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--ok);opacity:.85}
 .nlm{position:absolute;top:-6px;bottom:-6px;width:3px;margin-left:-1px;background:var(--ink)}
 .nlm::after{content:"";position:absolute;left:-5px;top:-8px;border:6px solid transparent;border-top-color:var(--ink)}
 .nlm.up{background:var(--gold)}.nlm.up::after{border-top-color:var(--gold)}
@@ -298,7 +298,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 21:45</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 22:35</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -660,6 +660,7 @@ details.more[open]>summary{margin-bottom:2px}
     </div>
     <div class="simbox">
       <div class="simopt"><span>Kiểu đập</span><select id="sm-mode" aria-label="Kiểu đập"><option value="moi">Mồi: mỗi lần một thẻ mới ở cấp này</option><option value="the">Một thẻ: tạch thì rớt cấp như game</option></select></div>
+      <div class="simopt"><span>Vùng lên</span><select id="sm-zone" aria-label="Vùng lên"><option value="still">Đứng yên (0 → tỷ lệ)</option><option value="rand">Nhảy ngẫu nhiên mỗi lần đập</option><option value="slide">Trượt dần 7,3 mỗi lần đập</option></select></div>
       <div class="simopt"><span>Bảo vệ cấp độ nâng cấp</span><label class="simsw"><input type="checkbox" id="sm-keep"><span id="sm-keepl">Không sử dụng</span></label></div>
       <div class="simopt"><span>Tăng tỉ lệ nâng cấp</span><b id="sm-vtxt"></b></div>
       <div class="simbar" id="sm-bar"></div>
@@ -694,6 +695,7 @@ details.more[open]>summary{margin-bottom:2px}
     <div class="panel stack">
       <h2>Phiên mô phỏng</h2>
       <dl class="kv" id="sm-stat"></dl>
+      <div id="sm-zstat"></div>
       <div class="lbl">Dây mô phỏng (mới nhất ở dưới)</div>
       <div class="dread" id="sm-log"></div>
       <div class="simsave"><input id="sm-sname" type="text" maxlength="40" placeholder="Tên (để trống thì tự đặt)" aria-label="Tên dây lưu"><button class="btn small primary" id="sm-save">Lưu dây này</button></div>
@@ -1944,16 +1946,21 @@ function dropOf(l){const r=R(l);if(!r)return 0;const w=DROPW[l];let opts=[];
 function dropRange(l){const r=R(l);if(!r)return'';const w=DROPW[l];const ds=(w?Object.keys(w).map(Number):[...Array(r.mx-r.mn+1)].map((_,i)=>r.mn+i)).filter(d=>l-d>=1);
   if(!ds.length)return'';const lo=l-Math.max(...ds),hi=l-Math.min(...ds);return lo===hi?`về +${lo}`:`về +${lo} … +${hi}`}
 // một lần đập: trả về {up, r (0–100), p, from, to}
-function attempt(l,v,keep){const p=pOf(l,v),r=rnd()*100,up=r<p*100;let to=l;if(up)to=l+1;else if(!keep)to=l-dropOf(l);return{up,r,p,from:l,to,v}}
+// vùng lên: đoạn dài p×100 bắt đầu tại z (vắt qua 100 thì quay về 0). Lên khi số rút rơi trong đoạn đó.
+function zoneNext(){const zm=(typeof cfg!=='undefined'&&cfg.zone)||'still';if(zm==='rand')return{zm,z:rnd()*100};if(zm==='slide'){const z=zpos;zpos=(zpos+7.3)%100;return{zm,z}}return{zm,z:0}}
+function attempt(l,v,keep){const p=pOf(l,v),Z=zoneNext(),r=rnd()*100,up=((r-Z.z+100)%100)<p*100;let to=l;if(up)to=l+1;else if(!keep)to=l-dropOf(l);return{up,r,p,from:l,to,v,z:Z.z,zm:Z.zm}}
+const zoneDivs=(z,p)=>{const w=p*100;return z+w<=100?`<div class="nlz" style="left:${z}%;width:${w}%"></div>`:`<div class="nlz" style="left:${z}%;width:${100-z}%"></div><div class="nlz" style="left:0;width:${z+w-100}%"></div>`};
+const zoneTxt=(z,p)=>{const e=z+p*100;return e<=100?`${fmt(z,1)} – ${fmt(e,1)}`:`${fmt(z,1)} – 100 và 0 – ${fmt(e-100,1)}`};
 
-let cfg=Object.assign({name:'Thẻ chính',lv:6,ovr:129,v:4,keep:false,fx:true,mode:'moi',speed:300,stopUp:false},store.get('simCfg',{}));
+let cfg=Object.assign({name:'Thẻ chính',lv:6,ovr:129,v:4,keep:false,fx:true,mode:'moi',speed:300,stopUp:false,zone:'still'},store.get('simCfg',{}));
+const ZN={still:'Đứng yên',rand:'Nhảy ngẫu nhiên',slide:'Trượt dần'};let zpos=0;
 let auto=null,autoN=0;
 // lưu riêng (không dùng store để không đồng bộ dữ liệu lớn lên tài khoản)
 const KC='fcosim_cur_'+(typeof CUR_ACC!=='undefined'?CUR_ACC:'main'),KS='fcosim_saved';
 const lsG=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 const lsS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
-const pack=L=>L.map(a=>[a.from,a.to,a.up?1:0,Math.round(a.r*100)/100,Math.round(a.p*1e4)/1e4,a.v]);
-const unpack=P=>(Array.isArray(P)?P:[]).filter(x=>Array.isArray(x)&&x.length>=6).map(x=>({from:+x[0],to:+x[1],up:!!x[2],r:+x[3],p:+x[4],v:+x[5]}));
+const pack=L=>L.map(a=>[a.from,a.to,a.up?1:0,Math.round(a.r*100)/100,Math.round(a.p*1e4)/1e4,a.v,Math.round((a.z||0)*100)/100,a.zm||'still']);
+const unpack=P=>(Array.isArray(P)?P:[]).filter(x=>Array.isArray(x)&&x.length>=6).map(x=>({from:+x[0],to:+x[1],up:!!x[2],r:+x[3],p:+x[4],v:+x[5],z:+(x[6]||0),zm:x[7]||'still'}));
 let curT=null;const saveCur=()=>{clearTimeout(curT);curT=setTimeout(()=>lsS(KC,{lv:st.lv,base:st.base,log:pack(st.log)}),400)};
 let st={lv:cfg.lv,base:cfg.ovr-cumOvr(cfg.lv),log:[],last:null,busy:false};
 const saveCfg=()=>store.set('simCfg',cfg);
@@ -1973,13 +1980,16 @@ function draw(){
   const bk=$('#sm-back');bk.hidden=!(cfg.mode==='the'&&st.lv!==cfg.lv);bk.textContent=`Về lại +${cfg.lv}`;bk.disabled=!!auto;$('#sm-mode').value=cfg.mode;$('#sm-auto').disabled=!canUp&&!auto;
   // con số vừa rút
   const a=st.last,nl=$('#sm-nline');
-  if(!a){nl.innerHTML=`<div class="nlz" style="width:${p*100}%"></div><span class="nlt nl0">0</span><span class="nlt nl1">100</span>`;$('#sm-ntxt').innerHTML=canUp?`Mỗi lần bấm, máy rút một số từ 0 đến 100. Số rơi vào vùng xanh (dưới <b>${fmt(p*100,2)}</b>) thì lên.`:'Thẻ đã ở cấp tối đa.'}
-  else{nl.innerHTML=`<div class="nlz" style="width:${a.p*100}%"></div><div class="nlm ${a.up?'up':'dn'}" style="left:${a.r}%"></div><span class="nlt nl0">0</span><span class="nlt nl1">100</span>`;
-    $('#sm-ntxt').innerHTML=`Lần ${st.log.length}: đập +${a.from} → rút được <b>${fmt(a.r,2)}</b>, cần dưới <b>${fmt(a.p*100,2)}</b> để lên → <b style="color:${a.up?'var(--ok)':'var(--bad)'}">${a.up?'LÊN +'+a.to:a.to===a.from?'tạch, giữ +'+a.to:'tạch, về +'+a.to}</b>.${!a.up&&a.to!==a.from?' Mức rớt được rút bằng một số ngẫu nhiên thứ hai.':''}`}
+  const zNote={still:'Vùng xanh luôn nằm ở đầu thanh.',rand:'Mỗi lần đập, vùng xanh nhảy tới một chỗ ngẫu nhiên.',slide:'Mỗi lần đập, vùng xanh dời thêm 7,3 (có quy luật, đoán trước được vị trí).'}[cfg.zone];
+  if(!a){nl.innerHTML=(cfg.zone==='rand'?'':zoneDivs(cfg.zone==='slide'?zpos:0,p))+`<span class="nlt nl0">0</span><span class="nlt nl1">100</span>`;$('#sm-ntxt').innerHTML=canUp?`Mỗi lần bấm, máy rút một số từ 0 đến 100. Số rơi vào vùng xanh (dài <b>${fmt(p*100,2)}</b>) thì lên. ${zNote}`:'Thẻ đã ở cấp tối đa.'}
+  else{nl.innerHTML=zoneDivs(a.z||0,a.p)+`<div class="nlm ${a.up?'up':'dn'}" style="left:${a.r}%"></div><span class="nlt nl0">0</span><span class="nlt nl1">100</span>`;
+    $('#sm-ntxt').innerHTML=`Lần ${st.log.length}: đập +${a.from} · vùng lên <b>${zoneTxt(a.z||0,a.p)}</b> (${ZN[a.zm||'still']}) · rút được <b>${fmt(a.r,2)}</b> → <b style="color:${a.up?'var(--ok)':'var(--bad)'}">${a.up?'LÊN +'+a.to:a.to===a.from?'tạch, giữ +'+a.to:'tạch, về +'+a.to}</b>.${!a.up&&a.to!==a.from?' Mức rớt được rút bằng một số ngẫu nhiên thứ hai.':''}${cfg.zone!==(a.zm||'still')?'':' '+zNote}`}
   // thống kê phiên
   const L=st.log,n=L.length,w=L.filter(x=>x.up).length,E=L.reduce((s,x)=>s+x.p,0);let cur=0,mx=0;L.forEach(x=>{cur=x.up?0:cur+1;mx=Math.max(mx,cur)});
   const vs=L.reduce((s,x)=>s+x.v,0),top=L.reduce((m,x)=>Math.max(m,x.to),cfg.lv);
   $('#sm-stat').innerHTML=`<dt>Số lần đập</dt><dd>${n}</dd><dt>Lên / tạch</dt><dd>${w} / ${n-w}</dd><dt>Tỷ lệ thực tế / kỳ vọng</dt><dd>${n?pct(w/n):'–'} / ${n?pct(E/n):'–'}</dd><dt>Chuỗi tạch dài nhất</dt><dd>${mx}</dd><dt>Đang tạch liền</dt><dd>${cur}</dd><dt>Cấp cao nhất đạt</dt><dd>+${top}</dd><dt>Tổng vạch đã dùng</dt><dd>${fmt(vs,1)}</dd>`;
+  {const G={};L.forEach(x=>{const k=x.zm||'still',g=G[k]||(G[k]={n:0,w:0,E:0});g.n++;g.w+=x.up?1:0;g.E+=x.p});const ks=Object.keys(ZN).filter(k=>G[k]);
+   $('#sm-zstat').innerHTML=ks.length?`<div class="lbl" style="margin-top:4px">So theo kiểu vùng lên</div><div class="tblwrap" style="margin-top:6px"><table><thead><tr><th style="text-align:left">Vùng lên</th><th>Số lần</th><th>Lên</th><th>Thực tế</th><th>Kỳ vọng</th></tr></thead><tbody>${ks.map(k=>{const g=G[k];return `<tr><td style="text-align:left;font-family:var(--f-body)">${ZN[k]}</td><td>${g.n}</td><td>${g.w}</td><td>${pct(g.w/g.n)}</td><td>${pct(g.E/g.n)}</td></tr>`}).join('')}</tbody></table></div><p class="hint" style="margin:6px 0 0">Đập càng nhiều lần, cột Thực tế của các kiểu càng sát Kỳ vọng như nhau.</p>`:''}
   // dây mô phỏng
   const rows=[];let row=[];L.forEach((x,i)=>{row.push([x,i]);if(x.up){rows.push(row);row=[]}});if(row.length)rows.push(row);
   const show=rows.slice(-10),off=rows.length-show.length;
@@ -2060,6 +2070,7 @@ function stopAuto(msg){if(auto){clearInterval(auto);auto=null}$('#sm-auto').text
 $('#sm-auto').onclick=()=>auto?stopAuto():startAuto();
 $('#sm-speed').value=String(cfg.speed);if($('#sm-speed').selectedIndex<0)$('#sm-speed').value='300';
 $('#sm-speed').onchange=e=>{cfg.speed=+e.target.value;saveCfg();if(auto){clearInterval(auto);auto=setInterval(autoStep,cfg.speed)}};
+$('#sm-zone').value=cfg.zone in ZN?cfg.zone:'still';$('#sm-zone').onchange=e=>{cfg.zone=e.target.value;saveCfg();draw()};
 $('#sm-stopup').checked=!!cfg.stopUp;$('#sm-stopup').onchange=e=>{cfg.stopUp=e.target.checked;saveCfg()};
 $('#sm-mode').onchange=e=>{cfg.mode=e.target.value;saveCfg();st.lv=cfg.mode==='moi'?cfg.lv:st.lv;draw()};
 // dừng khi rời tab
