@@ -152,6 +152,9 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .svrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .svrow:last-child{border-bottom:0}.svrow b{display:block;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.svrow span{font-size:.78rem;color:var(--muted)}
 .svbtns{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.svgrp{border:1px solid var(--line);border-radius:9px;padding:6px 12px;margin-bottom:10px}
+.svgrp>.svh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line);font-size:.85rem}
+.svgrp>.svh b{font-family:var(--f-display);font-size:1rem}
 /* ---- Đầu khối biểu đồ ---- */
 .chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 .chead #c-find{width:130px}.chead #c-filter{width:auto;min-width:170px}
@@ -308,7 +311,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 19/11 09:10</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 19/11 09:25</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -724,7 +727,7 @@ details.more[open]>summary{margin-bottom:2px}
       <p class="hint" id="sm-smsg" style="margin:0" aria-live="polite"></p>
     </div>
     <div class="panel stack">
-      <h2>Dây đã lưu</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Dây đã lưu</h2><select id="sm-sflt" aria-label="Lọc theo mức thẻ" style="width:auto"></select></div>
       <div id="sm-saved"></div>
       <textarea id="sm-txt" rows="6" readonly hidden aria-label="Dây dạng chữ"></textarea>
       <p class="hint" style="margin:0">Lưu trên trình duyệt của máy này, tách riêng với dây thật nên không ảnh hưởng tab Tính dây và Phân tích. Phiên đang đập cũng được tự lưu, tải lại trang không mất.</p>
@@ -2021,7 +2024,7 @@ function draw(){
   const rows=[];let row=[];L.forEach((x,i)=>{row.push([x,i]);if(x.up){rows.push(row);row=[]}});if(row.length)rows.push(row);
   const show=rows.slice(-10),off=rows.length-show.length;
   $('#sm-log').innerHTML=n?((off?`<p class="hint" style="margin:0 0 4px">… ${off} dây cũ hơn</p>`:'')+show.map((r,k)=>{const done=r[r.length-1][0].up;
-    return `<div class="rrow${!done?' cur':''}"><div class="rh"><b>Dây ${off+k+1}</b> · ${r.length} lượt${!done?' · <span style="color:var(--gold)">đang đập</span>':''}</div><div class="rcs">${r.map(([x,i])=>`<span class="rc ${x.up?'up':'dn'}" title="Lần ${i+1}: đập +${x.from}, rút ${fmt(x.r,2)} / cần < ${fmt(x.p*100,2)} → ${x.up?'lên +'+x.to:'về +'+x.to}">${x.up?'+'+x.to:'+'+x.to}</span>`).join('')}</div></div>`}).join('')):'<p class="hint" style="margin:0">Chưa đập lần nào.</p>';
+    return `<div class="rrow${!done?' cur':''}"><div class="rh"><b>Dây ${off+k+1}</b> · +${r[0][0].from} · ${r.length} lượt${!done?' · <span style="color:var(--gold)">đang đập</span>':''}</div><div class="rcs">${r.map(([x,i])=>`<span class="rc ${x.up?'up':'dn'}" title="Lần ${i+1}: đập +${x.from}, rút ${fmt(x.r,2)} / cần < ${fmt(x.p*100,2)} → ${x.up?'lên +'+x.to:'về +'+x.to}">${x.up?'+'+x.to:'+'+x.to}</span>`).join('')}</div></div>`}).join('')):'<p class="hint" style="margin:0">Chưa đập lần nào.</p>';
   $('#sm-log').scrollTop=$('#sm-log').scrollHeight;
 }
 function push(a){saveCur();st.log.push(a);st.last=a;st.lv=cfg.mode==='moi'?cfg.lv:a.to;if(st.log.length>20000)st.log.shift()}
@@ -2074,18 +2077,29 @@ function toText(sv){const L=unpack(sv.log);const lines=[`@${fmtT(sv.t)} (mô ph�
   const one=L.every(a=>a.from===L[0].from)&&L.every(a=>a.to<=9);
   L.forEach(a=>{row.push(one?String(a.to)+(a.up?'':''):(a.up?`${a.from}→${a.to}`:`${a.from}→${a.to}`));if(a.up){lines.push((one?'v'+String(sv.v).replace('.','.')+' '+row.slice(0,-1).join('')+'='+a.to:row.join(' ')));row=[]}});
   if(row.length)lines.push(one?'v'+sv.v+' '+row.join(''):row.join(' '));return lines.join('\n')}
-function drawSaved(){const S=lsG(KS)||[],box=$('#sm-saved');
-  box.innerHTML=S.length?S.slice().reverse().map(sv=>{const L=unpack(sv.log),w=L.filter(a=>a.up).length;return `<div class="svrow"><div><b>${escH(sv.name)}</b><span>${fmtT(sv.t)} · ${L.length} lần · lên ${w} (${L.length?pct(w/L.length):'–'})</span></div><div class="svbtns"><button class="btn small" data-a="open" data-id="${sv.id}">Mở</button><button class="btn small" data-a="txt" data-id="${sv.id}">Chép chữ</button><button class="btn small" data-a="del" data-id="${sv.id}">Xóa</button></div></div>`}).join(''):'<p class="hint" style="margin:0">Chưa lưu dây nào.</p>'}
+function drawSaved(){const S=lsG(KS)||[],box=$('#sm-saved'),fl=$('#sm-sflt');
+  const lvs=[...new Set(S.map(x=>+x.lv))].sort((a,b)=>a-b),cur=fl.value;
+  fl.innerHTML='<option value="">Tất cả mức thẻ</option>'+lvs.map(l=>`<option value="${l}">+${l} → +${l+1}</option>`).join('');fl.value=lvs.includes(+cur)?cur:'';fl.hidden=lvs.length<2;
+  if(!S.length){box.innerHTML='<p class="hint" style="margin:0">Chưa lưu dây nào.</p>';return}
+  const show=fl.value?[+fl.value]:lvs;
+  box.innerHTML=show.map(l=>{const G=S.filter(x=>+x.lv===l).slice().reverse();let n=0,w=0,E=0;G.forEach(sv=>{const L=unpack(sv.log).filter(a=>sv.mode!=='moi'||a.from===l);n+=L.length;w+=L.filter(a=>a.up).length;E+=L.reduce((s,a)=>s+a.p,0)});
+    return `<div class="svgrp"><div class="svh"><b>+${l} → +${l+1}</b><span>${G.length} bản · ${n} lần · lên ${w} (${n?pct(w/n):'–'}) · kỳ vọng ${n?pct(E/n):'–'}</span></div>${G.map(sv=>{const L=unpack(sv.log),ww=L.filter(a=>a.up).length;
+      return `<div class="svrow"><div><b>${escH(sv.name)}</b><span>${fmtT(sv.t)} · ${sv.mode==='moi'?'mồi':'một thẻ'} · ${vtxt(sv.v)} vạch · ${L.length} lần · lên ${ww} (${L.length?pct(ww/L.length):'–'})</span></div><div class="svbtns"><button class="btn small" data-a="open" data-id="${sv.id}">Mở</button><button class="btn small" data-a="txt" data-id="${sv.id}">Chép chữ</button><button class="btn small" data-a="del" data-id="${sv.id}">Xóa</button></div></div>`}).join('')}</div>`}).join('')}
 function saveSnap(){if(!st.log.length){$('#sm-smsg').textContent='Chưa có lần đập nào để lưu.';return}
-  const S=lsG(KS)||[],nm=($('#sm-sname').value||'').trim()||`${cfg.mode==='moi'?'Mồi':'Một thẻ'} +${cfg.lv} · ${vtxt(cfg.v)} vạch · ${st.log.length} lần`;
-  S.push({id:Date.now().toString(36),name:nm.slice(0,40),t:Date.now(),mode:cfg.mode,lv:cfg.lv,v:cfg.v,base:st.base,log:pack(st.log)});while(S.length>30)S.shift();
-  if(lsS(KS,S)){$('#sm-smsg').textContent=`Đã lưu "${nm}".`;$('#sm-sname').value='';drawSaved()}else $('#sm-smsg').textContent='Không lưu được: bộ nhớ trình duyệt đã đầy, anh xóa bớt dây đã lưu.'}
+  const S=lsG(KS)||[],base=($('#sm-sname').value||'').trim(),now=Date.now();
+  // chế độ mồi: mỗi mức thẻ một bản riêng; chế độ một thẻ: giữ nguyên cả phiên, xếp theo cấp bắt đầu
+  const parts=cfg.mode==='moi'?[...new Set(st.log.map(a=>a.from))].sort((a,b)=>a-b).map(l=>({lv:l,log:st.log.filter(a=>a.from===l)})):[{lv:st.log[0].from,log:st.log}];
+  const names=parts.map(pt=>{const vv=pt.log[pt.log.length-1].v,nm=(base?base+(parts.length>1?` · +${pt.lv}`:''):`${cfg.mode==='moi'?'Mồi':'Một thẻ'} +${pt.lv} · ${vtxt(vv)} vạch · ${pt.log.length} lần`).slice(0,40);
+    S.push({id:(now+pt.lv).toString(36)+Math.floor(rnd()*1e4).toString(36),name:nm,t:now,mode:cfg.mode,lv:pt.lv,v:vv,base:st.base,log:pack(pt.log)});return nm});
+  while(S.length>60)S.shift();
+  if(lsS(KS,S)){$('#sm-smsg').textContent=parts.length>1?`Đã lưu ${parts.length} bản theo mức: ${names.join(', ')}.`:`Đã lưu "${names[0]}".`;$('#sm-sname').value='';drawSaved()}else $('#sm-smsg').textContent='Không lưu được: bộ nhớ trình duyệt đã đầy, anh xóa bớt dây đã lưu.'}
 $('#sm-save').onclick=saveSnap;
 $('#sm-saved').onclick=e=>{const b=e.target.closest('button[data-a]');if(!b)return;const S=lsG(KS)||[],sv=S.find(x=>x.id===b.dataset.id);if(!sv)return;
   if(b.dataset.a==='del'){lsS(KS,S.filter(x=>x!==sv));drawSaved();$('#sm-txt').hidden=true;return}
   if(b.dataset.a==='txt'){const t=toText(sv),ta=$('#sm-txt');ta.value=t;ta.hidden=false;ta.select();try{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>{$('#sm-smsg').textContent='Đã chép dây dạng chữ.'},()=>{})}catch(err){}return}
   if(b.dataset.a==='open'){if(auto)stopAuto();cfg.mode=sv.mode;cfg.lv=sv.lv;cfg.v=sv.v;if(Number.isFinite(sv.base)){st.base=sv.base;cfg.ovr=sv.base+cumOvr(sv.lv)}saveCfg();st.log=unpack(sv.log);st.last=st.log[st.log.length-1]||null;st.lv=sv.mode==='moi'?sv.lv:(st.last?st.last.to:sv.lv);saveCur();
     $('#sm-msg').textContent=`Đang xem "${sv.name}". Bấm Nâng cấp hoặc Tự đập để đập tiếp từ đây.`;draw();document.querySelector('#sm-log').scrollIntoView({block:'nearest'})}};
+$('#sm-sflt').onchange=drawSaved;
 drawSaved();
 // tự đập liên tục
 function autoStep(){const l=baseLv();if(!(l<MAXLV&&R(l))){stopAuto('Thẻ đã ở cấp tối đa, dừng.');return}
