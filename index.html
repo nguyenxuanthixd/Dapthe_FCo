@@ -137,6 +137,16 @@ td input{width:80px;padding:4px 6px;text-align:right}
 .rc{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 4px;border-radius:5px;font:700 .7rem var(--f-mono);font-style:normal;background:var(--line);color:var(--ink)}
 .rc.up{background:var(--gold);color:#1b1404}.rc.mn{box-shadow:0 0 0 2px var(--ink) inset}.rc.dn.mn{background:var(--bad);color:#fff}
 .rc sup{position:absolute;top:-7px;right:-3px;font-size:.7rem;color:var(--ok);line-height:1}.rc sub{position:absolute;bottom:-6px;left:50%;margin-left:-3px;font-size:.5rem;color:var(--warn);line-height:1}
+/* ---- Ảnh cầu thủ ---- */
+.simcard.img{background-size:cover;background-position:center top;box-shadow:0 0 0 3px #d9b45e inset,0 6px 18px rgba(0,0,0,.35)}
+.simcard.img::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,0) 35%,rgba(0,0,0,0) 55%,rgba(0,0,0,.75) 100%)}
+.simcard.img>*{z-index:1;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.simcard.img .sc-lv{color:#1b2235;text-shadow:none}
+.sc-pos{position:absolute;left:12px;top:40px;font:700 .8rem var(--f-mono,monospace)}
+.simcard.sm .sc-pos{top:34px;font-size:.7rem}
+.simimg{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;align-items:center}
+.simthumb{width:72px;height:98px;border-radius:8px 8px 14px 14px;border:1px dashed var(--line);background:var(--bg) center top/cover no-repeat;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.7rem;text-align:center}
+.simsave select{flex:1 1 160px;min-width:0}
 /* ---- Lưu dây mô phỏng ---- */
 .simsave{display:flex;gap:8px;flex-wrap:wrap}.simsave input{flex:1 1 160px;min-width:0}
 .svrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
@@ -298,7 +308,7 @@ details.more[open]>summary{margin-bottom:2px}
 <div class="viewbar" id="viewbar" hidden><span id="viewbar-t"></span><button class="btn small" id="viewbar-x">Thoát, về tài khoản của tôi</button></div>
 <header>
   <div>
-    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 18/11 22:50</small></h1>
+    <h1>Phòng Lab <span>Đập Thẻ</span> <small style="font-size:.7rem;opacity:.6;letter-spacing:0">bản 19/11 09:10</small></h1>
     <p class="sub">Đập mồi, đếm dây và báo lúc lên thẻ chính.</p>
   </div>
   <div class="hdr-right">
@@ -650,7 +660,7 @@ details.more[open]>summary{margin-bottom:2px}
   <div class="simstage">
     <div class="simhead">Nâng cấp <span>· mô phỏng</span></div>
     <div class="simtop">
-      <div class="simcard"><div class="sc-ovr" id="sm-ovr">0</div><div class="sc-lv" id="sm-lvb">0</div><div class="sc-name" id="sm-name"></div></div>
+      <div class="simcard" id="sm-card"><div class="sc-ovr" id="sm-ovr">0</div><div class="sc-pos" id="sm-pos"></div><div class="sc-lv" id="sm-lvb">0</div><div class="sc-name" id="sm-name"></div></div>
       <dl class="simrows">
         <dt>Cấp thẻ</dt><dd><span class="lvb" id="sm-lv">0</span> <span class="plus">+1</span></dd>
         <dt>OVR</dt><dd><b id="sm-ovr2">0</b> <span class="plus" id="sm-ovrup"></span></dd>
@@ -681,10 +691,22 @@ details.more[open]>summary{margin-bottom:2px}
     <div class="panel stack">
       <h2>Thẻ mô phỏng</h2>
       <div class="simf">
-        <div class="field"><label for="sm-iname">Tên thẻ</label><input id="sm-iname" type="text" maxlength="24"></div>
+        <div class="field"><label for="sm-iname">Tên cầu thủ</label><input id="sm-iname" type="text" maxlength="24"></div>
+        <div class="field"><label for="sm-ipos">Vị trí</label><input id="sm-ipos" type="text" maxlength="4" placeholder="ST"></div>
         <div class="field"><label for="sm-ilv">Cấp thẻ</label><select id="sm-ilv"></select></div>
         <div class="field"><label for="sm-iovr">OVR hiện tại</label><input id="sm-iovr" type="number" min="1" max="250"></div>
       </div>
+      <div class="simimg">
+        <div class="simthumb" id="sm-thumb" aria-hidden="true"></div>
+        <div class="stack" style="gap:6px;min-width:0">
+          <label class="btn small" for="sm-file" style="cursor:pointer;text-align:center">Chọn ảnh thẻ từ máy</label>
+          <input id="sm-file" type="file" accept="image/*" hidden>
+          <button class="btn small" id="sm-noimg">Bỏ ảnh</button>
+          <p class="hint" style="margin:0">Ảnh chỉ lưu trên trình duyệt máy này. Nên dùng ảnh chụp màn hình thẻ của anh.</p>
+        </div>
+      </div>
+      <div class="simsave"><select id="sm-plist" aria-label="Cầu thủ đã lưu"></select><button class="btn small primary" id="sm-psave">Lưu cầu thủ</button><button class="btn small" id="sm-pdel">Xóa</button></div>
+      <p class="hint" id="sm-pmsg" style="margin:0" aria-live="polite"></p>
       <label class="hint" style="display:flex;gap:8px;align-items:center;justify-content:flex-start;text-align:left"><input type="checkbox" id="sm-fx" style="width:auto;flex:0 0 auto;margin:0"> Hiện màn hình kết quả sau mỗi lần bấm Nâng cấp</label>
     </div>
     <div class="panel stack">
@@ -1955,6 +1977,11 @@ const zoneTxt=(z,p)=>{const e=z+p*100;return e<=100?`${fmt(z,1)} – ${fmt(e,1)}
 let cfg=Object.assign({name:'Thẻ chính',lv:6,ovr:129,v:4,keep:false,fx:true,mode:'moi',speed:300,stopUp:false,zone:'still'},store.get('simCfg',{}));
 const ZN={still:'Đứng yên',rand:'Nhảy ngẫu nhiên',slide:'Trượt dần'};let zpos=0;
 let auto=null,autoN=0;
+// ảnh cầu thủ: chỉ lưu trên trình duyệt (không đồng bộ, không đưa lên GitHub)
+const KI='fcosim_img',KP='fcosim_players';let img=(()=>{try{return localStorage.getItem(KI)||''}catch(e){return ''}})();
+const setImg=d=>{img=d||'';try{img?localStorage.setItem(KI,img):localStorage.removeItem(KI);return true}catch(e){return false}};
+const cardBg=el=>{if(!el)return;el.classList.toggle('img',!!img);el.style.backgroundImage=img?`url("${img}")`:''};
+function shrink(file,cb){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const H=320,sc=Math.min(1,H/im.height),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.82))};im.onerror=()=>cb(null);im.src=fr.result};fr.onerror=()=>cb(null);fr.readAsDataURL(file)}
 // lưu riêng (không dùng store để không đồng bộ dữ liệu lớn lên tài khoản)
 const KC='fcosim_cur_'+(typeof CUR_ACC!=='undefined'?CUR_ACC:'main'),KS='fcosim_saved';
 const lsG=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
@@ -1969,7 +1996,7 @@ function resetRun(){st={lv:cfg.lv,base:cfg.ovr-cumOvr(cfg.lv),log:[],last:null,b
 
 function draw(){
   const l=st.lv,v=cfg.v,p=pOf(l,v),ovr=st.base+cumOvr(l),canUp=l<MAXLV&&R(l);
-  $('#sm-name').textContent=cfg.name||'Thẻ chính';$('#sm-ovr').textContent=ovr;$('#sm-lvb').textContent=l;
+  $('#sm-name').textContent=cfg.name||'Thẻ chính';$('#sm-pos').textContent=cfg.pos||'';cardBg($('#sm-card'));{const t=$('#sm-thumb');t.style.backgroundImage=img?`url("${img}")`:'';t.textContent=img?'':'Chưa có ảnh'}$('#sm-ovr').textContent=ovr;$('#sm-lvb').textContent=l;
   $('#sm-lv').textContent=l;$('#sm-ovr2').textContent=ovr;$('#sm-ovrup').textContent=canUp?'+'+(OVR_UP[l+1]||0):'';
   $('#sm-p').textContent=canUp?pct(p):'–';$('#sm-drop').textContent=canUp?(keepNow()?'giữ nguyên +'+l:(cfg.mode==='moi'?'thẻ mồi '+dropRange(l):dropRange(l))):'Đã tối đa';
   $('#sm-vtxt').textContent=vtxt(v)+' vạch';$('#sm-v').value=v;
@@ -2001,8 +2028,8 @@ function push(a){saveCur();st.log.push(a);st.last=a;st.lv=cfg.mode==='moi'?cfg.l
 const baseLv=()=>cfg.mode==='moi'?cfg.lv:st.lv;
 const keepNow=()=>cfg.mode==='moi'?false:cfg.keep;
 function showRes(a){const box=$('#sm-res'),ovr=st.base+cumOvr(a.to),d=a.up?(OVR_UP[a.to]||0):-(cumOvr(a.from)-cumOvr(a.to));
-  box.className='simres '+(a.up?'ok':'bad');
-  box.innerHTML=`<div class="srbox"><div class="simcard sm"><div class="sc-ovr">${ovr}</div><div class="sc-lv">${a.to}</div><div class="sc-name">${escH(cfg.name||'Thẻ chính')}</div></div>
+  box.className='simres '+(a.up?'ok':'bad');setTimeout(()=>cardBg(box.querySelector('.simcard')),0);
+  box.innerHTML=`<div class="srbox"><div class="simcard sm"><div class="sc-ovr">${ovr}</div><div class="sc-pos">${escH(cfg.pos||'')}</div><div class="sc-lv">${a.to}</div><div class="sc-name">${escH(cfg.name||'Thẻ chính')}</div></div>
     <div class="srt">${a.up?'Thành công':'Thất bại'}</div>
     <dl class="simrows"><dt>Cấp thẻ</dt><dd><span class="lvb">${a.to}</span> <span class="${a.up?'plus':'minus'}">${a.up?'+1':a.to===a.from?'±0':'−'+(a.from-a.to)}</span></dd><dt>OVR</dt><dd><b>${ovr}</b> <span class="${d>0?'plus':d<0?'minus':'plus'}">${d>0?'+'+d:d<0?'−'+(-d):'+0'}</span></dd><dt>Số rút / cần</dt><dd>${fmt(a.r,2)} / dưới ${fmt(a.p*100,2)}</dd></dl>
     <div class="srx">Chạm để thoát</div></div>`;
@@ -2013,7 +2040,7 @@ function go(){if(st.busy||auto)return;const l=baseLv();st.lv=l;if(!(l<MAXLV&&R(l
 function animateRes(l,a,cb){
   st.busy=true;draw();const box=$('#sm-res'),ovr0=st.base+cumOvr(l),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   // trình tự như game: thẻ hiện giữa màn → sáng thành khối trắng → chớp trắng → hiện kết quả
-  box.className='simres ok charge';box.innerHTML=`<div class="srbox"><div class="simcard sm glow"><div class="sc-ovr">${ovr0}</div><div class="sc-lv">${l}</div><div class="sc-name">${escH(cfg.name||'Thẻ chính')}</div></div></div>`;box.hidden=false;
+  box.className='simres ok charge';setTimeout(()=>cardBg(box.querySelector('.simcard')),0);box.innerHTML=`<div class="srbox"><div class="simcard sm glow"><div class="sc-ovr">${ovr0}</div><div class="sc-pos">${escH(cfg.pos||'')}</div><div class="sc-lv">${l}</div><div class="sc-name">${escH(cfg.name||'Thẻ chính')}</div></div></div>`;box.hidden=false;
   box.insertAdjacentHTML('beforeend','<button class="srskip" id="sm-skip">Bỏ qua</button>');
   let done=false;const T=[];const fin=()=>{if(done)return;done=true;T.forEach(clearTimeout);st.busy=false;push(a);draw();showRes(a);if(cb)cb()};
   $('#sm-skip').onclick=e=>{e.stopPropagation();fin()};
@@ -2092,6 +2119,19 @@ $('#sm-bar').onclick=e=>{const b=e.target.closest('.sb');if(!b)return;cfg.v=+b.d
 $('#sm-v').oninput=e=>{cfg.v=Math.round(+e.target.value*10)/10;saveCfg();draw()};
 $('#sm-keep').onchange=e=>{cfg.keep=e.target.checked;saveCfg();draw()};
 $('#sm-fx').checked=cfg.fx;$('#sm-fx').onchange=e=>{cfg.fx=e.target.checked;saveCfg()};
+$('#sm-ipos').value=cfg.pos||'';$('#sm-ipos').oninput=e=>{cfg.pos=e.target.value.toUpperCase().slice(0,4);saveCfg();draw()};
+$('#sm-file').onchange=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;if(!/^image\//.test(f.type)){$('#sm-pmsg').textContent='Tệp này không phải ảnh.';return}
+  shrink(f,d=>{if(!d){$('#sm-pmsg').textContent='Không đọc được ảnh này.';return}$('#sm-pmsg').textContent=setImg(d)?'Đã gắn ảnh cho thẻ.':'Không lưu được ảnh: bộ nhớ trình duyệt đã đầy, anh xóa bớt cầu thủ đã lưu.';draw()})};
+$('#sm-noimg').onclick=()=>{setImg('');$('#sm-pmsg').textContent='Đã bỏ ảnh.';draw()};
+const lsGP=()=>{try{return JSON.parse(localStorage.getItem(KP))||[]}catch(e){return []}};
+function drawPlayers(sel){const P=lsGP(),el=$('#sm-plist');el.innerHTML='<option value="">Cầu thủ đã lưu…</option>'+P.map(x=>`<option value="${x.id}">${escH(x.name)}${x.pos?' · '+escH(x.pos):''} · +${x.lv} · ${x.ovr}</option>`).join('');el.value=sel||'';$('#sm-pdel').disabled=!el.value}
+$('#sm-psave').onclick=()=>{const P=lsGP(),nm=(cfg.name||'').trim()||'Thẻ chính',ovr=st.base+cumOvr(st.lv);let x=P.find(y=>y.name===nm&&(y.pos||'')===(cfg.pos||''));
+  if(!x){x={id:Date.now().toString(36)};P.push(x)}Object.assign(x,{name:nm,pos:cfg.pos||'',lv:st.lv,ovr,img});while(P.length>20)P.shift();
+  try{localStorage.setItem(KP,JSON.stringify(P));$('#sm-pmsg').textContent=`Đã lưu ${nm}.`}catch(e){$('#sm-pmsg').textContent='Không lưu được: bộ nhớ trình duyệt đã đầy, anh xóa bớt cầu thủ hoặc dùng ảnh nhỏ hơn.';return}drawPlayers(x.id)};
+$('#sm-plist').onchange=e=>{const x=lsGP().find(y=>y.id===e.target.value);$('#sm-pdel').disabled=!x;if(!x)return;if(auto)stopAuto();
+  cfg.name=x.name;cfg.pos=x.pos;cfg.lv=x.lv;st.lv=x.lv;st.base=x.ovr-cumOvr(x.lv);cfg.ovr=x.ovr;setImg(x.img||'');saveCfg();$('#sm-iname').value=x.name;$('#sm-ipos').value=x.pos||'';$('#sm-pmsg').textContent=`Đang dùng ${x.name}.`;draw()};
+$('#sm-pdel').onclick=()=>{const id=$('#sm-plist').value;if(!id)return;localStorage.setItem(KP,JSON.stringify(lsGP().filter(y=>y.id!==id)));$('#sm-pmsg').textContent='Đã xóa khỏi danh sách.';drawPlayers()};
+drawPlayers();
 $('#sm-iname').value=cfg.name;$('#sm-iname').oninput=e=>{cfg.name=e.target.value.slice(0,24);saveCfg();draw()};
 $('#sm-ilv').innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}">+${i+1} → +${i+2}</option>`).join('');$('#sm-ilv').value=cfg.lv;
 $('#sm-ilv').onchange=e=>{if(auto)stopAuto();cfg.lv=+e.target.value;st.lv=cfg.lv;cfg.ovr=st.base+cumOvr(cfg.lv);$('#sm-iovr').value=cfg.ovr;saveCfg();draw()};
